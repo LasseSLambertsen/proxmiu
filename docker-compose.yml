@@ -1,0 +1,16 @@
+services:
+  proxmiu:
+    build: .
+    # Host networking lets the agent scan your LAN and reach guests directly.
+    network_mode: host
+    restart: unless-stopped
+    environment:
+      PROXMIU_PASSWORD: ${PROXMIU_PASSWORD:?Set PROXMIU_PASSWORD in .env}
+      # Hosted UIs allowed to use this agent, e.g. https://proxmiu.vercel.app (comma-separated)
+      PROXMIU_ALLOWED_ORIGINS: ${PROXMIU_ALLOWED_ORIGINS:-}
+      # 1 = serve HTTPS with a self-signed certificate (needed when the UI is hosted on https)
+      PROXMIU_TLS: ${PROXMIU_TLS:-0}
+      HOST: 0.0.0.0
+      PORT: 8787
+    volumes:
+      - ./data:/data
