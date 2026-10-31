@@ -55,6 +55,7 @@ The **agent** is a small Node service that runs on your network (Docker, or any 
   - Install scripts come from [proxmiu-scripts](https://github.com/LasseSLambertsen/proxmiu-scripts), with an embedded fallback if GitHub is unavailable.
 - **Custom templates** – duplicate a built-in or write your own bash script with typed options, or point a template at a script in a GitHub repository.
 - **Guest updates** - re-run the template's install script, or use the upstream Community Scripts update path, from the guest menu.
+- **Agent self-update** - opt-in button in Settings; the update runs in a transient systemd unit and reloads the page when the agent is back.
 - **Command palette** – <kbd>⌘K</kbd> / <kbd>Ctrl K</kbd> to jump to any guest, page or template.
 - **Community Scripts** - browse [community-scripts.org](https://community-scripts.org) and turn any container app into a template; the installer runs inside the guest.
 
