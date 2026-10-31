@@ -20,6 +20,7 @@ createRoot(document.getElementById('root')!).render(
             background: 'var(--card-elevated)',
             color: 'var(--foreground)',
             border: '1px solid var(--border)',
+            backdropFilter: 'blur(18px)',
             fontFamily: 'var(--font-sans)',
             fontSize: 13,
             borderRadius: 12,
