@@ -14,6 +14,8 @@ import { SettingsPage } from '@/pages/Settings'
 import { Templates } from '@/pages/Templates'
 import { TerminalPage } from '@/pages/TerminalPage'
 
+const BASENAME = import.meta.env.BASE_URL.replace(/\/$/, '') || undefined
+
 type Session =
   | { state: 'no-agent' }
   | { state: 'unreachable'; url: string }
@@ -77,7 +79,7 @@ export function App() {
   }
 
   return (
-    <BrowserRouter>
+    <BrowserRouter basename={BASENAME}>
       <Routes>
         <Route path="/terminal" element={<TerminalPage />} />
         <Route

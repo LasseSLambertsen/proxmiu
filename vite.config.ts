@@ -5,6 +5,7 @@ import { defineConfig } from 'vite'
 
 export default defineConfig({
   root: 'web',
+  base: process.env.VITE_BASE || '/',
   plugins: [react(), tailwindcss()],
   resolve: { alias: { '@': fileURLToPath(new URL('./web/src', import.meta.url)) } },
   build: { outDir: '../dist/web', emptyOutDir: true, chunkSizeWarningLimit: 1200 },

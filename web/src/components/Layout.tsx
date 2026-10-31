@@ -19,10 +19,12 @@ const nav = [
   { to: '/settings', label: 'Settings', icon: Settings },
 ]
 
+const LOGO = `${import.meta.env.BASE_URL}logo.svg`
+
 export function Logo({ size = 28 }: { size?: number }) {
   return (
     <div className="flex items-center gap-2.5">
-      <img src="/logo.svg" alt="" width={size} height={size} className="shrink-0 rounded-[7px] shadow-[0_2px_8px_-2px_rgba(91,63,228,0.6)]" />
+      <img src={LOGO} alt="" width={size} height={size} className="shrink-0 rounded-[7px] shadow-[0_2px_8px_-2px_rgba(91,63,228,0.6)]" />
       <span className="text-[15px] font-semibold tracking-[-0.02em]">Proxmiu</span>
     </div>
   )
@@ -46,7 +48,7 @@ export function Layout({ authRequired, onLogout, onDisconnect }: { authRequired:
           <span className="max-lg:hidden">
             <Logo />
           </span>
-          <img src="/logo.svg" alt="Proxmiu" className="hidden size-7 rounded-[7px] max-lg:block" />
+          <img src={LOGO} alt="Proxmiu" className="hidden size-7 rounded-[7px] max-lg:block" />
         </div>
         <div className="px-3 pb-2 max-lg:px-2">
           <button

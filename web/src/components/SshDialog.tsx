@@ -55,7 +55,7 @@ function SshDialogInner({ request }: { request: SshRequest }) {
   const command = `ssh ${port !== 22 ? `-p ${port} ` : ''}${username}@${request.host}`
   const popOut = () => {
     const params = new URLSearchParams({ host: request.host, user: username, port: String(port) })
-    window.open(`/terminal?${params}`, '_blank', 'noopener')
+    window.open(`${import.meta.env.BASE_URL}terminal?${params}`, '_blank', 'noopener')
   }
 
   if (target) {
