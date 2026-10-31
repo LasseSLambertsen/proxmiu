@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Report a security vulnerability
+    url: https://github.com/LasseSLambertsen/proxmiu/security/advisories/new
+    about: Please report vulnerabilities privately, not in a public issue.
+  - name: Ask a question or share a setup
+    url: https://github.com/LasseSLambertsen/proxmiu/discussions
+    about: Use Discussions for usage questions, ideas and showing your setup.

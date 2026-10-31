@@ -1,0 +1,77 @@
+name: Bug report
+description: Something in Proxmiu is broken or behaves unexpectedly
+title: "[Bug]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for the report. Please remove passwords, API tokens, private keys and IP addresses from logs before posting.
+        Security issues belong in [private vulnerability reporting](https://github.com/LasseSLambertsen/proxmiu/security/advisories/new), not here.
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: What did you do, and what went wrong?
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What did you expect?
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Open ...
+        2. Click ...
+        3. See ...
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Proxmiu version or commit
+      placeholder: "0.2.0, or the commit SHA"
+    validations:
+      required: true
+  - type: input
+    id: proxmox
+    attributes:
+      label: Proxmox VE version
+      placeholder: "8.4.1"
+  - type: dropdown
+    id: deployment
+    attributes:
+      label: How is the agent running?
+      options:
+        - Proxmox host install script (scripts/proxmox-install.sh)
+        - Debian/Ubuntu agent (scripts/install.sh)
+        - Local npm run dev
+        - Docker
+        - Other
+  - type: input
+    id: browser
+    attributes:
+      label: Browser and OS (for UI issues)
+      placeholder: "Chrome 142 on macOS 15"
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs
+      description: Provisioning log, agent output or browser console. Redact secrets.
+      render: shell
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Before submitting
+      options:
+        - label: I searched existing issues.
+          required: true
+        - label: I removed passwords, tokens, private keys and other secrets from this report.
+          required: true
+        - label: This is not a security vulnerability (those go through private reporting).
+          required: true

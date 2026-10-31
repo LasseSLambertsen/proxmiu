@@ -1,0 +1,48 @@
+name: Feature request
+description: Suggest an improvement or a new capability
+title: "[Feature]: "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Proxmiu is a focused front end for everyday Proxmox work. It is not trying to replace the Proxmox UI for cluster administration, storage, HA, backups or users. Read [project.md](https://github.com/LasseSLambertsen/proxmiu/blob/main/project.md) before proposing a large feature.
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem does this solve?
+      description: Describe the situation where Proxmiu is awkward or missing something.
+    validations:
+      required: true
+  - type: textarea
+    id: solution
+    attributes:
+      label: Proposed solution
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Guests and power actions
+        - Terminal / SSH
+        - Templates and provisioning
+        - Connections and discovery
+        - UI / mobile
+        - Agent, install scripts or deployment
+        - Documentation
+        - Other
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Before submitting
+      options:
+        - label: I searched existing issues and discussions.
+          required: true
+        - label: This fits Proxmiu's goals and is not a cluster-administration feature.
+          required: true
