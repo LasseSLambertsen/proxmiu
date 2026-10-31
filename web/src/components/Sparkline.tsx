@@ -1,7 +1,7 @@
 import { useId } from 'react'
 
 /** Tiny area chart for a 0–100 series. */
-export function Sparkline({ values, className }: { values: number[]; className?: string }) {
+export function Sparkline({ values, className, color = 'var(--brand)' }: { values: number[]; className?: string; color?: string }) {
   const id = useId()
   if (values.length < 2) return <div className={className} />
   const w = 100
@@ -12,12 +12,12 @@ export function Sparkline({ values, className }: { values: number[]; className?:
     <svg viewBox={`0 0 ${w} ${h}`} preserveAspectRatio="none" className={className} aria-hidden>
       <defs>
         <linearGradient id={id} x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0" stopColor="var(--brand)" stopOpacity="0.28" />
-          <stop offset="1" stopColor="var(--brand)" stopOpacity="0" />
+          <stop offset="0" stopColor={color} stopOpacity="0.28" />
+          <stop offset="1" stopColor={color} stopOpacity="0" />
         </linearGradient>
       </defs>
       <path d={`${line} L${w},${h} L0,${h} Z`} fill={`url(#${id})`} />
-      <path d={line} fill="none" stroke="var(--brand)" strokeWidth="1.5" vectorEffect="non-scaling-stroke" strokeLinejoin="round" />
+      <path d={line} fill="none" stroke={color} strokeWidth="1.5" vectorEffect="non-scaling-stroke" strokeLinejoin="round" />
     </svg>
   )
 }

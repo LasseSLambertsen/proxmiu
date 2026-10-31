@@ -48,7 +48,7 @@ export function CommandPalette({ open, onOpenChange, dark, toggleTheme }: { open
       onOpenChange={onOpenChange}
       label="Command menu"
       overlayClassName="fixed inset-0 z-50 bg-[var(--overlay)] backdrop-blur-[3px] animate-fade-in"
-      contentClassName="fixed left-1/2 top-[18vh] z-50 w-[calc(100vw-32px)] max-w-xl -translate-x-1/2 overflow-hidden rounded-xl bg-card-elevated shadow-[var(--shadow-float)]"
+      contentClassName="fixed left-1/2 top-[18vh] z-50 w-[calc(100vw-32px)] max-w-xl -translate-x-1/2 overflow-hidden rounded-xl border border-white/60 bg-card-elevated shadow-[var(--shadow-float)] backdrop-blur-2xl dark:border-white/10"
     >
       <Command.Input
         placeholder="Search guests, templates and pages…"

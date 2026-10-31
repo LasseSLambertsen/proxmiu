@@ -22,7 +22,7 @@ createRoot(document.getElementById('root')!).render(
             border: '1px solid var(--border)',
             fontFamily: 'var(--font-sans)',
             fontSize: 13,
-            borderRadius: 6,
+            borderRadius: 12,
           },
         }}
       />

@@ -19,7 +19,7 @@ A modern web app for managing Proxmox VE on your local network: find hosts, star
   </tr>
   <tr>
     <td><img src="docs/screenshots/command-palette.png" alt="Command palette" /><br /><sub><b>⌘K</b>: jump to any guest, template or page</sub></td>
-    <td><img src="docs/screenshots/overview-light.png" alt="Light mode" /><br /><sub><b>Light mode</b></sub></td>
+    <td><img src="docs/screenshots/overview-dark.png" alt="Dark mode" /><br /><sub><b>Dark mode</b></sub></td>
   </tr>
   <tr>
     <td><img src="docs/screenshots/connect.png" alt="Connect to an agent from a hosted UI" /><br /><sub><b>Hosted UI</b>: connect a Vercel/Netlify deployment to your agent</sub></td>

@@ -16,7 +16,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { api, type Resource } from '@/lib/api'
 import { useOverview, useTemplates } from '@/lib/queries'
-import { formatBytes, formatUptime, pct } from '@/lib/utils'
+import { cn, formatBytes, formatUptime, pct } from '@/lib/utils'
 
 // Usage samples across refreshes, so the stat cards can show a short trend.
 const history: { cpu: number[]; mem: number[] } = { cpu: [], mem: [] }
@@ -25,16 +25,35 @@ const pushSample = (key: 'cpu' | 'mem', v: number) => {
   if (history[key].length > 40) history[key].shift()
 }
 
-function Stat({ label, value, sub, icon: Icon, trend }: { label: string; value: React.ReactNode; sub?: React.ReactNode; icon: typeof Cpu; trend?: number[] }) {
+type StatTint = 'warm' | 'cool' | 'blue' | 'lilac'
+const tints: Record<StatTint, string> = { warm: 'tint-warm', cool: 'tint-cool', blue: 'tint-blue', lilac: 'tint-lilac' }
+
+function Stat({
+  label,
+  value,
+  sub,
+  icon: Icon,
+  trend,
+  tint,
+  trendColor,
+}: {
+  label: string
+  value: React.ReactNode
+  sub?: React.ReactNode
+  icon: typeof Cpu
+  trend?: number[]
+  tint?: StatTint
+  trendColor?: string
+}) {
   return (
-    <Card className="flex flex-col overflow-hidden p-4">
+    <Card className={cn('flex flex-col overflow-hidden p-4', tint && tints[tint])}>
       <div className="flex items-center justify-between">
         <span className="eyebrow">{label}</span>
         <Icon className="size-4 text-faint" strokeWidth={1.75} />
       </div>
       <div className="tnum mt-3 text-[30px] font-semibold leading-none tracking-[-0.035em]">{value}</div>
       {sub && <div className="mt-2 text-[12.5px] text-faint">{sub}</div>}
-      {trend && <Sparkline values={trend} className="-mx-4 -mb-4 mt-auto h-10 w-[calc(100%+2rem)] pt-2" />}
+      {trend && <Sparkline values={trend} color={trendColor} className="-mx-4 -mb-4 mt-auto h-10 w-[calc(100%+2rem)] pt-2" />}
     </Card>
   )
 }
@@ -133,14 +152,16 @@ export function Overview() {
           ))}
 
         <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-          <Stat label="Guests running" icon={Server} value={running} sub={`of ${guests.length} VMs and containers`} />
-          <Stat label="Nodes online" icon={Network} value={online.length} sub={`of ${nodes.length}`} />
+          <Stat label="Guests running" icon={Server} value={running} sub={`of ${guests.length} VMs and containers`} tint="warm" />
+          <Stat label="Nodes online" icon={Network} value={online.length} sub={`of ${nodes.length}`} tint="cool" />
           <Stat
             label="CPU"
             icon={Cpu}
             value={`${cpuPct.toFixed(0)}%`}
             sub={`${cpuTotal} cores`}
             trend={history.cpu}
+            tint="blue"
+            trendColor="var(--info)"
           />
           <Stat
             label="Memory"
@@ -148,6 +169,8 @@ export function Overview() {
             value={`${memPct.toFixed(0)}%`}
             sub={`${formatBytes(memUsed)} of ${formatBytes(memTotal, 0)}`}
             trend={history.mem}
+            tint="lilac"
+            trendColor="var(--brand)"
           />
         </div>
 

@@ -43,7 +43,7 @@ export function Layout({ authRequired, onLogout, onDisconnect }: { authRequired:
 
   return (
     <div className="flex h-full">
-      <aside className="flex w-[232px] shrink-0 flex-col border-r border-border-subtle bg-sidebar max-lg:w-[60px] max-sm:hidden">
+      <aside className="nav-glass flex w-[232px] shrink-0 flex-col border-r border-white/10 bg-sidebar/90 backdrop-blur-2xl max-lg:w-[60px] max-sm:hidden">
         <div className="flex h-16 items-center px-4 max-lg:justify-center max-lg:px-0">
           <span className="max-lg:hidden">
             <Logo />
@@ -111,7 +111,7 @@ export function Layout({ authRequired, onLogout, onDisconnect }: { authRequired:
           )}
         </div>
       </aside>
-      <main className="relative min-w-0 flex-1 overflow-y-auto max-sm:pb-[calc(64px+env(safe-area-inset-bottom))]">
+      <main className="relative min-w-0 flex-1 overflow-y-auto max-sm:pb-[calc(92px+env(safe-area-inset-bottom))]">
         <MobileTopBar onSearch={() => setPalette(true)} />
         <div className="pointer-events-none absolute inset-x-0 top-0 h-72 bg-[radial-gradient(ellipse_70%_100%_at_50%_0%,var(--glow),transparent)]" />
         <div className="relative">
@@ -160,9 +160,9 @@ function MobileTabBar({
   const navigate = useNavigate()
   const tab = 'flex flex-1 flex-col items-center justify-center gap-1 text-[10.5px] font-medium text-faint transition-colors'
   return (
-    <nav className="fixed inset-x-0 bottom-0 z-40 hidden border-t border-border-subtle bg-sidebar/85 pb-[env(safe-area-inset-bottom)] backdrop-blur-xl max-sm:flex">
+    <nav className="nav-glass fixed inset-x-3 bottom-[calc(12px+env(safe-area-inset-bottom))] z-40 hidden rounded-2xl border border-white/15 bg-sidebar/90 p-1.5 shadow-[0_20px_60px_-20px_rgba(0,0,0,0.8)] backdrop-blur-2xl max-sm:flex">
       {tabs.map(({ to, label, icon: Icon, end }) => (
-        <NavLink key={to} to={to} end={end} className={({ isActive }) => cn(tab, 'relative h-16', isActive && 'text-foreground')}>
+        <NavLink key={to} to={to} end={end} className={({ isActive }) => cn(tab, 'relative h-14 rounded-xl', isActive && 'bg-hover text-foreground')}>
           {({ isActive }) => (
             <>
               <Icon className={cn('size-[22px]', isActive && 'text-brand')} strokeWidth={isActive ? 2.25 : 1.75} />

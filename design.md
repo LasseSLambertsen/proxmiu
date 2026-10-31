@@ -1,79 +1,81 @@
 # Design
 
-Proxmiu should feel like a modern developer tool, in the family of Linear, Vercel and Raycast: calm, dense where it matters, fast, and confident about one accent colour. Dark mode is the primary experience; light mode is fully supported.
+Proxmiu should feel like a calm, warm glass dashboard: a dark frosted sidebar, a soft cream-to-blue atmosphere, translucent cards, and a small set of confident accents. Light is the primary experience; dark mode carries the same glass language into low light.
 
 ## Principles
 
-1. **Quiet by default.** Neutral surfaces, hairline borders, one accent. Colour carries meaning (status, focus, selection), not decoration.
-2. **Information first.** Numbers use tabular figures; IDs and IPs use the mono font; secondary info is muted, not hidden.
-3. **Fast paths.** The most common action on a row is a visible icon button; the rest live in a menu. Everything is reachable from ⌘K.
-4. **Safe destruction.** Destructive actions are red, never primary, and need typed confirmation when they can't be undone.
-5. **Works on a phone.** Every screen must be usable at 390px wide.
+1. **Warm glass by default.** Surfaces are translucent over a soft warm gradient, with a dark frosted sidebar and floating cards. Depth comes from blur, layered light and a hairline highlight, not heavy borders.
+2. **Information first.** Numbers use tabular figures; IDs and IPs use the mono font; secondary info is muted, not hidden. Glass must never get in the way of density.
+3. **Colour as atmosphere.** Amber is the brand accent. Stat cards use soft warm, cool, blue and lilac tints. Status colours stay semantic: green, amber, red, teal.
+4. **Fast paths.** The most common action on a row is a visible icon button; the rest live in a menu. Everything is reachable from ⌘K.
+5. **Safe destruction.** Destructive actions are red, never primary, and need typed confirmation when they can't be undone.
+6. **Works on a phone.** Every screen must be usable at 390px wide. The mobile tab bar is a floating dark glass dock.
 
 ## Tokens
 
-Defined in `web/src/index.css` as CSS variables and exposed to Tailwind via `@theme inline`. Use the Tailwind names, never raw hex in components (exception: the terminal palette).
+Defined in `web/src/index.css` as CSS variables and exposed to Tailwind via `@theme inline`. Use the Tailwind names, never raw hex in components (exceptions: the terminal palette and the decorative stat tints).
 
 | Token (Tailwind) | Light | Dark | Use |
 |---|---|---|---|
-| `background` | `#fafafa` | `#09090b` | Page |
-| `sidebar` | `#f4f4f5` | `#0c0c0e` | Sidebar, mobile tab bar |
-| `card` | `#ffffff` | `#111113` | Cards, tables |
-| `card-elevated` | `#ffffff` | `#18181b` | Dialogs, menus, palette |
-| `hover` | 4.5% black | 5% white | Hover and selected rows/items |
-| `inset` | 2.5% black | 2.5% white | Inputs, code blocks, dialog footers |
-| `border` / `border-subtle` / `border-strong` | 9% / 5% / 16% black | 8% / 4.5% / 15% white | Hairlines |
-| `foreground` | `#18181b` | `#ededef` | Primary text |
-| `muted` | `#52525b` | `#a1a1aa` | Secondary text, labels |
-| `faint` | `#a1a1aa` | `#6b6b74` | Tertiary text, icons, placeholders |
-| `primary` / `primary-foreground` | `#18181b` / white | `#ededef` / `#09090b` | Primary button (inverts per theme) |
-| `brand` / `brand-soft` | `#6e56f5` / 10% | `#8b7bff` / 14% | Accent: active nav icon, focus ring, switches, meters, sparklines, brand button |
-| `success`, `warning`, `destructive`, `info` (+ `-soft`) | green-600, amber-600, red-600, blue-600 | `#3ecf8e`, `#f5a524`, `#f87171`, `#60a5fa` | Status only |
+| `background` | `#f6f0e7` | `#0b0d12` | Page; the body adds warm/cool radial glows |
+| `sidebar` | dark glass | dark glass | Sidebar, mobile dock |
+| `card` | white 55% | white 5% over navy | Cards, tables |
+| `card-elevated` | white 86% | navy 92% | Dialogs, menus, palette |
+| `hover` | 6% navy | 7% white | Hover and selected rows/items |
+| `inset` | white 45% | white 4.5% | Inputs, code blocks, dialog footers |
+| `border` / `border-subtle` / `border-strong` | 13% / 8% / 22% navy | 10% / 6% / 18% white | Hairlines; cards also use a white glass edge |
+| `foreground` | `#1b2030` | `#f5f1e9` | Primary text |
+| `muted` | `#4e5563` | `#aaa6b4` | Secondary text, labels |
+| `faint` | `#7c8290` | `#74707f` | Tertiary text, icons, placeholders |
+| `primary` / `primary-foreground` | `#1b2030` / cream | `#f5f1e9` / navy | Primary button (dark glass CTA) |
+| `brand` / `brand-soft` | `#e28a2f` / 14% | `#f0a23a` / 16% | Accent: active nav icon, focus ring, switches, meters, sparklines |
+| `success`, `warning`, `destructive`, `info` (+ `-soft`) | teal, amber, coral, steel blue | mint, amber, coral, sky | Status only |
 
-Shadows: `--shadow-card` (barely there), `--shadow-float` (dialogs, menus). Dark cards use a 1px top inner highlight instead of a drop shadow. `--glow` is a faint brand-tinted radial gradient at the top of the main area.
+Shadows: `--shadow-card` is a soft ambient shadow plus a 1px white inner highlight; `--shadow-float` is used for dialogs, menus and the mobile dock. The body gradient is warm at the top-left and cool at the top-right, with a faint grid.
 
 ## Typography
 
 - **Geist Variable** for UI and **Geist Mono Variable** for IDs, IPs, code and the terminal (self-hosted via `@fontsource-variable`).
-- Base 14px / 1.5. Page title 24px semibold, tracking −0.025em. Card titles 13px semibold. Labels 12.5px medium `muted`. Help text 12px `faint`.
+- Base 14px / 1.5. Page title 28px semibold, tracking −0.03em. Card titles 13px semibold. Labels 12.5px medium `muted`. Help text 12px `faint`.
 - Stat numbers: 30px semibold, tracking −0.035em, `tnum`.
 - Use the `tnum` utility on any changing number; use `eyebrow` for small section labels.
 
 ## Shape and spacing
 
-- Radius: controls 8px (`rounded-md`), cards 12px (`rounded-xl`), dialogs 12px, badges full.
+- Radius: controls 10px (`rounded-md`), cards and dialogs 22px (`rounded-xl`), badges full.
 - Page padding 32px horizontal (16px on phones). Card padding 16px. Gaps: 16px between cards, 24px between sections.
 - Controls are 32px (sm) or 36px (md) tall; large CTAs 40px. Table rows ~44px.
 
 ## Components
 
+- **Card** (`ui/card.tsx`). Translucent glass, 22px radius, white glass edge in light mode and a white/10 hairline in dark mode, with a 2xl backdrop blur.
+- **Stat card** (`pages/Overview.tsx`). Optional decorative tints: `tint-warm`, `tint-cool`, `tint-blue`, `tint-lilac`. These are the only place multiple hues appear alongside template tiles.
 - **Button** (`ui/button.tsx`). Variants:
-  - `primary`: inverted neutral, the default main action
-  - `brand`: violet, only for the single most important CTA on focused screens such as Connect
-  - `outline`: secondary
+  - `primary`: dark navy glass, the default main action
+  - `brand`: amber, only for the single most important CTA on focused screens such as Connect
+  - `outline`: glass with a hairline
   - `ghost`: toolbar and icon buttons
   - `destructive`: soft red that turns solid on hover
 
   Buttons scale to 0.98 on press, and icons are 16px.
-- **Card**: hairline border, `card` background; `CardHeader` uses `border-subtle`.
-- **Inputs/Select/Textarea**: `inset` background with a brand focus border and a 3px `brand-soft` ring. Wrap every field in `Field` (label + help).
-- **Badge**: 20px pill. `neutral` for tags, `brand` for Proxmiu-created guests, semantic tones for status.
-- **StatusDot**: 8px dot; running/online pulses softly in green.
-- **Meter**: 4px bar in brand, turning warning above 75% and destructive above 90%.
-- **Sparkline**: brand line with a fading area, used at the bottom of stat cards.
-- **Dialog**: blurred overlay; the content pops in (scale 0.98 → 1, 180ms). Footer uses the `inset` background. Confirmations use `ConfirmDialog`.
-- **Command palette** (cmdk): centred at 18vh, groups Create / Guests / Go to.
-- **TemplateTile**: 40px gradient tile tinted per icon (sparkles orange, terminal emerald, bot violet, container sky, server zinc). This is the only place multiple hues appear.
-- **Terminal**: `#0b0b0d` background, Geist Mono 13px, brand cursor, Tailwind-400-family ANSI colours.
+- **Sidebar**. Uses `.nav-glass`, a dark frosted panel with light text, a subtle top sheen, and an amber active icon. The mobile tab bar reuses it as a floating dock.
+- **Inputs/Select/Textarea**. Translucent glass with a brand focus border and a 3px `brand-soft` ring. Wrap every field in `Field` (label + help).
+- **Badge**. 20px pill. `neutral` for tags, `brand` for Proxmiu-created guests, semantic tones for status.
+- **StatusDot**. 8px dot; running/online pulses softly in green.
+- **Meter**. 4px bar in amber, turning warning above 75% and destructive above 90%.
+- **Sparkline**. Amber by default; CPU uses steel blue. A fading area sits behind the line.
+- **Dialog / menu / palette**. Translucent elevated glass, 22px radius, 2xl blur, soft floating shadow. Footer uses `inset`.
+- **TemplateTile**. 40px gradient tile tinted per icon (sparkles orange, terminal emerald, bot violet, container sky, server zinc).
+- **Terminal**. `#0b0b0d` background, Geist Mono 13px, brand cursor, Tailwind-400-family ANSI colours. The terminal toolbar adds copy, paste, select all, sticky Ctrl/Alt/Shift and special keys.
 
 ## Layout
 
-- **Desktop (≥1024px):** 232px sidebar with logo, search button (⌘K), nav (active item gets `hover` bg and a brand icon), and a footer with agent status, theme and logout.
-- **Tablet (640–1023px):** the sidebar collapses to a 60px icon rail.
+- **Desktop (≥1024px):** 232px dark glass sidebar with logo, search button (⌘K), nav (active item gets a translucent white panel, amber icon) and a footer with agent status, theme and logout.
+- **Tablet (640–1023px):** the sidebar collapses to a 60px dark icon rail.
 - **Phone (<640px):** no sidebar.
-  - A sticky blurred top bar holds the logo and search.
-  - A fixed bottom tab bar holds Overview, Guests, Create, Activity and More; it respects `env(safe-area-inset-*)`.
-  - Tables become card lists, and page-header actions hide because the tab bar covers them.
+  - A sticky blurred warm top bar holds the logo and search.
+  - A floating dark glass dock holds Overview, Guests, Create, Activity and More; it respects `env(safe-area-inset-*)` and sits above the content with `92px` bottom clearance.
+  - Tables become card lists, and page-header actions hide because the dock covers them.
 
 ## Motion
 
@@ -81,7 +83,7 @@ Subtle and quick: 150–200ms, ease-out or `cubic-bezier(0.16,1,0.3,1)`. Animate
 
 ## Icons
 
-Lucide only, 16px in UI (20–22px in the mobile tab bar), stroke 1.75–2. Icons in nav and menus are `faint` until active or hovered.
+Lucide only, 16px in UI (20–22px in the mobile dock), stroke 1.75–2. Icons in nav and menus are `faint` until active or hovered.
 
 ## Copy
 
@@ -92,12 +94,14 @@ Lucide only, 16px in UI (20–22px in the mobile tab bar), stroke 1.75–2. Icon
 
 ## Accessibility
 
-- Visible focus: 2px brand outline, or the brand ring on fields.
+- Visible focus: 2px amber outline, or the amber ring on fields.
 - Text contrast: `muted` on `card` meets WCAG AA in both themes; `faint` is for non-essential text only.
+- The dark glass sidebar always uses light text; the `.nav-glass` scope carries those overrides.
 - Icon-only buttons have a `title`/`aria-label`. Dialogs come from Radix (focus trap, Esc to close).
 
 ## Don'ts
 
-- No extra accent colours outside status, template tiles and the terminal.
-- No shadows on regular cards. Floating layers only.
+- No opaque white panels on the warm background; use the glass card.
+- No heavy borders or pure-black shadows. Glass depth comes from blur and highlight.
+- No extra accent colours outside status, stat tints, template tiles and the terminal.
 - No company or third-party branding. The logo is `web/public/logo.svg` (violet tile with three server bars).

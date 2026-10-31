@@ -9,7 +9,10 @@ export const DropdownMenuContent = ({ className, ...props }: Menu.DropdownMenuCo
     <Menu.Content
       sideOffset={6}
       align="end"
-      className={cn('z-50 min-w-48 rounded-lg bg-card-elevated p-1 shadow-[var(--shadow-float)] data-[state=open]:animate-fade-in', className)}
+      className={cn(
+        'z-50 min-w-48 rounded-xl border border-white/60 bg-card-elevated p-1 shadow-[var(--shadow-float)] backdrop-blur-2xl data-[state=open]:animate-fade-in dark:border-white/10',
+        className,
+      )}
       {...props}
     />
   </Menu.Portal>
