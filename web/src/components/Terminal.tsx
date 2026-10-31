@@ -47,8 +47,8 @@ const applyMods = (data: string, mods: Mods) => {
   const modifier = 1 + (mods.shift ? 1 : 0) + (mods.alt ? 2 : 0) + (mods.ctrl ? 4 : 0)
   const cursor = /^\x1b\[([ABCDHF])$/.exec(out)
   if (cursor) return `\x1b[1;${modifier}${cursor[1]}`
-  const page = /^\x1b\[([56])~$/.exec(out)
-  if (page) return `\x1b[${page[1]};${modifier}~`
+  const keyed = /^\x1b\[([1-6])~$/.exec(out)
+  if (keyed) return `\x1b[${keyed[1]};${modifier}~`
   if (out === '\t') {
     if (mods.shift) return '\x1b[Z'
     if (mods.alt) return '\x1b\t'
