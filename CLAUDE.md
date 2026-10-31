@@ -37,7 +37,6 @@ scripts/update.sh            updates an existing agent via install.sh; installed
 scripts/self-update-helper.sh  narrow sudo entrypoint for UI updates; installed root-owned
 scripts/self-update-runner.sh  runs the update in a transient systemd unit
 scripts/proxmox-install.sh   run on a PVE host: creates an autostarting LXC, runs install.sh, registers the host
-site/                         static presentation page for GitHub Pages (not the app)
 server/test/                 node:test unit tests
 web/src/
   lib/agent.ts    agent URL + token (localStorage), Local Network Access helpers, agentFetch

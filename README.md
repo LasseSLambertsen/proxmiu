@@ -4,7 +4,6 @@ A modern web app for managing Proxmox VE on your local network: find hosts, star
 
 [![CI](https://github.com/LasseSLambertsen/proxmiu/actions/workflows/ci.yml/badge.svg)](https://github.com/LasseSLambertsen/proxmiu/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Website](https://img.shields.io/badge/website-GitHub%20Pages-5b3fe4)](https://lasseslambertsen.github.io/proxmiu/)
 
 ![Proxmiu overview](docs/screenshots/overview.png)
 
@@ -40,7 +39,7 @@ A modern web app for managing Proxmox VE on your local network: find hosts, star
               or served by the agent)
 ```
 
-The **UI** is a static single-page app. Host it on Vercel or Netlify, or let the agent serve it. The [project website](https://lasseslambertsen.github.io/proxmiu/) is a static presentation page and is not the app.
+The **UI** is a static single-page app. Host it on Vercel or Netlify, or let the agent serve it. The [project website](https://github.com/LasseSLambertsen/proxmiu-site) is a separate static presentation page, not the app.
 
 The **agent** is a small Node service that runs on your network (Docker, or any machine with Node 20+). It talks to Proxmox, scans the LAN, opens SSH sessions and runs provisioning. Cloud hosts can't reach your LAN, so this part always runs at home. The UI only ever talks to the agent, straight from your browser.
 
@@ -193,7 +192,7 @@ With `PROXMIU_TLS=1` the agent generates a self-signed certificate. Visit `https
 
 ### Project website
 
-The static presentation page lives in `site/` and is deployed to **<https://lasseslambertsen.github.io/proxmiu/>** by `.github/workflows/pages.yml`. It is a landing page about the project, not the app. The workflow assembles `site/` with the screenshots from `docs/screenshots/` and the logo from `web/public/`.
+The presentation page lives in [LasseSLambertsen/proxmiu-site](https://github.com/LasseSLambertsen/proxmiu-site). It is a static site with no build step, ready to import into Netlify (publish directory `.`). It is a landing page about the project, not the app.
 
 ### Browser support for hosted UIs
 
