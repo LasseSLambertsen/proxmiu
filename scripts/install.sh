@@ -7,7 +7,8 @@
 #   PROXMIU_TLS=1            serve HTTPS with a self-signed certificate
 #   PORT                     default 8787
 #   PROXMIU_REF              git branch or tag, default main
-#   GITHUB_TOKEN             only needed while the repository is private
+#   PROXMIU_ALLOW_SELF_UPDATE=1  enable the opt-in update button in Settings
+#   GITHUB_TOKEN             only needed for a private repository
 set -euo pipefail
 
 REPO="${PROXMIU_REPO:-https://github.com/LasseSLambertsen/proxmiu.git}"
@@ -16,6 +17,10 @@ APP_DIR=/opt/proxmiu
 DATA_DIR=/var/lib/proxmiu
 ENV_FILE=/etc/proxmiu/proxmiu.env
 UNIT_FILE=/etc/systemd/system/proxmiu.service
+SELF_UPDATE_FILE=/etc/proxmiu/self-update
+SELF_UPDATE_HELPER=/usr/local/bin/proxmiu-self-update
+SELF_UPDATE_RUNNER=/usr/local/lib/proxmiu/self-update-runner
+SUDOERS_FILE=/etc/sudoers.d/90-proxmiu-self-update
 
 log() { printf '\033[1;35m==>\033[0m %s\n' "$*"; }
 die() { printf '\033[1;31merror:\033[0m %s\n' "$*" >&2; exit 1; }
@@ -27,7 +32,7 @@ command -v systemctl >/dev/null || die "systemd is required."
 export DEBIAN_FRONTEND=noninteractive
 log "Installing packages"
 apt-get update -qq
-apt-get install -y -qq --no-install-recommends ca-certificates curl git openssl >/dev/null
+apt-get install -y -qq --no-install-recommends ca-certificates curl git openssl sudo >/dev/null
 
 if ! command -v node >/dev/null || [ "$(node -p 'process.versions.node.split(".")[0]')" -lt 20 ]; then
   log "Installing Node.js 22"
@@ -39,6 +44,15 @@ NODE_BIN="$(command -v node)"
 id proxmiu >/dev/null 2>&1 || useradd --system --home-dir "$DATA_DIR" --shell /usr/sbin/nologin proxmiu
 install -d -m 700 -o proxmiu -g proxmiu "$DATA_DIR"
 install -d -m 755 /etc/proxmiu
+
+ENABLE_SELF_UPDATE="${PROXMIU_ALLOW_SELF_UPDATE:-}"
+if [ -z "$ENABLE_SELF_UPDATE" ] && [ -f "$SELF_UPDATE_FILE" ]; then
+  ENABLE_SELF_UPDATE="$(cat "$SELF_UPDATE_FILE" 2>/dev/null || true)"
+fi
+case "${ENABLE_SELF_UPDATE:-0}" in
+1 | yes | true | on) ENABLE_SELF_UPDATE=1 ;;
+*) ENABLE_SELF_UPDATE=0 ;;
+esac
 
 # The token is only used for this fetch and never stored in the checkout.
 fetch_url="$REPO"
@@ -63,11 +77,61 @@ npm run build --silent >/dev/null
 npm prune --omit=dev --no-audit --no-fund --loglevel=error
 chown -R proxmiu:proxmiu "$APP_DIR"
 
-if [ -f "$APP_DIR/scripts/update.sh" ]; then
-  install -m 755 "$APP_DIR/scripts/update.sh" /usr/local/bin/.proxmiu-update
-  mv -f /usr/local/bin/.proxmiu-update /usr/local/bin/proxmiu-update
+SAFE_REPO="$REPO"
+case "$SAFE_REPO" in
+*://*@*) SAFE_REPO="${SAFE_REPO#*://}"; SAFE_REPO="https://${SAFE_REPO#*@}" ;;
+esac
+RAW_BASE="${PROXMIU_RAW_BASE:-}"
+if [ -z "$RAW_BASE" ]; then
+  case "$SAFE_REPO" in
+  https://github.com/*)
+    repo_path="${SAFE_REPO#https://github.com/}"
+    RAW_BASE="https://raw.githubusercontent.com/${repo_path%.git}"
+    ;;
+  esac
 fi
-printf 'PROXMIU_REF=%q\n' "$REF" > /etc/proxmiu/update.env
+
+# Install root-owned helpers from the same ref as the code, not from the
+# proxmiu-owned checkout: the agent must not be able to alter a root helper.
+fetch_script() {
+  local dest="$1" rel="$2" tmp="$1.tmp"
+  if [ -n "$RAW_BASE" ]; then
+    if [ -n "${GITHUB_TOKEN:-}" ]; then
+      curl -fsSL --retry 3 --retry-delay 1 --connect-timeout 10 -H "Authorization: Bearer $GITHUB_TOKEN" "$RAW_BASE/$REF/$rel" -o "$tmp"
+    else
+      curl -fsSL --retry 3 --retry-delay 1 --connect-timeout 10 "$RAW_BASE/$REF/$rel" -o "$tmp"
+    fi
+  else
+    cp "$APP_DIR/$rel" "$tmp"
+  fi
+  chmod 755 "$tmp"
+  mv -f "$tmp" "$dest"
+}
+
+fetch_script /usr/local/bin/proxmiu-update scripts/update.sh
+
+if [ "$ENABLE_SELF_UPDATE" = 1 ]; then
+  install -d -m 755 /usr/local/lib/proxmiu
+  fetch_script "$SELF_UPDATE_RUNNER" scripts/self-update-runner.sh
+  fetch_script "$SELF_UPDATE_HELPER" scripts/self-update-helper.sh
+  sudoers_tmp="$(mktemp)"
+  printf 'proxmiu ALL=(root) NOPASSWD: %s\n' "$SELF_UPDATE_HELPER" > "$sudoers_tmp"
+  visudo -cf "$sudoers_tmp" >/dev/null
+  install -m 440 -o root -g root "$sudoers_tmp" "$SUDOERS_FILE"
+  rm -f "$sudoers_tmp"
+else
+  rm -f "$SELF_UPDATE_HELPER" "$SELF_UPDATE_RUNNER" "$SUDOERS_FILE"
+fi
+printf '%s\n' "$ENABLE_SELF_UPDATE" > "$SELF_UPDATE_FILE"
+chmod 644 "$SELF_UPDATE_FILE"
+
+{
+  printf 'PROXMIU_REPO=%q\n' "$SAFE_REPO"
+  printf 'PROXMIU_REF=%q\n' "$REF"
+  printf 'PROXMIU_DATA_DIR=%q\n' "$DATA_DIR"
+  printf 'PROXMIU_ALLOW_SELF_UPDATE=%q\n' "$ENABLE_SELF_UPDATE"
+  if [ -n "$RAW_BASE" ]; then printf 'PROXMIU_RAW_BASE=%q\n' "$RAW_BASE"; fi
+} > /etc/proxmiu/update.env
 chmod 644 /etc/proxmiu/update.env
 
 # Writes KEY="value" to the env file, replacing an existing line.
@@ -145,4 +209,9 @@ elif [ -n "${PROXMIU_PASSWORD+x}" ]; then
 else
   printf '  Password:  unchanged (see %s)\n' "$ENV_FILE"
 fi
-printf '  Settings:  %s\n  Logs:      journalctl -u proxmiu -f\n  Update:    proxmiu-update\n\n' "$ENV_FILE"
+printf '  Settings:  %s\n  Logs:      journalctl -u proxmiu -f\n  Update:    proxmiu-update\n' "$ENV_FILE"
+if [ "$ENABLE_SELF_UPDATE" = 1 ]; then
+  printf '  UI update: Settings -> Update agent\n\n'
+else
+  printf '  UI update: off (PROXMIU_ALLOW_SELF_UPDATE=1 enables it)\n\n'
+fi

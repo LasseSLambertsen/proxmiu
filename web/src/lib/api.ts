@@ -126,6 +126,13 @@ export interface CommunityScript {
   resources: { cpu: number; ram: number; hdd: number; os?: string; version?: string }
 }
 
+export type SelfUpdateState = 'idle' | 'running' | 'success' | 'failed'
+
+export interface SelfUpdate {
+  enabled: boolean
+  status: { state: SelfUpdateState; startedAt?: string; finishedAt?: string }
+}
+
 export interface StorageInfo {
   storage: string
   type: string

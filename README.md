@@ -120,6 +120,14 @@ pct exec <CTID> -- systemctl restart proxmiu                 # …then restart
 
 Updates keep your password, settings, connections and SSH key. Set `PROXMIU_REF` to update to a branch or tag, e.g. `pct exec <CTID> -- env PROXMIU_REF=dev /usr/local/bin/proxmiu-update`.
 
+To update from the Proxmox UI, enable self-update once:
+
+```bash
+pct exec <CTID> -- env PROXMIU_ALLOW_SELF_UPDATE=1 /opt/proxmiu/scripts/install.sh
+```
+
+Then use **Settings → Update agent**. This installs a narrow root helper; see [Security](#security).
+
 **Uninstall:**
 
 ```bash
@@ -144,6 +152,12 @@ To update later, run as root:
 ```bash
 proxmiu-update
 # or, without the command: /opt/proxmiu/scripts/update.sh
+```
+
+To enable the **Settings → Update agent** button on Debian/Ubuntu, run the installer once with:
+
+```bash
+sudo env PROXMIU_ALLOW_SELF_UPDATE=1 /opt/proxmiu/scripts/install.sh
 ```
 
 ### With Docker
@@ -246,6 +260,7 @@ The agent holds credentials that control your whole Proxmox setup.
 - **Cross-site requests:** requests from origins not in `PROXMIU_ALLOWED_ORIGINS` are rejected, WebSockets included. Without a password, only loopback `Host` headers are accepted, which blocks DNS rebinding.
 - **Credentials at rest:** encrypted with AES-256-GCM.
 - **Host keys:** SSH host keys of guests are not pinned, since guests are created and rebuilt often.
+- **Self-update:** off by default. When enabled, the `proxmiu` user may run only `/usr/local/bin/proxmiu-self-update`; the helper ignores the caller's environment and reads root-owned `/etc/proxmiu/update.env`. Disable it by re-running the installer with `PROXMIU_ALLOW_SELF_UPDATE=0`.
 
 See [SECURITY.md](SECURITY.md) for the full policy and private reporting link.
 

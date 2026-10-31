@@ -9,16 +9,19 @@
 #   PROXMIU_RAW_BASE   raw file base URL for a non-GitHub mirror
 set -euo pipefail
 
-REPO="${PROXMIU_REPO:-https://github.com/LasseSLambertsen/proxmiu.git}"
-REF="${PROXMIU_REF:-}"
-if [ -z "$REF" ] && [ -f /etc/proxmiu/update.env ]; then
-  # Written by install.sh with the ref this installation came from.
+ENV_REPO="${PROXMIU_REPO:-}"
+ENV_REF="${PROXMIU_REF:-}"
+ENV_RAW="${PROXMIU_RAW_BASE:-}"
+
+if [ -f /etc/proxmiu/update.env ]; then
+  # Root-owned settings written by install.sh.
   # shellcheck disable=SC1091
   . /etc/proxmiu/update.env
-  REF="${PROXMIU_REF:-}"
 fi
-REF="${REF:-main}"
-RAW_BASE="${PROXMIU_RAW_BASE:-}"
+
+REPO="${ENV_REPO:-${PROXMIU_REPO:-https://github.com/LasseSLambertsen/proxmiu.git}}"
+REF="${ENV_REF:-${PROXMIU_REF:-main}}"
+RAW_BASE="${ENV_RAW:-${PROXMIU_RAW_BASE:-}}"
 
 die() { printf 'error: %s\n' "$*" >&2; exit 1; }
 log() { printf '\033[1;35m==>\033[0m %s\n' "$*"; }
@@ -44,4 +47,6 @@ trap 'rm -f "$tmp"' EXIT
 
 log "Fetching the Proxmiu installer ($REF)"
 curl -fsSL --retry 3 --retry-delay 1 --connect-timeout 10 "$url" -o "$tmp"
+export PROXMIU_REPO="$REPO" PROXMIU_REF="$REF"
+if [ -n "$RAW_BASE" ]; then export PROXMIU_RAW_BASE="$RAW_BASE"; fi
 bash "$tmp" "$@"

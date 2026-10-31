@@ -34,6 +34,8 @@ server/src/
 server/dev/mock-proxmox.ts   fake Proxmox for development and tests
 scripts/install.sh           installs/updates the agent as a systemd service (Debian/Ubuntu)
 scripts/update.sh            updates an existing agent via install.sh; installed as proxmiu-update
+scripts/self-update-helper.sh  narrow sudo entrypoint for UI updates; installed root-owned
+scripts/self-update-runner.sh  runs the update in a transient systemd unit
 scripts/proxmox-install.sh   run on a PVE host: creates an autostarting LXC, runs install.sh, registers the host
 server/test/                 node:test unit tests
 web/src/
@@ -60,6 +62,7 @@ web/src/
 - Without a password, only loopback `Host` headers are accepted (DNS-rebinding guard).
 - Secrets are encrypted at rest and redacted from job logs (`secretValues` in provision.ts). Never log request bodies.
 - Destructive UI actions (delete guest, node reboot/shutdown) require typing the name.
+- **Self-update is opt-in.** The sudoers rule may only allow `/usr/local/bin/proxmiu-self-update`; that helper must ignore caller `PROXMIU_*` variables and use root-owned `/etc/proxmiu/update.env`. Install helpers from the configured upstream ref, never from the proxmiu-owned checkout.
 
 ## Gotchas this codebase already hit
 

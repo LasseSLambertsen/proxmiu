@@ -31,6 +31,23 @@ The Proxmiu agent holds credentials that control a Proxmox VE host.
   token in the first `connect` message because browsers cannot set headers.
 - The UI never talks to Proxmox directly. All traffic goes through the agent.
 
+## Agent self-update
+
+Agent self-update is **off by default**. Passing `PROXMIU_ALLOW_SELF_UPDATE=1`
+to `install.sh` installs:
+
+- a root-owned helper at `/usr/local/bin/proxmiu-self-update`;
+- a root-owned runner at `/usr/local/lib/proxmiu/self-update-runner`;
+- a sudoers rule allowing only the `proxmiu` user to run that exact helper.
+
+The helper ignores `PROXMIU_*` variables from the caller and reads the
+root-owned `/etc/proxmiu/update.env`. It starts the update in a transient
+systemd unit, so the agent can restart without killing the updater. The helper
+and runner are installed from the configured upstream ref, not from the
+`proxmiu`-owned checkout.
+
+Disable it by re-running the installer with `PROXMIU_ALLOW_SELF_UPDATE=0`.
+
 ## Provisioning and third-party scripts
 
 Provisioning runs install scripts inside the new guest as root. Built-in
