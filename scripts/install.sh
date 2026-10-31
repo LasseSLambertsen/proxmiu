@@ -64,7 +64,8 @@ npm prune --omit=dev --no-audit --no-fund --loglevel=error
 chown -R proxmiu:proxmiu "$APP_DIR"
 
 if [ -f "$APP_DIR/scripts/update.sh" ]; then
-  install -m 755 "$APP_DIR/scripts/update.sh" /usr/local/bin/proxmiu-update
+  install -m 755 "$APP_DIR/scripts/update.sh" /usr/local/bin/.proxmiu-update
+  mv -f /usr/local/bin/.proxmiu-update /usr/local/bin/proxmiu-update
 fi
 printf 'PROXMIU_REF=%q\n' "$REF" > /etc/proxmiu/update.env
 chmod 644 /etc/proxmiu/update.env
