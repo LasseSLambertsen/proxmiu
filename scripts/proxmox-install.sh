@@ -11,7 +11,8 @@
 #   CONNECT_HOST=0    skip creating an API token and registering this host
 #   FULL_ACCESS=1     use a root@pam token instead of the limited proxmiu@pve user and role
 #   ADD_SSH_KEY=1|0   trust the agent's SSH key on this host for browser terminals (default: ask)
-#   PROXMIU_PASSWORD, PROXMIU_ALLOWED_ORIGINS, PROXMIU_TLS, PROXMIU_REF, GITHUB_TOKEN
+#   PROXMIU_PASSWORD, PROXMIU_ALLOWED_ORIGINS, PROXMIU_TLS, PROXMIU_REF, GITHUB_TOKEN,
+#   PROXMIU_ALLOW_SELF_UPDATE=1
 #                     passed through to scripts/install.sh
 set -euo pipefail
 
@@ -122,6 +123,7 @@ pct exec "$CTID" -- env \
   PROXMIU_REF="$REF" \
   PROXMIU_TLS="${PROXMIU_TLS:-0}" \
   PROXMIU_ALLOWED_ORIGINS="${PROXMIU_ALLOWED_ORIGINS:-}" \
+  PROXMIU_ALLOW_SELF_UPDATE="${PROXMIU_ALLOW_SELF_UPDATE:-0}" \
   GITHUB_TOKEN="${GITHUB_TOKEN:-}" \
   /root/proxmiu-install.sh
 pct exec "$CTID" -- rm -f /root/proxmiu-install.sh

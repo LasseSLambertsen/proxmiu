@@ -20,8 +20,16 @@ data_dir="${PROXMIU_DATA_DIR:-/var/lib/proxmiu}"
 export PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
 umask 022
 
-printf '{"state":"running","startedAt":"%s"}\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > "$data_dir/self-update.json"
-chmod 644 "$data_dir/self-update.json"
+status="$data_dir/self-update.json"
+started="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+
+if systemctl is-active --quiet proxmiu-self-update; then
+  echo "error: a Proxmiu update is already running" >&2
+  exit 1
+fi
+
+printf '{"state":"running","startedAt":"%s"}\n' "$started" > "$status"
+chmod 644 "$status"
 
 args=(
   --unit=proxmiu-self-update
@@ -35,4 +43,7 @@ args=(
 )
 if [ -n "$raw" ]; then args+=(--setenv=PROXMIU_RAW_BASE="$raw"); fi
 
-exec systemd-run "${args[@]}" /usr/local/lib/proxmiu/self-update-runner
+if ! systemd-run "${args[@]}" /usr/local/lib/proxmiu/self-update-runner; then
+  printf '{"state":"failed","startedAt":"%s","finishedAt":"%s"}\n' "$started" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > "$status"
+  exit 1
+fi
