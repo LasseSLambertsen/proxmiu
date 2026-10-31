@@ -48,7 +48,7 @@ The **agent** is a small Node service that runs on your network (Docker, or any 
 - **Discovery** – scans the subnets the agent is on for Proxmox (port 8006) and connects with an API token or password.
 - **Overview** – nodes, VMs and containers across all connections with live CPU, memory, IP addresses and uptime.
 - **Power actions** – start, shut down, reboot, force stop and delete guests; reboot or shut down nodes.
-- **SSH in the browser** – full terminal to any guest or node.
+- **SSH in the browser** – full terminal to any guest or node, with copy/paste, select all, and on-screen Ctrl/Alt/Shift plus navigation keys for phones.
 - **Templates** – one-click LXC containers (or VMs cloned from a cloud-init template), provisioned over SSH with a live log:
   - **Claude Code server**, **Codex server**, **OpenCode server**, **AI dev box** (all three), **Docker host**, **Plain server**
   - Optional: persistent tmux sessions, GitHub CLI + token, clone a repo, git identity, Tailscale

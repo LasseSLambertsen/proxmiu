@@ -47,7 +47,7 @@ browser ── UI (static SPA) ──► agent (Node, on the LAN) ──► Prox
 - LAN discovery (port 8006 scan + Proxmox fingerprint), API token or password auth.
 - Overview with stats and sparklines, a node list, and guests with live CPU, memory, IP and uptime.
 - Guest power actions and delete; node reboot and shutdown with typed confirmation.
-- In-browser SSH (xterm.js) using the app key, a password, or a pasted key; pop-out terminal tab.
+- In-browser SSH (xterm.js) using the app key, a password, or a pasted key; pop-out terminal tab; copy/paste, select all and sticky Ctrl/Alt/Shift keys.
 - Templates: Claude Code server, Codex server, OpenCode server, AI dev box, Docker host, Plain server. Optional extras: tmux persistence, GitHub CLI, repo clone, git identity, Tailscale.
 - Custom templates with typed options and a bash editor, plus install scripts fetched from a GitHub repository.
 - Community Scripts: browse [community-scripts.org](https://community-scripts.org) and turn any container script into a template, with its options and resources prefilled.
