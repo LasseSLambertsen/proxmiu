@@ -43,72 +43,78 @@ export function Layout({ authRequired, onLogout, onDisconnect }: { authRequired:
 
   return (
     <div className="flex h-full">
-      <aside className="nav-glass flex w-[232px] shrink-0 flex-col border-r border-white/10 bg-sidebar/90 backdrop-blur-2xl max-lg:w-[60px] max-sm:hidden">
-        <div className="flex h-16 items-center px-4 max-lg:justify-center max-lg:px-0">
-          <span className="max-lg:hidden">
-            <Logo />
-          </span>
-          <img src={LOGO} alt="Proxmiu" className="hidden size-7 rounded-[7px] max-lg:block" />
-        </div>
-        <div className="px-3 pb-2 max-lg:px-2">
-          <button
-            onClick={() => setPalette(true)}
-            className="flex h-8 w-full items-center gap-2 rounded-md border border-border bg-card px-2.5 text-[13px] text-faint shadow-[var(--shadow-card)] transition-colors hover:border-border-strong hover:text-muted max-lg:justify-center max-lg:px-0"
-          >
-            <Search className="size-[15px]" strokeWidth={2} />
-            <span className="max-lg:hidden">Search</span>
-            <kbd className="ml-auto rounded border border-border px-1 font-mono text-[10.5px] max-lg:hidden">{isMac ? '⌘' : 'Ctrl '}K</kbd>
-          </button>
-        </div>
-        <nav className="flex-1 space-y-px px-3 py-1 max-lg:px-2">
-          {nav.map(({ to, label, icon: Icon, end }) => (
-            <NavLink
-              key={to}
-              to={to}
-              end={end}
-              title={label}
-              className={({ isActive }) =>
-                cn(
-                  'group flex h-8 items-center gap-2.5 rounded-md px-2.5 text-[13.5px] text-muted transition-colors hover:bg-hover hover:text-foreground max-lg:justify-center max-lg:px-0',
-                  isActive && 'bg-hover font-medium text-foreground',
-                )
-              }
-            >
-              {({ isActive }) => (
-                <>
-                  <Icon className={cn('size-4 shrink-0 transition-colors', isActive ? 'text-brand' : 'text-faint group-hover:text-muted')} strokeWidth={2} />
-                  <span className="max-lg:hidden">{label}</span>
-                  {to === '/activity' && running > 0 && (
-                    <span className="tnum ml-auto flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-brand px-1 text-[11px] font-semibold text-white max-lg:hidden">
-                      {running}
-                    </span>
-                  )}
-                </>
-              )}
-            </NavLink>
-          ))}
-        </nav>
-        <div className="space-y-px border-t border-border-subtle p-3 max-lg:p-2">
-          <div className="mb-1.5 flex items-center gap-2 rounded-md px-2.5 py-1.5 text-[12px] text-faint max-lg:hidden" title={agentUrl || 'Agent serving this page'}>
-            <span className="size-1.5 shrink-0 rounded-full bg-success shadow-[0_0_0_3px_var(--success-soft)]" />
-            <span className="truncate">{agentUrl ? agentUrl.replace(/^https?:\/\//, '') : 'Local agent'}</span>
+      <aside className="nav-glass relative w-[248px] shrink-0 max-lg:w-[72px] max-sm:hidden">
+        <div
+          aria-hidden
+          className="nav-sheen sidebar-slab pointer-events-none absolute inset-y-3 left-2 right-3 rounded-[26px] border border-white/10 bg-sidebar/90 shadow-[0_24px_60px_-35px_rgba(0,0,0,0.9)] backdrop-blur-2xl max-lg:left-1 max-lg:right-2"
+        />
+        <div className="relative flex h-full flex-col pb-3">
+          <div className="flex h-16 items-center px-4 max-lg:justify-center max-lg:px-0">
+            <span className="max-lg:hidden">
+              <Logo />
+            </span>
+            <img src={LOGO} alt="Proxmiu" className="hidden size-7 rounded-[7px] max-lg:block" />
           </div>
-          <button onClick={toggle} className={cn(footerBtn, 'max-lg:justify-center max-lg:px-0')} title="Toggle theme">
-            {dark ? <Sun className="size-4" strokeWidth={2} /> : <Moon className="size-4" strokeWidth={2} />}
-            <span className="max-lg:hidden">{dark ? 'Light mode' : 'Dark mode'}</span>
-          </button>
-          {authRequired && (
-            <button onClick={onLogout} className={cn(footerBtn, 'max-lg:justify-center max-lg:px-0')} title="Log out">
-              <LogOut className="size-4" strokeWidth={2} />
-              <span className="max-lg:hidden">Log out</span>
+          <div className="px-3 pb-2 max-lg:px-2">
+            <button
+              onClick={() => setPalette(true)}
+              className="flex h-8 w-full items-center gap-2 rounded-md border border-border bg-card px-2.5 text-[13px] text-faint shadow-[var(--shadow-card)] transition-colors hover:border-border-strong hover:text-muted max-lg:justify-center max-lg:px-0"
+            >
+              <Search className="size-[15px]" strokeWidth={2} />
+              <span className="max-lg:hidden">Search</span>
+              <kbd className="ml-auto rounded border border-border px-1 font-mono text-[10.5px] max-lg:hidden">{isMac ? '⌘' : 'Ctrl '}K</kbd>
             </button>
-          )}
-          {onDisconnect && (
-            <button onClick={onDisconnect} className={cn(footerBtn, 'max-lg:justify-center max-lg:px-0')} title="Switch agent">
-              <Unplug className="size-4" strokeWidth={2} />
-              <span className="max-lg:hidden">Switch agent</span>
+          </div>
+          <nav className="flex-1 space-y-px px-3 py-1 max-lg:px-2">
+            {nav.map(({ to, label, icon: Icon, end }) => (
+              <NavLink
+                key={to}
+                to={to}
+                end={end}
+                title={label}
+                className={({ isActive }) =>
+                  cn(
+                    'group flex h-8 items-center gap-2.5 rounded-md px-2.5 text-[13.5px] text-muted transition-colors hover:bg-hover hover:text-foreground max-lg:justify-center max-lg:px-0',
+                    isActive && 'bg-hover font-medium text-foreground',
+                  )
+                }
+              >
+                {({ isActive }) => (
+                  <>
+                    <Icon className={cn('size-4 shrink-0 transition-colors', isActive ? 'text-brand' : 'text-faint group-hover:text-muted')} strokeWidth={2} />
+                    <span className="max-lg:hidden">{label}</span>
+                    {to === '/activity' && running > 0 && (
+                      <span className="tnum ml-auto flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-brand px-1 text-[11px] font-semibold text-white max-lg:hidden">
+                        {running}
+                      </span>
+                    )}
+                  </>
+                )}
+              </NavLink>
+            ))}
+          </nav>
+          <div className="space-y-px border-t border-border-subtle p-3 max-lg:p-2">
+            <div className="mb-1.5 flex items-center gap-2 rounded-md px-2.5 py-1.5 text-[12px] text-faint max-lg:hidden" title={agentUrl || 'Agent serving this page'}>
+              <span className="size-1.5 shrink-0 rounded-full bg-success shadow-[0_0_0_3px_var(--success-soft)]" />
+              <span className="truncate">{agentUrl ? agentUrl.replace(/^https?:\/\//, '') : 'Local agent'}</span>
+            </div>
+            <button onClick={toggle} className={cn(footerBtn, 'max-lg:justify-center max-lg:px-0')} title="Toggle theme">
+              {dark ? <Sun className="size-4" strokeWidth={2} /> : <Moon className="size-4" strokeWidth={2} />}
+              <span className="max-lg:hidden">{dark ? 'Light mode' : 'Dark mode'}</span>
             </button>
-          )}
+            {authRequired && (
+              <button onClick={onLogout} className={cn(footerBtn, 'max-lg:justify-center max-lg:px-0')} title="Log out">
+                <LogOut className="size-4" strokeWidth={2} />
+                <span className="max-lg:hidden">Log out</span>
+              </button>
+            )}
+            {onDisconnect && (
+              <button onClick={onDisconnect} className={cn(footerBtn, 'max-lg:justify-center max-lg:px-0')} title="Switch agent">
+                <Unplug className="size-4" strokeWidth={2} />
+                <span className="max-lg:hidden">Switch agent</span>
+              </button>
+            )}
+          </div>
         </div>
       </aside>
       <main className="relative min-w-0 flex-1 overflow-y-auto max-sm:pb-[calc(92px+env(safe-area-inset-bottom))]">
@@ -160,7 +166,7 @@ function MobileTabBar({
   const navigate = useNavigate()
   const tab = 'flex flex-1 flex-col items-center justify-center gap-1 text-[10.5px] font-medium text-faint transition-colors'
   return (
-    <nav className="nav-glass fixed inset-x-3 bottom-[calc(12px+env(safe-area-inset-bottom))] z-40 hidden rounded-2xl border border-white/15 bg-sidebar/90 p-1.5 shadow-[0_20px_60px_-20px_rgba(0,0,0,0.8)] backdrop-blur-2xl max-sm:flex">
+    <nav className="nav-glass nav-sheen fixed inset-x-3 bottom-[calc(12px+env(safe-area-inset-bottom))] z-40 hidden rounded-2xl border border-white/15 bg-sidebar/90 p-1.5 shadow-[0_20px_60px_-20px_rgba(0,0,0,0.8)] backdrop-blur-2xl max-sm:flex">
       {tabs.map(({ to, label, icon: Icon, end }) => (
         <NavLink key={to} to={to} end={end} className={({ isActive }) => cn(tab, 'relative h-14 rounded-xl', isActive && 'bg-hover text-foreground')}>
           {({ isActive }) => (
