@@ -1,10 +1,10 @@
 # Design
 
-Proxmiu should feel like a calm, warm glass dashboard: a dark frosted sidebar, a soft cream-to-blue atmosphere, translucent cards, and a small set of confident accents. Light is the primary experience; dark mode carries the same glass language into low light.
+Proxmiu should feel like a calm, warm glass dashboard: a floating, skewed dark-frosted sidebar, a soft cream-to-blue atmosphere, translucent cards, and a small set of confident accents. Light is the primary experience; dark mode carries the same glass language into low light.
 
 ## Principles
 
-1. **Warm glass by default.** Surfaces are translucent over a soft warm gradient, with a dark frosted sidebar and floating cards. Depth comes from blur, layered light and a hairline highlight, not heavy borders.
+1. **Warm glass by default.** Surfaces are translucent over a soft warm gradient, with a floating skewed sidebar and layered cards. Depth comes from blur, a slight perspective skew, layered light and a hairline highlight, not heavy borders.
 2. **Information first.** Numbers use tabular figures; IDs and IPs use the mono font; secondary info is muted, not hidden. Glass must never get in the way of density.
 3. **Colour as atmosphere.** Amber is the brand accent. Stat cards use soft warm, cool, blue and lilac tints. Status colours stay semantic: green, amber, red, teal.
 4. **Fast paths.** The most common action on a row is a visible icon button; the rest live in a menu. Everything is reachable from ⌘K.
@@ -58,7 +58,7 @@ Shadows: `--shadow-card` is a soft ambient shadow plus a 1px white inner highlig
   - `destructive`: soft red that turns solid on hover
 
   Buttons scale to 0.98 on press, and icons are 16px.
-- **Sidebar**. Uses `.nav-glass`, a dark frosted panel with light text, a subtle top sheen, and an amber active icon. The mobile tab bar reuses it as a floating dock.
+- **Sidebar**. A floating dark glass slab inset from the top, bottom and left, with a `skewY(-1.2deg)` edge (`.sidebar-slab`) while the content stays upright. It uses `.nav-glass` for light text and an amber active icon, a subtle top sheen, 26px corners and a soft float. The mobile tab bar reuses the glass variables and sheen as a horizontal dock.
 - **Inputs/Select/Textarea**. Translucent glass with a brand focus border and a 3px `brand-soft` ring. Wrap every field in `Field` (label + help).
 - **Badge**. 20px pill. `neutral` for tags, `brand` for Proxmiu-created guests, semantic tones for status.
 - **StatusDot**. 8px dot; running/online pulses softly in green.
@@ -70,8 +70,8 @@ Shadows: `--shadow-card` is a soft ambient shadow plus a 1px white inner highlig
 
 ## Layout
 
-- **Desktop (≥1024px):** 232px dark glass sidebar with logo, search button (⌘K), nav (active item gets a translucent white panel, amber icon) and a footer with agent status, theme and logout.
-- **Tablet (640–1023px):** the sidebar collapses to a 60px dark icon rail.
+- **Desktop (≥1024px):** 248px floating dark glass sidebar with a skewed slab, logo, search button (⌘K), nav (active item gets a translucent white panel, amber icon) and a footer with agent status, theme and logout.
+- **Tablet (640–1023px):** the sidebar collapses to a 72px dark icon rail, still as a skewed slab.
 - **Phone (<640px):** no sidebar.
   - A sticky blurred warm top bar holds the logo and search.
   - A floating dark glass dock holds Overview, Guests, Create, Activity and More; it respects `env(safe-area-inset-*)` and sits above the content with `92px` bottom clearance.
