@@ -7,7 +7,7 @@ import { test } from 'node:test'
 
 process.env.PROXMIU_DATA_DIR = mkdtempSync(join(tmpdir(), 'proxmiu-test-'))
 const { expandCidr } = await import('../src/network.js')
-const { buildScript, builtinTemplates, templateSchema } = await import('../src/templates.js')
+const { buildScript, buildUpdateScript, builtinTemplates, templateSchema } = await import('../src/templates.js')
 const { buildCommunityScript, githubRawUrl } = await import('../src/template-sources.js')
 const { encrypt, decrypt } = await import('../src/store.js')
 
@@ -47,6 +47,24 @@ test('generated scripts are valid bash and quote hostile values safely', (t) => 
     execFileSync('bash', ['-n'], { input: script })
     const exported = script.split('\n').find((l) => l.startsWith('export OPT_GIT_NAME='))!
     assert.equal(execFileSync('bash', ['-c', `${exported}; printf %s "$OPT_GIT_NAME"`]).toString(), nasty)
+  }
+})
+
+test('update scripts include helpers and are valid bash', (t) => {
+  if (!hasBash) return t.skip('bash is not installed')
+  const script = buildUpdateScript(builtinTemplates[0], { PM_USER: 'dev', PM_HOSTNAME: 'box' }, 'echo updating')
+  execFileSync('bash', ['-n'], { input: script })
+  assert.match(script, /install_node\(\)/)
+  assert.match(script, /echo updating/)
+  assert.doesNotMatch(script, /Updating packages/)
+})
+
+test('built-in installers use the public scripts repo', () => {
+  for (const id of ['claude-code', 'codex', 'ai-devbox', 'docker-host', 'opencode']) {
+    const template = builtinTemplates.find((t) => t.id === id)
+    assert.equal(template?.source?.type, 'github')
+    assert.equal(template?.source?.repo, 'LasseSLambertsen/proxmiu-scripts')
+    assert.match(template?.source?.path ?? '', /^scripts\/[a-z-]+\.sh$/)
   }
 })
 

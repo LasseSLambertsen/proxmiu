@@ -110,6 +110,25 @@ if [ -n "\${OPT_OPENAI_API_KEY:-}" ]; then
 fi
 `
 
+const installOpencode = `
+log "Installing OpenCode"
+install_node
+apt_install ripgrep
+# pipefail: a failed download would otherwise look like success (bash happily runs an empty script).
+if ! as_user_sh 'set -o pipefail; curl -fsSL https://opencode.ai/install | bash'; then
+  log "Native installer failed, falling back to npm"
+  npm install -g opencode-ai
+fi
+as_user_sh 'export PATH="$HOME/.opencode/bin:$HOME/.local/bin:$PATH"; opencode --version'
+
+if [ -n "\${OPT_ANTHROPIC_API_KEY:-}" ]; then persist_env ANTHROPIC_API_KEY "$OPT_ANTHROPIC_API_KEY"; fi
+if [ -n "\${OPT_OPENAI_API_KEY:-}" ]; then persist_env OPENAI_API_KEY "$OPT_OPENAI_API_KEY"; fi
+if [ -n "\${OPT_OPENROUTER_API_KEY:-}" ]; then persist_env OPENROUTER_API_KEY "$OPT_OPENROUTER_API_KEY"; fi
+`
+
+const PROXMIU_SCRIPTS_REPO = 'LasseSLambertsen/proxmiu-scripts'
+const proxmiuScript = (name: string): TemplateDef['source'] => ({ type: 'github', repo: PROXMIU_SCRIPTS_REPO, ref: 'main', path: `scripts/${name}.sh` })
+
 export const builtinTemplates: TemplateDef[] = [
   {
     id: 'claude-code',
@@ -124,6 +143,7 @@ export const builtinTemplates: TemplateDef[] = [
     user: 'dev',
     options: [anthropicKey, ...devOptions],
     script: installClaude,
+    source: proxmiuScript('claude-code'),
     notes: 'Connect with `ssh {user}@{ip}` and run `claude`. If you did not set an API key, the first run walks you through logging in with your Claude account.',
   },
   {
@@ -139,6 +159,7 @@ export const builtinTemplates: TemplateDef[] = [
     user: 'dev',
     options: [openaiKey, ...devOptions],
     script: installCodex,
+    source: proxmiuScript('codex'),
     notes: 'Connect with `ssh {user}@{ip}` and run `codex`. Without an API key, sign in with `codex login --device-auth`.',
   },
   {
@@ -158,8 +179,8 @@ export const builtinTemplates: TemplateDef[] = [
       { key: 'OPENROUTER_API_KEY', label: 'OpenRouter API key', type: 'secret', help: 'Optional. Lets OpenCode use OpenRouter models; leave empty to connect a provider on first run.' },
       ...devOptions,
     ],
-    source: { type: 'github', repo: 'LasseSLambertsen/proxmiu-scripts', ref: 'main', path: 'scripts/opencode.sh' },
-    script: '',
+    source: proxmiuScript('opencode'),
+    script: installOpencode,
     notes: 'Connect with `ssh {user}@{ip}` and run `opencode`. Use `/connect` to add or change a provider.',
   },
   {
@@ -175,6 +196,7 @@ export const builtinTemplates: TemplateDef[] = [
     user: 'dev',
     options: [anthropicKey, openaiKey, ...devOptions],
     script: installClaude + installCodex,
+    source: proxmiuScript('ai-devbox'),
     notes: 'Connect with `ssh {user}@{ip}`, then run `claude` or `codex`.',
   },
   {
@@ -195,6 +217,7 @@ curl -fsSL https://get.docker.com | sh
 usermod -aG docker "$PM_USER"
 systemctl enable --now docker
 `,
+    source: proxmiuScript('docker-host'),
     notes: 'Connect with `ssh {user}@{ip}` and run `docker compose up`.',
   },
   {
@@ -227,14 +250,32 @@ export function getTemplate(id: string) {
 
 
 const script = (name: string) => readFileSync(new URL(`./scripts/${name}`, import.meta.url), 'utf8')
+const HELPERS = script('helpers.sh')
 const PRELUDE = script('prelude.sh')
 const EPILOGUE = script('epilogue.sh')
 
 const shellQuote = (v: string) => `'${v.replace(/'/g, `'\\''`)}'`
 
-export function buildScript(t: TemplateDef, env: Record<string, string>, body = t.script) {
-  const exports = Object.entries(env)
+const scriptExports = (env: Record<string, string>) =>
+  Object.entries(env)
     .map(([k, v]) => `export ${k}=${shellQuote(v)}`)
     .join('\n')
-  return ['#!/usr/bin/env bash', exports, PRELUDE, '# --- template ---', body, '# --- extras ---', EPILOGUE, 'log "Provisioning finished"', ''].join('\n')
+
+export function buildScript(t: TemplateDef, env: Record<string, string>, body = t.script) {
+  return ['#!/usr/bin/env bash', scriptExports(env), HELPERS, PRELUDE, '# --- template ---', body, '# --- extras ---', EPILOGUE, 'log "Provisioning finished"', ''].join('\n')
+}
+
+/** Re-runs a template's install body without repeating the base setup. */
+export function buildUpdateScript(t: TemplateDef, env: Record<string, string>, body = t.script) {
+  return [
+    '#!/usr/bin/env bash',
+    'set -euo pipefail',
+    'export DEBIAN_FRONTEND=noninteractive',
+    scriptExports(env),
+    HELPERS,
+    '# --- update ---',
+    body,
+    'log "Update finished"',
+    '',
+  ].join('\n')
 }

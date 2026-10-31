@@ -51,6 +51,7 @@ browser ── UI (static SPA) ──► agent (Node, on the LAN) ──► Prox
 - Templates: Claude Code server, Codex server, OpenCode server, AI dev box, Docker host, Plain server. Optional extras: tmux persistence, GitHub CLI, repo clone, git identity, Tailscale.
 - Custom templates with typed options and a bash editor, plus install scripts fetched from a GitHub repository.
 - Community Scripts: browse [community-scripts.org](https://community-scripts.org) and turn any container script into a template, with its options and resources prefilled.
+- Guest updates: re-run the template's GitHub/inline install script, or the upstream Community Scripts update entrypoint, with the same live job log.
 - Provisioning: LXC creation (auto-downloads the OS template) or cloud-init VM clone; IP discovery via LXC interfaces, guest agent, or ARP; live step and log view.
 - ⌘K command palette; light and dark themes; phone layout with bottom tab bar; installable (web manifest).
 - One-command install on a Proxmox host (`scripts/proxmox-install.sh`): autostarting LXC, systemd service, limited `proxmiu@pve` user/role, API token and host registration; `scripts/install.sh` for any Debian/Ubuntu box and for updates.

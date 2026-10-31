@@ -94,7 +94,7 @@ pct create "$CTID" "$TEMPLATE_STORAGE:vztmpl/$TEMPLATE" \
   --unprivileged 1 --features nesting=1 \
   --onboot 1 --startup order=90 \
   --tags proxmiu \
-  --description "Proxmiu agent. Update: pct exec $CTID -- /opt/proxmiu/scripts/install.sh" >/dev/null
+  --description "Proxmiu agent. Update: pct exec $CTID -- /usr/local/bin/proxmiu-update" >/dev/null
 pct start "$CTID"
 
 log "Waiting for the container network"
@@ -168,6 +168,6 @@ fi
 printf '\n\033[1;32mProxmiu is ready.\033[0m Container %s starts automatically with this host.\n\n' "$CTID"
 printf '  Open:      %s\n' "$AGENT"
 printf '  Password:  %s\n' "$PASSWORD"
-printf '  Update:    pct exec %s -- /opt/proxmiu/scripts/install.sh\n' "$CTID"
+printf '  Update:    pct exec %s -- /usr/local/bin/proxmiu-update\n' "$CTID"
 printf '  Logs:      pct exec %s -- journalctl -u proxmiu -f\n' "$CTID"
 printf '  Settings:  pct exec %s -- nano /etc/proxmiu/proxmiu.env   (then: systemctl restart proxmiu)\n\n' "$CTID"

@@ -52,7 +52,9 @@ The **agent** is a small Node service that runs on your network (Docker, or any 
 - **Templates** – one-click LXC containers (or VMs cloned from a cloud-init template), provisioned over SSH with a live log:
   - **Claude Code server**, **Codex server**, **OpenCode server**, **AI dev box** (all three), **Docker host**, **Plain server**
   - Optional: persistent tmux sessions, GitHub CLI + token, clone a repo, git identity, Tailscale
+  - Install scripts come from [proxmiu-scripts](https://github.com/LasseSLambertsen/proxmiu-scripts), with an embedded fallback if GitHub is unavailable.
 - **Custom templates** – duplicate a built-in or write your own bash script with typed options, or point a template at a script in a GitHub repository.
+- **Guest updates** - re-run the template's install script, or use the upstream Community Scripts update path, from the guest menu.
 - **Command palette** – <kbd>⌘K</kbd> / <kbd>Ctrl K</kbd> to jump to any guest, page or template.
 - **Community Scripts** - browse [community-scripts.org](https://community-scripts.org) and turn any container app into a template; the installer runs inside the guest.
 
@@ -110,13 +112,13 @@ IP=192.168.1.40/24 GW=192.168.1.1 PROXMIU_TLS=1 PROXMIU_ALLOWED_ORIGINS=https://
 **Day to day** (from the Proxmox host shell, with your container ID):
 
 ```bash
-pct exec <CTID> -- /opt/proxmiu/scripts/install.sh           # update to the latest version
+pct exec <CTID> -- /usr/local/bin/proxmiu-update              # update to the latest version
 pct exec <CTID> -- journalctl -u proxmiu -f                  # follow the logs
 pct exec <CTID> -- nano /etc/proxmiu/proxmiu.env             # change password, origins, TLS…
 pct exec <CTID> -- systemctl restart proxmiu                 # …then restart
 ```
 
-While the repo is private, prefix the update with `env GITHUB_TOKEN=...`, e.g. `pct exec <CTID> -- env GITHUB_TOKEN=... /opt/proxmiu/scripts/install.sh`. Updates keep your password, settings, connections and SSH key.
+Updates keep your password, settings, connections and SSH key. Set `PROXMIU_REF` to update to a branch or tag, e.g. `pct exec <CTID> -- env PROXMIU_REF=dev /usr/local/bin/proxmiu-update`.
 
 **Uninstall:**
 
@@ -135,7 +137,14 @@ The same installer works on any always-on Debian/Ubuntu box or VM with systemd. 
 curl -fsSL https://raw.githubusercontent.com/LasseSLambertsen/proxmiu/main/scripts/install.sh | bash
 ```
 
-It installs to `/opt/proxmiu`, stores data in `/var/lib/proxmiu` and settings in `/etc/proxmiu/proxmiu.env`, and enables the `proxmiu` service at boot. Run it again to update. It accepts the same `PROXMIU_*` and `GITHUB_TOKEN` variables. Afterwards, add your Proxmox host under **Connections**.
+It installs to `/opt/proxmiu`, stores data in `/var/lib/proxmiu` and settings in `/etc/proxmiu/proxmiu.env`, and enables the `proxmiu` service at boot. It installs `proxmiu-update` for later updates. It accepts the same `PROXMIU_*` variables. Afterwards, add your Proxmox host under **Connections**.
+
+To update later, run as root:
+
+```bash
+proxmiu-update
+# or, without the command: /opt/proxmiu/scripts/update.sh
+```
 
 ### With Docker
 
@@ -210,6 +219,8 @@ For the quickest test setup, `pveum user token add root@pam proxmiu --privsep 0`
 4. SSHes in and runs the template: base setup (updates, a `dev` sudo user, your keys), the template script, then the optional extras.
 
 When it's done you get `ssh dev@<ip>` and a button to open a terminal. For the AI templates, run `claude`, `codex` or `opencode`. Without an API key, you sign in on first run.
+
+To update a guest later, open its menu on **Guests** and choose **Update…**. Proxmiu finds the template from the `proxmiu;<template>` tag and re-runs its install script; Community Scripts guests use their upstream `/usr/bin/update` entrypoint. The run shows up in **Activity** with a live log.
 
 **VMs** need an existing cloud-init VM template on the node (see [Cloud-Init Support](https://pve.proxmox.com/wiki/Cloud-Init_Support)).
 

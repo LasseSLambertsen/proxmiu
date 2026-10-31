@@ -63,6 +63,12 @@ npm run build --silent >/dev/null
 npm prune --omit=dev --no-audit --no-fund --loglevel=error
 chown -R proxmiu:proxmiu "$APP_DIR"
 
+if [ -f "$APP_DIR/scripts/update.sh" ]; then
+  install -m 755 "$APP_DIR/scripts/update.sh" /usr/local/bin/proxmiu-update
+fi
+printf 'PROXMIU_REF=%q\n' "$REF" > /etc/proxmiu/update.env
+chmod 644 /etc/proxmiu/update.env
+
 # Writes KEY="value" to the env file, replacing an existing line.
 set_env() {
   local value="${2//\\/\\\\}"
@@ -138,4 +144,4 @@ elif [ -n "${PROXMIU_PASSWORD+x}" ]; then
 else
   printf '  Password:  unchanged (see %s)\n' "$ENV_FILE"
 fi
-printf '  Settings:  %s\n  Logs:      journalctl -u proxmiu -f\n  Update:    %s/scripts/install.sh\n\n' "$ENV_FILE" "$APP_DIR"
+printf '  Settings:  %s\n  Logs:      journalctl -u proxmiu -f\n  Update:    proxmiu-update\n\n' "$ENV_FILE"

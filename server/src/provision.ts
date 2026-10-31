@@ -1,11 +1,11 @@
 import { randomUUID } from 'node:crypto'
 import { z } from 'zod'
 import { ipForMac } from './network.js'
-import { guestIp, ProxmoxClient, sleep } from './proxmox.js'
+import { guestIp, ProxmoxClient, sleep, type ClusterResource } from './proxmox.js'
 import { runScript, waitForSsh } from './ssh.js'
 import { store } from './store.js'
 import { buildCommunityScript, fetchGitHubScript, resolveCommunityScript } from './template-sources.js'
-import { buildScript, getTemplate, type TemplateDef } from './templates.js'
+import { buildScript, buildUpdateScript, getTemplate, type TemplateDef } from './templates.js'
 
 export const provisionSchema = z.object({
   clusterId: z.string(),
@@ -36,10 +36,19 @@ export const provisionSchema = z.object({
 })
 export type ProvisionRequest = z.infer<typeof provisionSchema>
 
+export const updateSchema = z.object({
+  clusterId: z.string(),
+  node: z.string().regex(/^[\w.-]+$/),
+  type: z.enum(['lxc', 'qemu']),
+  vmid: z.number().int(),
+})
+export type UpdateRequest = z.infer<typeof updateSchema>
+
 type StepStatus = 'pending' | 'running' | 'done' | 'error' | 'skipped'
 export interface Job {
   id: string
   title: string
+  kind?: 'provision' | 'update'
   templateId: string
   clusterId: string
   status: 'running' | 'success' | 'error'
@@ -64,6 +73,7 @@ export function startProvision(req: ProvisionRequest): Job {
   const job: Job = {
     id: randomUUID(),
     title: `${template.name} → ${req.hostname}`,
+    kind: 'provision',
     templateId: template.id,
     clusterId: req.clusterId,
     status: 'running',
@@ -85,16 +95,71 @@ export function startProvision(req: ProvisionRequest): Job {
   return job
 }
 
+function templateFromTags(tags?: string) {
+  for (const tag of (tags ?? '').split(/[;,]/).map((t) => t.trim())) {
+    if (!tag || tag === 'proxmiu') continue
+    try {
+      return getTemplate(tag)
+    } catch {
+      /* another Proxmox tag, not a template */
+    }
+  }
+  return undefined
+}
+
+export async function startUpdate(req: UpdateRequest): Promise<Job> {
+  const client = ProxmoxClient.fromRecord(store.getCluster(req.clusterId))
+  const resources = await client.get<ClusterResource[]>('/cluster/resources', { type: 'vm' })
+  const guest = resources.find((g) => g.vmid === req.vmid && g.type === req.type && g.node === req.node)
+  if (!guest) throw Object.assign(new Error('Guest not found on that node'), { statusCode: 404 })
+  if (guest.template) throw new Error('This is a template, not a running guest.')
+  if (guest.status !== 'running') throw new Error('Start the guest before updating it.')
+  const template = templateFromTags(guest.tags)
+  if (!template) {
+    throw Object.assign(new Error('This guest was not created from a Proxmiu template, or that template no longer exists.'), { statusCode: 404 })
+  }
+
+  const job: Job = {
+    id: randomUUID(),
+    title: `Update ${template.name} → ${guest.name ?? req.vmid}`,
+    kind: 'update',
+    templateId: template.id,
+    clusterId: req.clusterId,
+    status: 'running',
+    createdAt: new Date().toISOString(),
+    steps: [
+      { id: 'network', label: 'Find guest address', status: 'pending' },
+      { id: 'update', label: `Update ${template.name}`, status: 'pending' },
+    ],
+    log: [],
+  }
+  jobs.set(job.id, job)
+  for (const old of listJobs().slice(50)) jobs.delete(old.id)
+
+  runUpdate(job, req, template, guest).catch((err: Error) => {
+    job.status = 'error'
+    job.error = err.message
+    job.finishedAt = new Date().toISOString()
+    for (const s of job.steps) if (s.status === 'running') s.status = 'error'
+    logLine(job, `ERROR: ${err.message}`)
+  })
+  return job
+}
+
 const secretValues = (req: ProvisionRequest) =>
   [req.password, ...Object.values(req.options).filter((v): v is string => typeof v === 'string' && v.length >= 6)].filter(
     (v): v is string => !!v,
   )
 
+function logLine(job: Job, line: string) {
+  job.log.push(line)
+  if (job.log.length > 5000) job.log.splice(0, job.log.length - 5000)
+}
+
 function log(job: Job, req: ProvisionRequest, line: string) {
   let clean = line
   for (const s of secretValues(req)) clean = clean.split(s).join('••••••')
-  job.log.push(clean)
-  if (job.log.length > 5000) job.log.splice(0, job.log.length - 5000)
+  logLine(job, clean)
 }
 
 async function step<T>(job: Job, id: string, fn: () => Promise<T>): Promise<T> {
@@ -118,18 +183,40 @@ function optionEnv(template: TemplateDef, options: Record<string, string | boole
   return env
 }
 
+async function templateBody(template: TemplateDef, say: (line: string) => void) {
+  if (template.source?.type !== 'github') return template.script
+  try {
+    say(`Fetching the install script from ${template.source.repo}/${template.source.path}…`)
+    return await fetchGitHubScript(template.source)
+  } catch (err) {
+    if (!template.script.trim()) throw err
+    say(`WARNING: ${(err as Error).message}. Using the copy embedded in the template.`)
+    return template.script
+  }
+}
+
 async function renderInstallScript(template: TemplateDef, env: Record<string, string>, say: (line: string) => void) {
   if (template.source?.type === 'community-scripts') {
     say(`Fetching ${template.name} from Community Scripts…`)
     const resolved = await resolveCommunityScript(template.source.slug, template.source.ref)
     return buildCommunityScript(template, env, resolved)
   }
-  let body = template.script
-  if (template.source?.type === 'github') {
-    say(`Fetching the install script from ${template.source.repo}/${template.source.path}…`)
-    body = await fetchGitHubScript(template.source)
+  return buildScript(template, env, await templateBody(template, say))
+}
+
+async function renderUpdateScript(template: TemplateDef, env: Record<string, string>, say: (line: string) => void) {
+  if (template.source?.type === 'community-scripts') {
+    say('Running the Community Scripts update entrypoint…')
+    return [
+      '#!/usr/bin/env bash',
+      'set -euo pipefail',
+      'export PHS_SILENT=1 MODE=default TERM=dumb DEBIAN_FRONTEND=noninteractive',
+      'if [ ! -x /usr/bin/update ]; then echo "ERROR: /usr/bin/update is missing; recreate this guest to enable updates." >&2; exit 1; fi',
+      '/usr/bin/update < /dev/null',
+      '',
+    ].join('\n')
   }
-  return buildScript(template, env, body)
+  return buildUpdateScript(template, env, await templateBody(template, say))
 }
 
 
@@ -277,6 +364,49 @@ async function run(job: Job, req: ProvisionRequest, template: TemplateDef) {
   job.status = 'success'
   job.finishedAt = new Date().toISOString()
   say('All done.')
+}
+
+async function runUpdate(job: Job, req: UpdateRequest, template: TemplateDef, guest: ClusterResource) {
+  const client = ProxmoxClient.fromRecord(store.getCluster(req.clusterId))
+  const say = (line: string) => logLine(job, line)
+
+  const ip = await step(job, 'network', async () => {
+    say('Looking for the guest address…')
+    const known = await guestIp(client, req.node, req.type, req.vmid).catch(() => undefined)
+    if (known) return known
+    if (req.type === 'qemu') {
+      const config = await client.get<Record<string, string>>(`/nodes/${req.node}/qemu/${req.vmid}/config`)
+      const mac = /([0-9A-F]{2}(?::[0-9A-F]{2}){5})/i.exec(config.net0 ?? '')?.[1]
+      if (mac) {
+        for (let attempt = 0; attempt < 10; attempt++) {
+          const found = await ipForMac(mac)
+          if (found) return found
+          await sleep(3000)
+        }
+      }
+    }
+    throw new Error('Could not find the guest IP address. Check that it is running and reachable from the agent.')
+  })
+  say(`Guest address: ${ip}`)
+
+  await step(job, 'update', async () => {
+    const user = req.type === 'lxc' ? 'root' : (store.sshUser(ip) ?? template.user)
+    store.rememberSshUser(ip, user)
+    say(`Connecting over SSH as ${user}@${ip}…`)
+    const conn = await waitForSsh({ host: ip, username: user, useAppKey: true })
+    try {
+      const env: Record<string, string> = { PM_USER: user, PM_HOSTNAME: guest.name ?? String(req.vmid), ...optionEnv(template, {}) }
+      const script = await renderUpdateScript(template, env, say)
+      const code = await runScript(conn, script, { sudo: user !== 'root', onLine: say })
+      if (code !== 0) throw new Error(`Update script exited with code ${code}`)
+    } finally {
+      conn.end()
+    }
+  })
+
+  job.status = 'success'
+  job.finishedAt = new Date().toISOString()
+  say('Update finished.')
 }
 
 async function resolveOsTemplate(client: ProxmoxClient, node: string, req: ProvisionRequest, template: TemplateDef, say: (l: string) => void) {

@@ -1,8 +1,9 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { Box, MonitorCog, MoreHorizontal, Play, Power, RotateCw, Square, SquareTerminal, Trash2 } from 'lucide-react'
+import { Box, MonitorCog, MoreHorizontal, Play, Power, RefreshCw, RotateCw, Square, SquareTerminal, Trash2 } from 'lucide-react'
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
-import { api, type Guest } from '@/lib/api'
+import { api, type Guest, type Job } from '@/lib/api'
 import { cn, formatBytes, formatUptime, pct } from '@/lib/utils'
 import { ConfirmDialog, type ConfirmRequest } from './ConfirmDialog'
 import { CopyButton } from './CopyButton'
@@ -34,6 +35,23 @@ export function useGuestAction() {
   })
 }
 
+export function useGuestUpdate() {
+  const qc = useQueryClient()
+  const navigate = useNavigate()
+  return useMutation({
+    mutationFn: (guest: Guest) => api.post<Job>('/updates', { clusterId: guest.clusterId, node: guest.node, type: guest.type, vmid: guest.vmid }),
+    onMutate: (guest) => {
+      toast.loading(`Updating ${guest.name ?? guest.vmid}…`, { id: `${guest.id}-update` })
+    },
+    onSuccess: (job, guest) => {
+      toast.success(`Update started for ${guest.name ?? guest.vmid}`, { id: `${guest.id}-update` })
+      qc.invalidateQueries({ queryKey: ['jobs'] })
+      navigate(`/activity/${job.id}`)
+    },
+    onError: (err, guest) => toast.error(err.message, { id: `${guest.id}-update` }),
+  })
+}
+
 const templateTag = (g: Guest) =>
   g.tags
     ?.split(/[;,]/)
@@ -42,6 +60,7 @@ const templateTag = (g: Guest) =>
 
 export function GuestTable({ guests, ips, showCluster }: { guests: Guest[]; ips: Record<string, Record<string, string>>; showCluster: boolean }) {
   const action = useGuestAction()
+  const update = useGuestUpdate()
   const qc = useQueryClient()
   const [ssh, setSsh] = useState<SshRequest | null>(null)
   const [confirm, setConfirm] = useState<ConfirmRequest | null>(null)
@@ -64,6 +83,16 @@ export function GuestTable({ guests, ips, showCluster }: { guests: Guest[]; ips:
       confirmLabel: copy[0],
       destructive: a === 'stop',
       onConfirm: () => run(guest, a),
+    })
+  }
+
+  const askUpdate = (guest: Guest) => {
+    const name = guest.name ?? String(guest.vmid)
+    setConfirm({
+      title: `Update ${name}?`,
+      body: "Runs the template's update script inside the guest. Options use their defaults; secrets saved during setup stay in place. The app may restart while it updates; SSH stays available.",
+      confirmLabel: 'Update',
+      onConfirm: () => update.mutate(guest),
     })
   }
 
@@ -138,6 +167,12 @@ export function GuestTable({ guests, ips, showCluster }: { guests: Guest[]; ips:
                 <Square />
                 Force stop
               </DropdownMenuItem>
+              {isProxmiu(g) && (
+                <DropdownMenuItem disabled={!running} onSelect={() => askUpdate(g)}>
+                  <RefreshCw />
+                  Update…
+                </DropdownMenuItem>
+              )}
               <DropdownMenuSeparator />
               <DropdownMenuItem destructive onSelect={() => destroy(g)}>
                 <Trash2 />

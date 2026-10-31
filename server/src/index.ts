@@ -8,7 +8,7 @@ import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { z } from 'zod'
 import { discoverProxmox, localSubnets } from './network.js'
-import { getJob, listJobs, provisionSchema, startProvision } from './provision.js'
+import { getJob, listJobs, provisionSchema, startProvision, startUpdate, updateSchema } from './provision.js'
 import { forgetClient, guestIp, ProxmoxClient, type ClusterResource } from './proxmox.js'
 import { handleTerminalSocket } from './ssh.js'
 import { sign, store } from './store.js'
@@ -340,6 +340,12 @@ app.post('/api/provision', async (req) => {
   const body = provisionSchema.parse(req.body)
   store.getCluster(body.clusterId)
   return startProvision(body)
+})
+
+app.post('/api/updates', async (req) => {
+  const body = updateSchema.parse(req.body)
+  store.getCluster(body.clusterId)
+  return startUpdate(body)
 })
 
 app.get('/api/jobs', async () => listJobs().map(({ log: _log, ...j }) => j))

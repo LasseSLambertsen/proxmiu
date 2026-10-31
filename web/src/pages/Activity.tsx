@@ -78,6 +78,14 @@ function JobDetail({ id }: { id: string }) {
           </CardContent>
         </Card>
       )}
+      {job.status === 'success' && job.kind === 'update' && (
+        <Card className="border-success/40">
+          <CardContent className="flex items-center gap-2 font-medium text-success">
+            <Check className="size-4" strokeWidth={2} />
+            Update finished
+          </CardContent>
+        </Card>
+      )}
       {job.error && (
         <div className="flex items-start gap-2.5 rounded-md bg-destructive-soft px-4 py-3 text-[13px] text-destructive">
           <CircleAlert className="mt-0.5 size-4 shrink-0" strokeWidth={1.5} />
@@ -140,7 +148,7 @@ export function Activity() {
 
   return (
     <>
-      <PageHeader title="Activity" description="Provisioning runs since Proxmiu started" />
+      <PageHeader title="Activity" description="Provisioning and update runs since Proxmiu started" />
       {!jobs?.length ? (
         <EmptyState
           icon={ActivityIcon}
@@ -151,7 +159,7 @@ export function Activity() {
             </Link>
           }
         >
-          When you create a VM or container, each step and the full install log show up here as it happens.
+          When you create a VM or container, or update one from its template, each step and the full log show up here as it happens.
         </EmptyState>
       ) : (
         <div className="grid gap-6 px-8 pb-10 max-md:px-4 lg:grid-cols-[280px_minmax(0,1fr)]">

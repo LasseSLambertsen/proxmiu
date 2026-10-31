@@ -146,6 +146,7 @@ export interface CreateOptions {
 export interface Job {
   id: string
   title: string
+  kind?: 'provision' | 'update'
   templateId: string
   clusterId: string
   status: 'running' | 'success' | 'error'
