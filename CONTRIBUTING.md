@@ -44,7 +44,9 @@ Ubuntu and Windows.
 - Auth uses stateless bearer tokens, not cookies. The terminal WebSocket sends
   its token in the first `connect` message.
 - Provisioning runs over SSH with the app key that Proxmox injects. Template
-  scripts must be idempotent and work on Debian and Ubuntu.
+  scripts must be idempotent, because **Update…** on a guest re-runs them without
+  the base setup. Community Scripts guests use their upstream `/usr/bin/update`
+  entrypoint instead.
 - Do not weaken the checks in [`CLAUDE.md`](CLAUDE.md#security-invariants-do-not-weaken):
   password/origin gating, loopback host checks, encrypted secrets and log
   redaction are all required.

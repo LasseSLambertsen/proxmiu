@@ -23,15 +23,17 @@ Run `npm run typecheck && npm test && npm run build` before committing.
 server/src/
   index.ts        Fastify app: auth, CORS/origin checks, all /api routes, static UI, WebSocket /api/ssh
   proxmox.ts      Proxmox API client (token or ticket auth, task polling, guestIp)
-  provision.ts    Job runner: create LXC / clone VM → start → find IP → SSH → run template script
-  templates.ts    Built-in templates + zod schema + buildScript()
-  scripts/        prelude.sh (base setup) and epilogue.sh (optional extras) — real bash files
+  provision.ts    Job runner: create/update guests → find IP → SSH → run template or update script
+  templates.ts    Built-in templates + zod schema + buildScript()/buildUpdateScript()
+  template-sources.ts  GitHub scripts, Community Scripts catalogue and install/update resolution
+  scripts/        helpers.sh (helper functions), prelude.sh (base setup), epilogue.sh (optional extras)
   ssh.ts          ssh2 exec for provisioning, xterm WebSocket bridge
   network.ts      LAN discovery, CIDR expansion, ARP lookup
   store.ts        data/state.json, AES-256-GCM secrets, HMAC signing, app SSH key
   tls.ts          optional HTTPS (self-signed or PROXMIU_TLS_CERT/KEY)
 server/dev/mock-proxmox.ts   fake Proxmox for development and tests
 scripts/install.sh           installs/updates the agent as a systemd service (Debian/Ubuntu)
+scripts/update.sh            updates an existing agent via install.sh; installed as proxmiu-update
 scripts/proxmox-install.sh   run on a PVE host: creates an autostarting LXC, runs install.sh, registers the host
 server/test/                 node:test unit tests
 web/src/
@@ -49,6 +51,7 @@ web/src/
 - **All agent calls go through `api` / `agentFetch` / `agentWsUrl`** in `web/src/lib`. They add the bearer token and Chrome's `targetAddressSpace`. Never use bare `fetch('/api/…')` in components.
 - **Auth is stateless bearer tokens** (`<expiry>.<hmac>`), not cookies, because cookies don't work cross-site. The WebSocket gets its token in the first `connect` message, since browsers can't set WebSocket headers.
 - **Provisioning runs over SSH** with the app key, which Proxmox injects as `ssh-public-keys` (LXC) or `sshkeys` (cloud-init). Template scripts must be idempotent and work on Debian and Ubuntu.
+- **Guest updates re-run the template body without the base setup.** The template is found from the `proxmiu;<id>` Proxmox tag. GitHub/inline templates use `buildUpdateScript()`; Community Scripts guests run `/usr/bin/update`.
 
 ## Security invariants (do not weaken)
 
