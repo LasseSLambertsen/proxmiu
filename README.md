@@ -47,10 +47,11 @@ The **agent** is a small Node service that runs on your network (Docker, or any 
 - **Power actions** – start, shut down, reboot, force stop and delete guests; reboot or shut down nodes.
 - **SSH in the browser** – full terminal to any guest or node.
 - **Templates** – one-click LXC containers (or VMs cloned from a cloud-init template), provisioned over SSH with a live log:
-  - **Claude Code server**, **Codex server**, **AI dev box** (both), **Docker host**, **Plain server**
+  - **Claude Code server**, **Codex server**, **OpenCode server**, **AI dev box** (all three), **Docker host**, **Plain server**
   - Optional: persistent tmux sessions, GitHub CLI + token, clone a repo, git identity, Tailscale
-- **Custom templates** – duplicate a built-in or write your own bash script with typed options.
+- **Custom templates** – duplicate a built-in or write your own bash script with typed options, or point a template at a script in a GitHub repository.
 - **Command palette** – <kbd>⌘K</kbd> / <kbd>Ctrl K</kbd> to jump to any guest, page or template.
+- **Community Scripts** - browse [community-scripts.org](https://community-scripts.org) and turn any container app into a template; the installer runs inside the guest.
 
 ## 1. Run the agent
 
@@ -205,7 +206,7 @@ For the quickest test setup, `pveum user token add root@pam proxmiu --privsep 0`
 3. Waits for an IP: container interfaces, the QEMU guest agent, or the agent's ARP table for VMs without one.
 4. SSHes in and runs the template: base setup (updates, a `dev` sudo user, your keys), the template script, then the optional extras.
 
-When it's done you get `ssh dev@<ip>` and a button to open a terminal. For the AI templates, run `claude` or `codex`. Without an API key, you sign in on first run.
+When it's done you get `ssh dev@<ip>` and a button to open a terminal. For the AI templates, run `claude`, `codex` or `opencode`. Without an API key, you sign in on first run.
 
 **VMs** need an existing cloud-init VM template on the node (see [Cloud-Init Support](https://pve.proxmox.com/wiki/Cloud-Init_Support)).
 
@@ -232,6 +233,8 @@ The agent holds credentials that control your whole Proxmox setup.
 - **Credentials at rest:** encrypted with AES-256-GCM.
 - **Host keys:** SSH host keys of guests are not pinned, since guests are created and rebuilt often.
 
+See [SECURITY.md](SECURITY.md) for the full policy and private reporting link.
+
 ## License
 
 [MIT](LICENSE)
@@ -240,9 +243,13 @@ The agent holds credentials that control your whole Proxmox setup.
 
 ```bash
 npm install
-npm run mock   # fake Proxmox API on https://127.0.0.1:8006 (token root@pam!proxmiu, secret "mock")
-npm run dev    # agent on :8787, Vite on :5173 with hot reload
+npm run mock       # fake Proxmox API on https://127.0.0.1:8006 (token root@pam!proxmiu, secret "mock")
+npm run dev        # agent on :8787, Vite on :5173 with hot reload
+npm run typecheck
 npm test
+npm run build
 ```
 
 Stack: Fastify, ssh2 and undici for the agent; React, TanStack Query, Tailwind CSS v4, Radix and cmdk for the UI, set in Geist.
+
+Contributions are welcome. Read [CONTRIBUTING.md](CONTRIBUTING.md) for the setup, architecture rules and pull-request checklist.

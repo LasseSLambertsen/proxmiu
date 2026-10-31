@@ -4,6 +4,7 @@ import { ipForMac } from './network.js'
 import { guestIp, ProxmoxClient, sleep } from './proxmox.js'
 import { runScript, waitForSsh } from './ssh.js'
 import { store } from './store.js'
+import { buildCommunityScript, fetchGitHubScript, resolveCommunityScript } from './template-sources.js'
 import { buildScript, getTemplate, type TemplateDef } from './templates.js'
 
 export const provisionSchema = z.object({
@@ -104,6 +105,34 @@ async function step<T>(job: Job, id: string, fn: () => Promise<T>): Promise<T> {
   return out
 }
 
+function optionEnv(template: TemplateDef, options: Record<string, string | boolean>) {
+  const community = template.source?.type === 'community-scripts'
+  const env: Record<string, string> = {}
+  for (const opt of template.options) {
+    const value = options[opt.key] ?? opt.default
+    if (value === undefined) continue
+    const name = opt.env ?? (community ? `var_${opt.key.toLowerCase()}` : `OPT_${opt.key}`)
+    if (opt.type === 'boolean') env[name] = community ? (value ? 'yes' : 'no') : value ? '1' : '0'
+    else if (typeof value === 'string' && value) env[name] = value
+  }
+  return env
+}
+
+async function renderInstallScript(template: TemplateDef, env: Record<string, string>, say: (line: string) => void) {
+  if (template.source?.type === 'community-scripts') {
+    say(`Fetching ${template.name} from Community Scripts…`)
+    const resolved = await resolveCommunityScript(template.source.slug, template.source.ref)
+    return buildCommunityScript(template, env, resolved)
+  }
+  let body = template.script
+  if (template.source?.type === 'github') {
+    say(`Fetching the install script from ${template.source.repo}/${template.source.path}…`)
+    body = await fetchGitHubScript(template.source)
+  }
+  return buildScript(template, env, body)
+}
+
+
 async function run(job: Job, req: ProvisionRequest, template: TemplateDef) {
   const client = ProxmoxClient.fromRecord(store.getCluster(req.clusterId))
   const say = (line: string) => log(job, req, line)
@@ -123,6 +152,9 @@ async function run(job: Job, req: ProvisionRequest, template: TemplateDef) {
 
   if (req.kind === 'lxc') {
     const ostemplate = await step(job, 'os', () => resolveOsTemplate(client, node, req, template, say))
+    const features = [template.nesting ? 'nesting=1' : undefined, template.source?.type === 'community-scripts' && !template.privileged ? 'keyctl=1' : undefined]
+      .filter(Boolean)
+      .join(',')
     await step(job, 'create', async () => {
       const ip = req.ipMode === 'static' ? `ip=${req.ipCidr}${req.gateway ? `,gw=${req.gateway}` : ''}` : 'ip=dhcp'
       const upid = await client.post<string>(`/nodes/${node}/lxc`, {
@@ -134,8 +166,8 @@ async function run(job: Job, req: ProvisionRequest, template: TemplateDef) {
         swap: req.swap,
         rootfs: `${req.storage}:${req.disk}`,
         net0: `name=eth0,bridge=${req.bridge},${ip}${vlanTag}`,
-        unprivileged: true,
-        features: template.nesting ? 'nesting=1' : undefined,
+        unprivileged: !template.privileged,
+        features: features || undefined,
         'ssh-public-keys': keys,
         onboot: req.onboot,
         tags: `proxmiu;${template.id}`,
@@ -223,14 +255,10 @@ async function run(job: Job, req: ProvisionRequest, template: TemplateDef) {
     say(`Connecting over SSH as ${sshUser}@${ip}…`)
     const conn = await waitForSsh({ host: ip, username: sshUser, useAppKey: true })
     try {
-      const env: Record<string, string> = { PM_USER: user, PM_HOSTNAME: req.hostname, PM_SSH_KEYS: keys }
+      const env: Record<string, string> = { PM_USER: user, PM_HOSTNAME: req.hostname, PM_SSH_KEYS: keys, ...optionEnv(template, req.options) }
       if (req.password) env.PM_PASSWORD = req.password
-      for (const opt of template.options) {
-        const v = req.options[opt.key] ?? opt.default
-        if (opt.type === 'boolean') env[`OPT_${opt.key}`] = v ? '1' : '0'
-        else if (typeof v === 'string' && v) env[`OPT_${opt.key}`] = v
-      }
-      const code = await runScript(conn, buildScript(template, env), { sudo: sshUser !== 'root', onLine: say })
+      const script = await renderInstallScript(template, env, say)
+      const code = await runScript(conn, script, { sudo: sshUser !== 'root', onLine: say })
       if (code !== 0) throw new Error(`Provisioning script exited with code ${code}`)
     } finally {
       conn.end()

@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
-import { api, type ClusterOverview, type Connection, type Guest, type Template } from './api'
+import { api, type ClusterOverview, type CommunityScript, type Connection, type Guest, type Template } from './api'
 
 export function useOverview() {
   return useQuery({
@@ -33,3 +33,10 @@ export function useGuestIps(clusterIds: string[]) {
 
 export const useConnections = () => useQuery({ queryKey: ['connections'], queryFn: () => api.get<Connection[]>('/clusters') })
 export const useTemplates = () => useQuery({ queryKey: ['templates'], queryFn: () => api.get<Template[]>('/templates') })
+export const useCommunityScripts = (enabled = true) =>
+  useQuery({
+    queryKey: ['community-scripts'],
+    queryFn: () => api.get<{ scripts: CommunityScript[] }>('/community-scripts'),
+    staleTime: 10 * 60_000,
+    enabled,
+  })

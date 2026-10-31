@@ -7,7 +7,8 @@ import { test } from 'node:test'
 
 process.env.PROXMIU_DATA_DIR = mkdtempSync(join(tmpdir(), 'proxmiu-test-'))
 const { expandCidr } = await import('../src/network.js')
-const { buildScript, builtinTemplates } = await import('../src/templates.js')
+const { buildScript, builtinTemplates, templateSchema } = await import('../src/templates.js')
+const { buildCommunityScript, githubRawUrl } = await import('../src/template-sources.js')
 const { encrypt, decrypt } = await import('../src/store.js')
 
 test('expandCidr skips network and broadcast addresses', () => {
@@ -29,7 +30,17 @@ test('secrets round-trip through encryption', () => {
   assert.equal(decrypt(enc), 'token-secret')
 })
 
-test('generated scripts are valid bash and quote hostile values safely', () => {
+const hasBash = (() => {
+  try {
+    execFileSync('bash', ['--version'], { stdio: 'ignore' })
+    return true
+  } catch {
+    return false
+  }
+})()
+
+test('generated scripts are valid bash and quote hostile values safely', (t) => {
+  if (!hasBash) return t.skip('bash is not installed')
   const nasty = `it's "$(rm -rf /)" \`whoami\` $HOME`
   for (const t of builtinTemplates) {
     const script = buildScript(t, { PM_USER: 'dev', PM_HOSTNAME: 'box', PM_SSH_KEYS: 'ssh-ed25519 AAA x', OPT_GIT_NAME: nasty })
@@ -37,4 +48,41 @@ test('generated scripts are valid bash and quote hostile values safely', () => {
     const exported = script.split('\n').find((l) => l.startsWith('export OPT_GIT_NAME='))!
     assert.equal(execFileSync('bash', ['-c', `${exported}; printf %s "$OPT_GIT_NAME"`]).toString(), nasty)
   }
+})
+
+const baseTemplate = {
+  id: 'source-test',
+  name: 'Source test',
+  resources: { cores: 1, memory: 512, disk: 2 },
+}
+
+test('template sources validate and default their ref', () => {
+  const github = templateSchema.parse({ ...baseTemplate, source: { type: 'github', repo: 'owner/repo', path: 'scripts/install.sh' } })
+  assert.equal(github.source?.type, 'github')
+  assert.equal(github.source?.ref, 'main')
+  assert.equal(
+    githubRawUrl(github.source as Extract<NonNullable<typeof github.source>, { type: 'github' }>),
+    'https://raw.githubusercontent.com/owner/repo/main/scripts/install.sh',
+  )
+
+  const community = templateSchema.parse({ ...baseTemplate, source: { type: 'community-scripts', slug: 'docker' } })
+  assert.equal(community.source?.type, 'community-scripts')
+  assert.equal(community.source?.ref, 'main')
+
+  assert.throws(() => templateSchema.parse({ ...baseTemplate, source: { type: 'github', repo: 'owner/repo', path: '../escape.sh' } }))
+  assert.throws(() => templateSchema.parse({ ...baseTemplate, source: { type: 'github', repo: 'not-a-repo', path: 'a.sh' } }))
+})
+
+test('community installer wrapper is valid bash', (t) => {
+  if (!hasBash) return t.skip('bash is not installed')
+  const tpl = templateSchema.parse({ ...baseTemplate, source: { type: 'community-scripts', slug: 'docker' } })
+  const script = buildCommunityScript(
+    tpl,
+    { var_docker_socket: `it's "$(rm -rf /)"`, PM_HOSTNAME: 'box' },
+    { install: 'echo install', engine: 'echo engine', scriptsBase: 'https://example.test/main', coreBase: 'https://example.test/core' },
+  )
+  execFileSync('bash', ['-n'], { input: script })
+  assert.match(script, /FUNCTIONS_FILE_PATH=/)
+  assert.match(script, /PROXMIU_SCRIPT_EOF/)
+  assert.match(script, /^export COMMUNITY_SCRIPTS_URL='https:\/\/example\.test\/main'$/m)
 })

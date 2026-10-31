@@ -32,9 +32,9 @@ export function TemplateGrid({ templates, onPick }: { templates: Template[]; onP
             <div className="flex items-start gap-3">
               <TemplateTile icon={t.icon} />
               <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-2 font-medium">
+                <div className="flex flex-wrap items-center gap-2 font-medium">
                   {t.name}
-                  {!t.builtin && <Badge>custom</Badge>}
+                  {t.builtin ? null : t.source?.type === 'community-scripts' ? <Badge tone="brand">community</Badge> : <Badge>{t.source?.type === 'github' ? 'GitHub' : 'custom'}</Badge>}
                 </div>
                 <p className="mt-1 text-[12px] leading-relaxed text-muted">{t.description}</p>
               </div>

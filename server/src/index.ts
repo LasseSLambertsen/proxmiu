@@ -13,6 +13,7 @@ import { forgetClient, guestIp, ProxmoxClient, type ClusterResource } from './pr
 import { handleTerminalSocket } from './ssh.js'
 import { sign, store } from './store.js'
 import { allTemplates, builtinTemplates, templateSchema } from './templates.js'
+import { communityScriptTemplate, listCommunityScripts } from './template-sources.js'
 import { tlsOptions } from './tls.js'
 
 const VERSION = '0.2.0'
@@ -320,6 +321,20 @@ app.delete<{ Params: { id: string } }>('/api/templates/:id', async (req) => {
   store.removeTemplate(req.params.id)
   return { ok: true }
 })
+
+app.get<{ Querystring: { q?: string } }>('/api/community-scripts', async (req) => {
+  const q = req.query.q?.trim().toLowerCase()
+  const scripts = await listCommunityScripts()
+  return {
+    scripts: q
+      ? scripts.filter((s) => `${s.name} ${s.slug} ${s.description} ${s.category ?? ''}`.toLowerCase().includes(q))
+      : scripts,
+  }
+})
+
+app.get<{ Params: { slug: string }; Querystring: { ref?: string } }>('/api/community-scripts/:slug', async (req) => ({
+  template: await communityScriptTemplate(req.params.slug, req.query.ref ?? 'main'),
+}))
 
 app.post('/api/provision', async (req) => {
   const body = provisionSchema.parse(req.body)

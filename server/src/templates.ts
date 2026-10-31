@@ -9,7 +9,32 @@ export const templateOptionSchema = z.object({
   default: z.union([z.string(), z.boolean()]).optional(),
   placeholder: z.string().optional(),
   help: z.string().optional(),
+  /** env var the script reads; defaults to OPT_<KEY>, or var_<key> for community-scripts */
+  env: z.string().regex(/^[A-Za-z_][A-Za-z0-9_]*$/).optional(),
 })
+
+const ownerRepo = /^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/
+const safeRef = /^[A-Za-z0-9_./-]+$/
+const safePath = /^[A-Za-z0-9_./-]+$/
+const noTraversal = (p: string) => !p.includes('..') && !p.startsWith('/')
+
+/** Where a template's install script comes from. Inline scripts are the default. */
+export const templateSourceSchema = z.discriminatedUnion('type', [
+  z.object({
+    type: z.literal('github'),
+    repo: z
+      .string()
+      .regex(ownerRepo, 'Use owner/repository')
+      .refine((r) => r.split('/').every((p) => p !== '.' && p !== '..'), 'Invalid repository'),
+    ref: z.string().regex(safeRef, 'Invalid branch or tag').refine(noTraversal, 'Invalid branch or tag').default('main'),
+    path: z.string().regex(safePath, 'Invalid file path').refine(noTraversal, 'Invalid file path'),
+  }),
+  z.object({
+    type: z.literal('community-scripts'),
+    slug: z.string().regex(/^[a-z0-9-]+$/),
+    ref: z.string().regex(safeRef, 'Invalid branch or tag').refine(noTraversal, 'Invalid branch or tag').default('main'),
+  }),
+])
 
 export const templateSchema = z.object({
   id: z.string().regex(/^[a-z0-9-]+$/),
@@ -27,15 +52,18 @@ export const templateSchema = z.object({
     swap: z.number().int().min(0).default(512),
   }),
   nesting: z.boolean().default(true),
+  privileged: z.boolean().default(false),
   user: z.string().regex(/^[a-z_][a-z0-9_-]*$/).default('dev'),
   options: z.array(templateOptionSchema).default([]),
   script: z.string().default(''),
+  source: templateSourceSchema.optional(),
   notes: z.string().default(''),
   builtin: z.boolean().optional(),
 })
 
 export type TemplateDef = z.infer<typeof templateSchema>
 export type TemplateOption = z.infer<typeof templateOptionSchema>
+export type TemplateSource = z.infer<typeof templateSourceSchema>
 
 const devOptions: TemplateOption[] = [
   { key: 'TMUX_AUTOATTACH', label: 'Persistent tmux session on login', type: 'boolean', default: true, help: 'SSH drops into the same tmux session every time, so agents keep running when you disconnect.' },
@@ -114,6 +142,27 @@ export const builtinTemplates: TemplateDef[] = [
     notes: 'Connect with `ssh {user}@{ip}` and run `codex`. Without an API key, sign in with `codex login --device-auth`.',
   },
   {
+    id: 'opencode',
+    name: 'OpenCode server',
+    description: 'A remote dev box with OpenCode, Node.js, git and tmux. SSH in from any device and keep an agent session running while you are away.',
+    icon: 'terminal',
+    tags: ['ai', 'dev'],
+    kind: 'lxc',
+    os: ['debian-12', 'debian-13', 'ubuntu-24.04'],
+    resources: { cores: 4, memory: 8192, disk: 32, swap: 1024 },
+    nesting: true,
+    user: 'dev',
+    options: [
+      anthropicKey,
+      openaiKey,
+      { key: 'OPENROUTER_API_KEY', label: 'OpenRouter API key', type: 'secret', help: 'Optional. Lets OpenCode use OpenRouter models; leave empty to connect a provider on first run.' },
+      ...devOptions,
+    ],
+    source: { type: 'github', repo: 'LasseSLambertsen/proxmiu-scripts', ref: 'main', path: 'scripts/opencode.sh' },
+    script: '',
+    notes: 'Connect with `ssh {user}@{ip}` and run `opencode`. Use `/connect` to add or change a provider.',
+  },
+  {
     id: 'ai-devbox',
     name: 'AI dev box',
     description: 'Claude Code and Codex side by side on one box. Same toolchain, pick the agent per task.',
@@ -163,10 +212,10 @@ systemctl enable --now docker
     script: '',
     notes: 'Connect with `ssh {user}@{ip}`.',
   },
-].map((t) => ({ ...t, builtin: true }) as TemplateDef)
+].map((t) => ({ ...t, privileged: false, builtin: true }) as TemplateDef)
 
 export function allTemplates(): TemplateDef[] {
-  return [...builtinTemplates, ...store.listCustomTemplates().map((t) => ({ ...t, builtin: false }))]
+  return [...builtinTemplates, ...store.listCustomTemplates().map((t) => ({ ...t, privileged: t.privileged ?? false, builtin: false }))]
 }
 
 export function getTemplate(id: string) {
@@ -183,9 +232,9 @@ const EPILOGUE = script('epilogue.sh')
 
 const shellQuote = (v: string) => `'${v.replace(/'/g, `'\\''`)}'`
 
-export function buildScript(t: TemplateDef, env: Record<string, string>) {
+export function buildScript(t: TemplateDef, env: Record<string, string>, body = t.script) {
   const exports = Object.entries(env)
     .map(([k, v]) => `export ${k}=${shellQuote(v)}`)
     .join('\n')
-  return ['#!/usr/bin/env bash', exports, PRELUDE, '# --- template ---', t.script, '# --- extras ---', EPILOGUE, 'log "Provisioning finished"', ''].join('\n')
+  return ['#!/usr/bin/env bash', exports, PRELUDE, '# --- template ---', body, '# --- extras ---', EPILOGUE, 'log "Provisioning finished"', ''].join('\n')
 }

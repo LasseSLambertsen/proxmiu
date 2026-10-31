@@ -88,7 +88,13 @@ export interface TemplateOption {
   default?: string | boolean
   placeholder?: string
   help?: string
+  /** env var the script reads; defaults to OPT_<KEY>, or var_<key> for community-scripts */
+  env?: string
 }
+
+export type TemplateSource =
+  | { type: 'github'; repo: string; ref: string; path: string }
+  | { type: 'community-scripts'; slug: string; ref: string }
 
 export interface Template {
   id: string
@@ -100,11 +106,24 @@ export interface Template {
   os: string[]
   resources: { cores: number; memory: number; disk: number; swap: number }
   nesting: boolean
+  privileged: boolean
   user: string
   options: TemplateOption[]
   script: string
+  source?: TemplateSource
   notes: string
   builtin?: boolean
+}
+
+export interface CommunityScript {
+  slug: string
+  name: string
+  description: string
+  logo?: string
+  category?: string
+  updateable: boolean
+  architectures: string[]
+  resources: { cpu: number; ram: number; hdd: number; os?: string; version?: string }
 }
 
 export interface StorageInfo {
