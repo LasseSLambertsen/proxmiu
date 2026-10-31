@@ -4,7 +4,7 @@ A modern web app for managing Proxmox VE on your local network: find hosts, star
 
 [![CI](https://github.com/LasseSLambertsen/proxmiu/actions/workflows/ci.yml/badge.svg)](https://github.com/LasseSLambertsen/proxmiu/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Hosted UI](https://img.shields.io/badge/hosted%20UI-GitHub%20Pages-5b3fe4)](https://lasseslambertsen.github.io/proxmiu/)
+[![Website](https://img.shields.io/badge/website-GitHub%20Pages-5b3fe4)](https://lasseslambertsen.github.io/proxmiu/)
 
 ![Proxmiu overview](docs/screenshots/overview.png)
 
@@ -40,7 +40,7 @@ A modern web app for managing Proxmox VE on your local network: find hosts, star
               or served by the agent)
 ```
 
-The **UI** is a static single-page app. Host it on Vercel, Netlify or GitHub Pages, or let the agent serve it.
+The **UI** is a static single-page app. Host it on Vercel or Netlify, or let the agent serve it. The [project website](https://lasseslambertsen.github.io/proxmiu/) is a static presentation page and is not the app.
 
 The **agent** is a small Node service that runs on your network (Docker, or any machine with Node 20+). It talks to Proxmox, scans the LAN, opens SSH sessions and runs provisioning. Cloud hosts can't reach your LAN, so this part always runs at home. The UI only ever talks to the agent, straight from your browser.
 
@@ -98,7 +98,7 @@ The agent runs in its own container, so nothing is installed on the Proxmox host
 | `IP` / `GW` | DHCP | Static address, e.g. `IP=192.168.1.40/24 GW=192.168.1.1` |
 | `CORES` / `MEMORY` / `DISK` | `2` / `1024` / `8` | MiB for memory, GiB for disk |
 | `PROXMIU_PASSWORD` | generated | |
-| `PROXMIU_ALLOWED_ORIGINS` | – | Your hosted UI, e.g. `https://lasseslambertsen.github.io` |
+| `PROXMIU_ALLOWED_ORIGINS` | – | Your hosted UI, e.g. `https://proxmiu.vercel.app` |
 | `PROXMIU_TLS` | `0` | `1` to serve HTTPS (needed for a hosted UI, see below) |
 | `CONNECT_HOST` | `1` | `0` to skip creating the API token and adding this host |
 | `FULL_ACCESS` | `0` | `1` to use a `root@pam` token instead of the limited `proxmiu@pve` user |
@@ -107,7 +107,7 @@ The agent runs in its own container, so nothing is installed on the Proxmox host
 For example, a static IP with the hosted UI enabled:
 
 ```bash
-IP=192.168.1.40/24 GW=192.168.1.1 PROXMIU_TLS=1 PROXMIU_ALLOWED_ORIGINS=https://lasseslambertsen.github.io \
+IP=192.168.1.40/24 GW=192.168.1.1 PROXMIU_TLS=1 PROXMIU_ALLOWED_ORIGINS=https://proxmiu.vercel.app \
   bash -c "$(curl -fsSL https://raw.githubusercontent.com/LasseSLambertsen/proxmiu/main/scripts/proxmox-install.sh)"
 ```
 
@@ -174,24 +174,26 @@ docker compose up -d --build
 
 Whichever way you install, open `http://<agent-address>:8787`. The agent serves the UI itself, so this is all you need for a self-hosted setup.
 
-## 2. (Optional) Host the UI on Vercel, Netlify or GitHub Pages
+## 2. (Optional) Host the UI on Vercel or Netlify
 
 The repo includes `vercel.json` and `netlify.toml`. Import it in either dashboard, with no settings to change. The build runs `npm run build:web` and publishes `dist/web`.
-
-For GitHub Pages, the `Pages` workflow deploys the UI to **<https://lasseslambertsen.github.io/proxmiu/>** on every push to `main`. It builds with `VITE_BASE=/proxmiu/` and adds a `404.html` fallback for client-side routes. On a fork, enable **Settings → Pages → Build and deployment → GitHub Actions**. If you use a custom domain, set the repository variable `PAGES_BASE` to `/` (or the new subpath).
 
 Then allow that site to use your agent, and serve the agent over HTTPS. Browsers block `http://` requests from an `https://` page unless the target is `localhost`.
 
 ```bash
 # .env on the agent machine
 PROXMIU_PASSWORD=something-long
-PROXMIU_ALLOWED_ORIGINS=https://your-proxmiu.vercel.app,https://lasseslambertsen.github.io
+PROXMIU_ALLOWED_ORIGINS=https://your-proxmiu.vercel.app
 PROXMIU_TLS=1
 ```
 
 Restart the agent, open the hosted site, and enter `https://<agent-machine>:8787`.
 
 With `PROXMIU_TLS=1` the agent generates a self-signed certificate. Visit `https://<agent-machine>:8787` once and accept it, then connect from the hosted UI. To avoid the warning, pass your own certificate with `PROXMIU_TLS_CERT` and `PROXMIU_TLS_KEY`, or put the agent behind Tailscale or a reverse proxy with a real certificate.
+
+### Project website
+
+The static presentation page lives in `site/` and is deployed to **<https://lasseslambertsen.github.io/proxmiu/>** by `.github/workflows/pages.yml`. It is a landing page about the project, not the app. The workflow assembles `site/` with the screenshots from `docs/screenshots/` and the logo from `web/public/`.
 
 ### Browser support for hosted UIs
 

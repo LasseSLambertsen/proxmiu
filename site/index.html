@@ -1,0 +1,251 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Proxmiu — manage Proxmox VE from the browser</title>
+    <meta
+      name="description"
+      content="A fast, friendly front end for Proxmox VE: power actions, browser SSH, and one-click Claude Code, Codex, OpenCode and Community Scripts guests."
+    />
+    <meta name="theme-color" content="#09090b" />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Proxmiu — manage Proxmox VE from the browser" />
+    <meta
+      property="og:description"
+      content="Power actions, browser SSH, and ready-to-use AI dev boxes from templates. Self-hosted on your LAN."
+    />
+    <meta property="og:image" content="https://lasseslambertsen.github.io/proxmiu/screenshots/overview.png" />
+    <link rel="icon" type="image/svg+xml" href="favicon.svg" />
+    <link rel="apple-touch-icon" href="apple-touch-icon.png" />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="page-glow" aria-hidden="true"></div>
+
+    <header class="nav-wrap">
+      <nav class="nav">
+        <a class="brand" href="./" aria-label="Proxmiu home">
+          <img src="logo.svg" alt="" width="28" height="28" />
+          <span>Proxmiu</span>
+        </a>
+        <div class="nav-links">
+          <a href="#features">Features</a>
+          <a href="#screenshots">Screenshots</a>
+          <a href="#how">How it works</a>
+          <a href="#install">Install</a>
+        </div>
+        <a class="button small" href="https://github.com/LasseSLambertsen/proxmiu">GitHub</a>
+      </nav>
+    </header>
+
+    <main class="page">
+      <section class="hero">
+        <div class="eyebrow"><span class="dot"></span> Proxmox VE, without the tab hunt</div>
+        <h1>Your homelab,<br /><span class="gradient">one click away.</span></h1>
+        <p class="lede">
+          A fast, friendly front end for Proxmox VE. Start and stop guests, open a terminal in the browser, and turn
+          templates into ready-to-use Claude Code, Codex or OpenCode boxes — all from one place.
+        </p>
+        <div class="cta">
+          <a class="button primary" href="#install">Install on Proxmox</a>
+          <a class="button" href="https://github.com/LasseSLambertsen/proxmiu">View on GitHub</a>
+        </div>
+        <div class="chips" aria-label="Works with">
+          <span>Claude Code</span>
+          <span>Codex</span>
+          <span>OpenCode</span>
+          <span>Docker</span>
+          <span>Community Scripts</span>
+        </div>
+        <p class="hero-note">Self-hosted · runs on your LAN · no cloud dependency</p>
+      </section>
+
+      <section class="hero-shot">
+        <img src="screenshots/overview.png" alt="Proxmiu overview showing nodes, guests and live resource usage" />
+      </section>
+
+      <section id="features" class="section">
+        <div class="section-head">
+          <div class="eyebrow">Features</div>
+          <h2>Everything you do every day.<br />Nothing you don't.</h2>
+          <p>
+            Proxmiu is a focused front end, not a replacement for the Proxmox UI. It makes the common things fast and
+            leaves cluster administration where it belongs.
+          </p>
+        </div>
+        <div class="cards">
+          <article class="card">
+            <span class="icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2v10" /><path d="M18.36 6.64a9 9 0 1 1-12.73 0" /></svg>
+            </span>
+            <h3>Power actions</h3>
+            <p>Start, shut down, reboot, force stop or delete a guest. Reboot or shut down a node with typed confirmation.</p>
+          </article>
+          <article class="card">
+            <span class="icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="4 17 10 11 4 5" /><line x1="12" y1="19" x2="20" y2="19" /></svg>
+            </span>
+            <h3>SSH in the browser</h3>
+            <p>A full xterm terminal to any guest or node, with copy/paste, select all and sticky Ctrl/Alt/Shift keys for phones.</p>
+          </article>
+          <article class="card">
+            <span class="icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2" /><path d="M3 9h18" /><path d="M9 21V9" /></svg>
+            </span>
+            <h3>Templates that do the work</h3>
+            <p>Create a container or clone a cloud-init VM, then install your stack over SSH with a live log.</p>
+          </article>
+          <article class="card">
+            <span class="icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9" /><path d="M3 12h18" /><path d="M12 3a15 15 0 0 1 0 18a15 15 0 0 1 0-18z" /></svg>
+            </span>
+            <h3>Community Scripts</h3>
+            <p>Browse the community-scripts.org catalogue and turn any container app into a template, with options and resources prefilled.</p>
+          </article>
+          <article class="card">
+            <span class="icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a9 9 0 0 0-15.5-6.4L3 8" /><path d="M3 3v5h5" /><path d="M3 12a9 9 0 0 0 15.5 6.4L21 16" /><path d="M21 21v-5h-5" /></svg>
+            </span>
+            <h3>Updates in the UI</h3>
+            <p>Re-run a guest's template or the upstream Community Scripts update path from the guest menu. Opt in to updating the agent itself from Settings.</p>
+          </article>
+          <article class="card">
+            <span class="icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="7" y="2" width="10" height="20" rx="2" /><path d="M11 18h2" /></svg>
+            </span>
+            <h3>Built for the phone</h3>
+            <p>Bottom navigation, touch-friendly actions and a terminal key bar. Check the homelab from the couch.</p>
+          </article>
+        </div>
+      </section>
+
+      <section id="screenshots" class="section">
+        <div class="section-head">
+          <div class="eyebrow">Screenshots</div>
+          <h2>Made to be used.</h2>
+          <p>Light and dark themes, dense information where it matters, and the terminal right next to the guest list.</p>
+        </div>
+        <div class="shots">
+          <figure class="shot-wide">
+            <img src="screenshots/guests.png" alt="Guest list with live status, addresses and actions" loading="lazy" />
+            <figcaption><strong>Guests.</strong> Live status, addresses and usage with one-click SSH, reboot and more.</figcaption>
+          </figure>
+          <figure>
+            <img src="screenshots/create.png" alt="Creating a Claude Code server from a template" loading="lazy" />
+            <figcaption><strong>Create.</strong> A Claude Code server from a template, with every setting adjustable.</figcaption>
+          </figure>
+          <figure>
+            <img src="screenshots/terminal.png" alt="Browser SSH terminal with the Proxmiu toolbar" loading="lazy" />
+            <figcaption><strong>Terminal.</strong> Copy, paste, modifiers and special keys, even on a phone.</figcaption>
+          </figure>
+          <figure class="shot-wide">
+            <img src="screenshots/activity.png" alt="Provisioning activity with steps and live log" loading="lazy" />
+            <figcaption><strong>Activity.</strong> Each step and the full install log, live.</figcaption>
+          </figure>
+          <figure>
+            <img src="screenshots/command-palette.png" alt="Proxmiu command palette" loading="lazy" />
+            <figcaption><strong>Command palette.</strong> Jump to any guest, template or page.</figcaption>
+          </figure>
+          <figure>
+            <img src="screenshots/overview-light.png" alt="Proxmiu overview in light mode" loading="lazy" />
+            <figcaption><strong>Light mode.</strong> The same app, in your preferred theme.</figcaption>
+          </figure>
+        </div>
+        <div class="mobile-showcase">
+          <img src="screenshots/mobile-overview.png" alt="Proxmiu on an iPhone: overview" loading="lazy" />
+          <img src="screenshots/mobile-guests.png" alt="Proxmiu on an iPhone: guests" loading="lazy" />
+          <div>
+            <div class="eyebrow">On the go</div>
+            <h3>The homelab in your pocket.</h3>
+            <p>Find hosts, check a container, reboot a VM or open a terminal from a phone. The layout is designed for thumbs, not just a shrunken desktop.</p>
+          </div>
+        </div>
+      </section>
+
+      <section id="how" class="section">
+        <div class="section-head">
+          <div class="eyebrow">How it works</div>
+          <h2>One small agent. Your network stays yours.</h2>
+          <p>
+            Proxmox sends no CORS headers, and cloud hosts cannot reach a private LAN. So the UI talks to a small agent
+            that runs at home — in an LXC, on a Debian box, or in Docker.
+          </p>
+        </div>
+        <div class="flow" aria-label="Browser to Proxmiu agent to Proxmox API and SSH">
+          <div class="flow-node"><span>Browser</span><small>static UI or hosted</small></div>
+          <div class="flow-arrow" aria-hidden="true">→</div>
+          <div class="flow-node accent"><span>Proxmiu agent</span><small>on your LAN</small></div>
+          <div class="flow-arrow" aria-hidden="true">→</div>
+          <div class="flow-split">
+            <div class="flow-node small">Proxmox API <small>:8006</small></div>
+            <div class="flow-node small">SSH</div>
+          </div>
+        </div>
+        <div class="steps">
+          <article><span>01</span><h3>Install the agent</h3><p>On a Proxmox host, the installer creates an autostarting LXC, installs the service and registers the host with a limited API token.</p></article>
+          <article><span>02</span><h3>Open the UI</h3><p>Use the UI served by the agent, or host the static app yourself on Vercel or Netlify.</p></article>
+          <article><span>03</span><h3>Build a box</h3><p>Pick a template, choose resources and let Proxmiu create the guest, find its address and run the install over SSH.</p></article>
+        </div>
+      </section>
+
+      <section id="install" class="section install">
+        <div class="section-head">
+          <div class="eyebrow">Install</div>
+          <h2>Three minutes on a Proxmox host.</h2>
+          <p>Run this in the Proxmox shell. It creates an unprivileged container, installs the agent and adds the host to it.</p>
+        </div>
+        <div class="code-block">
+          <div class="code-head"><span>Proxmox VE shell</span><button type="button" data-copy>Copy</button></div>
+          <pre><code>bash -c "$(curl -fsSL https://raw.githubusercontent.com/LasseSLambertsen/proxmiu/main/scripts/proxmox-install.sh)"</code></pre>
+        </div>
+        <p class="install-alt">On any always-on Debian or Ubuntu machine with systemd:</p>
+        <div class="code-block">
+          <div class="code-head"><span>Debian / Ubuntu</span><button type="button" data-copy>Copy</button></div>
+          <pre><code>curl -fsSL https://raw.githubusercontent.com/LasseSLambertsen/proxmiu/main/scripts/install.sh | bash</code></pre>
+        </div>
+        <p class="install-note">
+          Then open <code>http://&lt;agent-address&gt;:8787</code>. The agent serves the UI itself. Add your Proxmox host
+          under <strong>Connections</strong> if you installed the agent somewhere else.
+        </p>
+        <div class="cta center">
+          <a class="button primary" href="https://github.com/LasseSLambertsen/proxmiu">Read the docs on GitHub</a>
+        </div>
+      </section>
+
+      <section class="section security">
+        <div class="security-card">
+          <span class="icon large">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" /></svg>
+          </span>
+          <div>
+            <div class="eyebrow">Security first</div>
+            <h2>The UI never touches Proxmox directly.</h2>
+            <p>
+              Credentials are encrypted at rest, sessions are signed bearer tokens, and the agent refuses to listen
+              beyond localhost without a password. Self-update is opt-in and limited to a narrow root helper.
+            </p>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        <div class="brand small">
+          <img src="logo.svg" alt="" width="24" height="24" />
+          <span>Proxmiu</span>
+        </div>
+        <div class="footer-links">
+          <a href="https://github.com/LasseSLambertsen/proxmiu">GitHub</a>
+          <a href="https://github.com/LasseSLambertsen/proxmiu/blob/main/README.md">Docs</a>
+          <a href="https://github.com/LasseSLambertsen/proxmiu/blob/main/SECURITY.md">Security</a>
+          <a href="https://github.com/LasseSLambertsen/proxmiu/blob/main/LICENSE">MIT license</a>
+        </div>
+        <p class="footer-note">Built for homelabs and small teams. Not affiliated with Proxmox Server Solutions GmbH.</p>
+      </div>
+    </footer>
+
+    <script src="app.js"></script>
+  </body>
+</html>
