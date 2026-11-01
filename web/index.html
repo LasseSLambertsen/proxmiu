@@ -12,14 +12,14 @@
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="Proxmiu" />
-    <meta name="theme-color" content="#f6f0e7" />
+    <meta name="theme-color" content="#0c0907" />
     <script>
       try {
         const t = localStorage.getItem('proxmiu-theme')
-        const dark = t === 'dark'
+        const dark = t ? t === 'dark' : true
         document.documentElement.classList.toggle('dark', dark)
       } catch {
-        /* storage unavailable: light is the default */
+        document.documentElement.classList.add('dark')
       }
     </script>
   </head>

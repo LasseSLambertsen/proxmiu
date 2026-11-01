@@ -42,38 +42,38 @@
 }
 
 .dark {
-  --background: #0b0d12;
-  --background-deep: #10131b;
-  --sidebar: rgba(10, 12, 18, 0.82);
-  --card: rgba(23, 27, 37, 0.52);
-  --card-elevated: rgba(30, 34, 46, 0.92);
-  --hover: rgba(255, 255, 255, 0.07);
-  --inset: rgba(255, 255, 255, 0.045);
-  --border: rgba(255, 255, 255, 0.1);
-  --border-subtle: rgba(255, 255, 255, 0.06);
-  --border-strong: rgba(255, 255, 255, 0.18);
-  --foreground: #f5f1e9;
-  --muted-foreground: #aaa6b4;
-  --faint-foreground: #74707f;
-  --primary: #f5f1e9;
-  --primary-hover: #ffffff;
-  --primary-foreground: #0b0d12;
+  --background: #0c0907;
+  --background-deep: #181008;
+  --sidebar: rgba(26, 18, 12, 0.76);
+  --card: rgba(55, 41, 31, 0.46);
+  --card-elevated: rgba(43, 32, 25, 0.94);
+  --hover: rgba(255, 236, 220, 0.08);
+  --inset: rgba(255, 236, 220, 0.045);
+  --border: rgba(255, 236, 220, 0.1);
+  --border-subtle: rgba(255, 236, 220, 0.06);
+  --border-strong: rgba(255, 236, 220, 0.18);
+  --foreground: #f7efe5;
+  --muted-foreground: #c0b2a2;
+  --faint-foreground: #8d7f70;
+  --primary: #f7efe5;
+  --primary-hover: #fffaf2;
+  --primary-foreground: #160f0a;
   --brand: #f0a23a;
   --brand-soft: rgba(240, 162, 58, 0.16);
-  --success: #45c9a4;
-  --success-soft: rgba(69, 201, 164, 0.13);
+  --success: #4fd1a5;
+  --success-soft: rgba(79, 209, 165, 0.14);
   --warning: #f5a524;
   --warning-soft: rgba(245, 165, 36, 0.14);
   --destructive: #f87171;
   --destructive-soft: rgba(248, 113, 113, 0.13);
   --info: #6cb8d6;
   --info-soft: rgba(108, 184, 214, 0.13);
-  --overlay: rgba(4, 5, 8, 0.65);
-  --shadow-card: inset 0 1px 0 rgba(255, 255, 255, 0.06), 0 20px 50px -35px rgba(0, 0, 0, 0.9);
-  --shadow-float: 0 0 0 1px rgba(255, 255, 255, 0.1), 0 24px 70px -12px rgba(0, 0, 0, 0.8);
-  --glow: rgba(240, 162, 58, 0.12);
-  --warm-glow: rgba(120, 70, 30, 0.18);
-  --cool-glow: rgba(60, 120, 140, 0.16);
+  --overlay: rgba(0, 0, 0, 0.7);
+  --shadow-card: inset 0 1px 0 rgba(255, 255, 255, 0.07), 0 20px 50px -35px rgba(0, 0, 0, 0.9);
+  --shadow-float: 0 0 0 1px rgba(255, 236, 220, 0.1), 0 24px 70px -12px rgba(0, 0, 0, 0.85);
+  --glow: rgba(240, 162, 58, 0.14);
+  --warm-glow: rgba(160, 85, 30, 0.3);
+  --cool-glow: rgba(70, 120, 140, 0.16);
 }
 
 @theme inline {
@@ -201,10 +201,6 @@
 
 .nav-sheen {
   background-image: linear-gradient(180deg, rgba(255, 255, 255, 0.07), transparent 32%, rgba(0, 0, 0, 0.2));
-}
-
-.sidebar-slab {
-  transform: skewY(-2deg);
 }
 
 .tint-warm {

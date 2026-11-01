@@ -46,7 +46,7 @@ export function Layout({ authRequired, onLogout, onDisconnect }: { authRequired:
       <aside className="nav-glass relative w-[248px] shrink-0 max-lg:w-[72px] max-sm:hidden">
         <div
           aria-hidden
-          className="nav-sheen sidebar-slab pointer-events-none absolute inset-y-3 left-2 right-3 rounded-[26px] border border-white/10 bg-sidebar/90 shadow-[0_24px_60px_-35px_rgba(0,0,0,0.9)] backdrop-blur-2xl max-lg:left-1 max-lg:right-2"
+          className="nav-sheen pointer-events-none absolute inset-y-3 left-2 right-3 rounded-[26px] border border-white/10 bg-sidebar/90 shadow-[0_24px_60px_-35px_rgba(0,0,0,0.9)] backdrop-blur-2xl max-lg:left-1 max-lg:right-2"
         />
         <div className="relative flex h-full flex-col pb-3">
           <div className="flex h-16 items-center px-4 max-lg:justify-center max-lg:px-0">
