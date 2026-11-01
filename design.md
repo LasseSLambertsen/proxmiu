@@ -1,10 +1,10 @@
 # Design
 
-Proxmiu should feel like a calm, warm glass dashboard seen through dark glass: a floating dark-frosted sidebar, deep amber and teal ambient glows, translucent smoky cards, and a small set of confident accents. Dark is the primary experience; light mode keeps the same glass language in cream tones. The marketing hero adds the 3D perspective tilt from the reference video.
+Proxmiu should feel like a calm, warm glass dashboard seen through dark glass: a floating, skewed dark-frosted sidebar, deep amber and teal ambient glows, translucent smoky cards, and a small set of confident accents. Dark is the primary experience; light mode keeps the same glass language in cream tones. The marketing hero adds a deeper 3D perspective tilt from the reference video.
 
 ## Principles
 
-1. **Warm glass by default.** Surfaces are translucent over a deep warm gradient, with a floating dark sidebar and layered smoky cards. Depth comes from blur, layered light and a hairline highlight, not heavy borders.
+1. **Warm glass by default.** Surfaces are translucent over a deep warm gradient, with a floating, skewed dark sidebar and layered smoky cards. Depth comes from blur, the leaned rail, layered light and a hairline highlight, not heavy borders.
 2. **Information first.** Numbers use tabular figures; IDs and IPs use the mono font; secondary info is muted, not hidden. Glass must never get in the way of density.
 3. **Colour as atmosphere.** Amber is the brand accent. Stat cards use soft warm, cool, blue and lilac tints. Status colours stay semantic: green, amber, red, teal.
 4. **Fast paths.** The most common action on a row is a visible icon button; the rest live in a menu. Everything is reachable from ⌘K.
@@ -58,7 +58,7 @@ Shadows: `--shadow-card` is a soft ambient shadow plus a 1px white inner highlig
   - `destructive`: soft red that turns solid on hover
 
   Buttons scale to 0.98 on press, and icons are 16px.
-- **Sidebar**. A floating dark glass rail inset from the top, bottom and left, with 26px corners and a soft float. It uses `.nav-glass` for light text and an amber active icon, with a subtle top sheen. The mobile tab bar reuses the glass variables and sheen as a horizontal dock. The 3D perspective skew belongs to the marketing hero, not the interactive rail.
+- **Sidebar**. A floating dark glass rail inset from the top, bottom and left, with 26px corners, a soft float and `skewY(-2deg)` applied to the panel **and its content** (`.sidebar-skew`) so the whole rail leans like the reference. It uses `.nav-glass` for light text and an amber active icon, with a subtle top sheen. The mobile tab bar reuses the glass variables and sheen as a horizontal dock; the marketing hero adds a deeper 3D tilt.
 - **Inputs/Select/Textarea**. Translucent glass with a brand focus border and a 3px `brand-soft` ring. Wrap every field in `Field` (label + help).
 - **Badge**. 20px pill. `neutral` for tags, `brand` for Proxmiu-created guests, semantic tones for status.
 - **StatusDot**. 8px dot; running/online pulses softly in green.
@@ -70,8 +70,8 @@ Shadows: `--shadow-card` is a soft ambient shadow plus a 1px white inner highlig
 
 ## Layout
 
-- **Desktop (≥1024px):** 248px floating dark glass sidebar, logo, search button (⌘K), nav (active item gets a translucent light panel, amber icon) and a footer with agent status, theme and logout.
-- **Tablet (640–1023px):** the sidebar collapses to a 72px dark icon rail.
+- **Desktop (≥1024px):** 248px floating, skewed dark glass sidebar, logo, search button (⌘K), nav (active item gets a translucent light panel, amber icon) and a footer with agent status, theme and logout.
+- **Tablet (640–1023px):** the sidebar collapses to a 72px skewed dark icon rail.
 - **Phone (<640px):** no sidebar.
   - A sticky blurred warm top bar holds the logo and search.
   - A floating dark glass dock holds Overview, Guests, Create, Activity and More; it respects `env(safe-area-inset-*)` and sits above the content with `92px` bottom clearance.

@@ -42,8 +42,8 @@ export function Layout({ authRequired, onLogout, onDisconnect }: { authRequired:
   const footerBtn = 'flex h-8 w-full items-center gap-2.5 rounded-md px-2.5 text-[13px] text-muted transition-colors hover:bg-hover hover:text-foreground'
 
   return (
-    <div className="flex h-full">
-      <aside className="nav-glass relative w-[248px] shrink-0 max-lg:w-[72px] max-sm:hidden">
+    <div className="flex h-full overflow-hidden">
+      <aside className="nav-glass sidebar-skew relative w-[248px] shrink-0 max-lg:w-[72px] max-sm:hidden">
         <div
           aria-hidden
           className="nav-sheen pointer-events-none absolute inset-y-3 left-2 right-3 rounded-[26px] border border-white/10 bg-sidebar/90 shadow-[0_24px_60px_-35px_rgba(0,0,0,0.9)] backdrop-blur-2xl max-lg:left-1 max-lg:right-2"
