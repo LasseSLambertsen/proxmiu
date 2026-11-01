@@ -12,7 +12,7 @@ import { getJob, listJobs, provisionSchema, startProvision, startUpdate, updateS
 import { forgetClient, guestIp, ProxmoxClient, type ClusterResource } from './proxmox.js'
 import { handleTerminalSocket } from './ssh.js'
 import { sign, store } from './store.js'
-import { selfUpdateEnabled, selfUpdateStatus, startSelfUpdate } from './self-update.js'
+import { selfUpdateInfo, startSelfUpdate } from './self-update.js'
 import { allTemplates, builtinTemplates, templateSchema } from './templates.js'
 import { communityScriptTemplate, listCommunityScripts } from './template-sources.js'
 import { tlsOptions } from './tls.js'
@@ -368,7 +368,7 @@ app.post('/api/settings/ssh-key/regenerate', async () => {
   return { sshPublicKey: key.public, sshKeyCreatedAt: key.createdAt }
 })
 
-app.get('/api/self-update', async () => ({ enabled: selfUpdateEnabled(), status: selfUpdateStatus() }))
+app.get('/api/self-update', async () => selfUpdateInfo())
 app.post('/api/self-update', async () => startSelfUpdate())
 
 app.get<{ Querystring: { host: string } }>('/api/ssh/user', async (req) => ({ username: store.sshUser(req.query.host) ?? null }))

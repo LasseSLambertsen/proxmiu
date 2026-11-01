@@ -10,6 +10,7 @@ const { expandCidr } = await import('../src/network.js')
 const { buildScript, buildUpdateScript, builtinTemplates, templateSchema } = await import('../src/templates.js')
 const { buildCommunityScript, githubRawUrl } = await import('../src/template-sources.js')
 const { encrypt, decrypt } = await import('../src/store.js')
+const { parseUpdateEnv } = await import('../src/self-update.js')
 
 test('expandCidr skips network and broadcast addresses', () => {
   const hosts = expandCidr('192.168.1.77/24')
@@ -28,6 +29,25 @@ test('secrets round-trip through encryption', () => {
   const enc = encrypt('token-secret')
   assert.notEqual(enc, 'token-secret')
   assert.equal(decrypt(enc), 'token-secret')
+})
+
+test('update.env parsing handles the quoting printf %q produces', () => {
+  const values = parseUpdateEnv(
+    [
+      'PROXMIU_REPO=https://github.com/owner/repo.git',
+      "PROXMIU_REF='main'",
+      'PROXMIU_DATA_DIR="/var/lib/proxmiu"',
+      'PROXMIU_RAW_BASE=https://example.test/owner/repo',
+      '# comment',
+      'NOT A LINE',
+    ].join('\n'),
+  )
+  assert.deepEqual(values, {
+    PROXMIU_REPO: 'https://github.com/owner/repo.git',
+    PROXMIU_REF: 'main',
+    PROXMIU_DATA_DIR: '/var/lib/proxmiu',
+    PROXMIU_RAW_BASE: 'https://example.test/owner/repo',
+  })
 })
 
 const hasBash = (() => {

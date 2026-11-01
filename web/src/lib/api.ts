@@ -131,6 +131,10 @@ export type SelfUpdateState = 'idle' | 'running' | 'success' | 'failed'
 export interface SelfUpdate {
   enabled: boolean
   status: { state: SelfUpdateState; startedAt?: string; finishedAt?: string }
+  available: boolean | null
+  currentCommit?: string
+  latestCommit?: string
+  checkedAt?: string
 }
 
 export interface StorageInfo {

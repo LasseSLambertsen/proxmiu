@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { CloudDownload, KeyRound, Loader2, RefreshCw, ShieldAlert, ShieldCheck } from 'lucide-react'
+import { Check, CloudDownload, KeyRound, Loader2, RefreshCw, ShieldAlert, ShieldCheck } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { toast } from 'sonner'
 import { ConfirmDialog, type ConfirmRequest } from '@/components/ConfirmDialog'
@@ -43,6 +43,7 @@ export function SettingsPage() {
     onError: (err) => toast.error(err.message),
   })
   const status = selfUpdate.data?.status.state ?? 'idle'
+  const available = selfUpdate.data?.available
   const showRunning = waiting || status === 'running'
 
   useEffect(() => {
@@ -76,6 +77,17 @@ export function SettingsPage() {
     '# Debian or Ubuntu',
     'sudo env PROXMIU_ALLOW_SELF_UPDATE=1 /opt/proxmiu/scripts/install.sh',
   ].join('\n')
+  const lastRun =
+    status === 'success' ? (
+      <p className="text-success">
+        Last update succeeded {selfUpdate.data?.status.finishedAt ? timeAgo(selfUpdate.data.status.finishedAt) : 'just now'}.
+      </p>
+    ) : status === 'failed' ? (
+      <p className="text-destructive">
+        Last update failed{selfUpdate.data?.status.finishedAt ? ` ${timeAgo(selfUpdate.data.status.finishedAt)}` : ''}. Check{' '}
+        <code className="text-foreground">journalctl -u proxmiu-self-update</code> on the agent host.
+      </p>
+    ) : null
 
   return (
     <>
@@ -149,12 +161,18 @@ export function SettingsPage() {
               <CloudDownload className="size-4 text-faint" strokeWidth={1.5} />
               Updates
             </CardTitle>
-            {selfUpdate.data?.enabled && (
-              <Button onClick={askUpdate} loading={updateAgent.isPending || waiting} disabled={showRunning}>
-                <CloudDownload strokeWidth={1.5} />
-                Update agent
-              </Button>
-            )}
+            {selfUpdate.data?.enabled &&
+              (available === false ? (
+                <Button variant="ghost" onClick={() => selfUpdate.refetch()} loading={selfUpdate.isFetching} disabled={showRunning}>
+                  <RefreshCw strokeWidth={1.5} />
+                  Check again
+                </Button>
+              ) : (
+                <Button onClick={askUpdate} loading={updateAgent.isPending || waiting} disabled={showRunning}>
+                  <CloudDownload strokeWidth={1.5} />
+                  Update agent
+                </Button>
+              ))}
           </CardHeader>
           <CardContent className="space-y-3 text-[13px] text-muted">
             {showRunning ? (
@@ -176,21 +194,27 @@ export function SettingsPage() {
                   <CopyButton text={enableUpdate} />
                 </div>
               </>
+            ) : available === true ? (
+              <>
+                <p>
+                  A new version is available. Updating downloads it, rebuilds the agent and restarts the service. Settings, data and connections are
+                  kept.
+                </p>
+                {lastRun}
+              </>
+            ) : available === false ? (
+              <>
+                <p className="flex items-center gap-2 text-success">
+                  <Check className="size-4" strokeWidth={2} />
+                  Proxmiu is up to date.
+                </p>
+                {selfUpdate.data.checkedAt && <p className="text-faint">Checked {timeAgo(selfUpdate.data.checkedAt)}.</p>}
+                {lastRun}
+              </>
             ) : (
               <>
-                <p>Downloads the latest agent version, rebuilds it and restarts the service. Settings, data and connections are kept.</p>
-                {status === 'success' && (
-                  <p className="text-success">
-                    Last update succeeded {selfUpdate.data.status.finishedAt ? timeAgo(selfUpdate.data.status.finishedAt) : 'just now'}.
-                  </p>
-                )}
-                {status === 'failed' && (
-                  <p className="text-destructive">
-                    Last update failed{selfUpdate.data.status.finishedAt ? ` ${timeAgo(selfUpdate.data.status.finishedAt)}` : ''}. Check{' '}
-                    <code className="text-foreground">journalctl -u proxmiu-self-update</code> on the agent host.
-                  </p>
-                )}
-                {status === 'idle' && <p className="text-faint">No update has run from this page yet.</p>}
+                <p>Couldn't check for updates. The agent may not be able to reach its repository.</p>
+                {lastRun}
               </>
             )}
           </CardContent>
