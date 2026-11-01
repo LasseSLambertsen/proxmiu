@@ -160,6 +160,14 @@ else
   done
 fi
 
+# sudo needs to clear the "no new privileges" flag to honour the self-update
+# sudoers rule. Keep the hardening only while the update button is off.
+if [ "$ENABLE_SELF_UPDATE" = 1 ]; then
+  NO_NEW_PRIVS=false
+else
+  NO_NEW_PRIVS=true
+fi
+
 log "Installing systemd service"
 cat > "$UNIT_FILE" <<EOF
 [Unit]
@@ -178,7 +186,8 @@ ExecStart=$NODE_BIN dist/server/index.js
 Restart=on-failure
 RestartSec=3
 # Kept to settings that also work in unprivileged containers.
-NoNewPrivileges=true
+# Must be false when self-update is on, or sudo cannot run the helper.
+NoNewPrivileges=$NO_NEW_PRIVS
 
 [Install]
 WantedBy=multi-user.target

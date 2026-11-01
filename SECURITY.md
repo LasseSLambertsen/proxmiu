@@ -46,6 +46,10 @@ systemd unit, so the agent can restart without killing the updater. The helper
 and runner are installed from the configured upstream ref, not from the
 `proxmiu`-owned checkout.
 
+While self-update is enabled the service unit sets `NoNewPrivileges=false`, since
+that flag prevents `sudo` from honouring the sudoers rule. With self-update off
+the unit keeps `NoNewPrivileges=true`.
+
 Disable it by re-running the installer with `PROXMIU_ALLOW_SELF_UPDATE=0`.
 
 ## Provisioning and third-party scripts
