@@ -262,8 +262,8 @@ function CreateForm({ template }: { template: Template }) {
                     key={k}
                     onClick={() => setKind(k)}
                     className={cn(
-                      'flex items-start gap-2.5 rounded-md border border-border p-3 text-left transition-colors hover:border-border-strong',
-                      kind === k && 'border-brand bg-brand-soft hover:border-brand',
+                      'flex items-start gap-2.5 rounded-lg bg-inset p-3 text-left transition-colors hover:bg-hover',
+                      kind === k && 'bg-brand-soft ring-1 ring-inset ring-brand/60 hover:bg-brand-soft',
                     )}
                   >
                     <Icon className="mt-0.5 size-4 shrink-0 text-muted" strokeWidth={1.5} />
@@ -302,7 +302,7 @@ function CreateForm({ template }: { template: Template }) {
                 </Select>
               </Field>
             ) : o && !o.vmTemplates.length ? (
-              <div className="flex gap-2.5 rounded-md border border-border bg-warning-soft p-3 text-[12px] text-muted">
+              <div className="flex gap-2.5 rounded-lg bg-warning-soft p-3 text-[12px] text-muted">
                 <Info className="mt-0.5 size-4 shrink-0 text-warning" strokeWidth={1.5} />
                 <div>
                   No VM templates found. Create one from a Debian or Ubuntu cloud image with a cloud-init drive, then convert it to a template in

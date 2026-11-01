@@ -19,7 +19,7 @@ function Hint({ icon, children }: { icon: ReactNode; children: ReactNode }) {
 
 function CodeLine({ text }: { text: string }) {
   return (
-    <div className="mt-1.5 flex items-start gap-1 rounded-md border border-border bg-inset py-1.5 pl-3 pr-1">
+    <div className="mt-1.5 flex items-start gap-1 rounded-lg bg-inset py-1.5 pl-3 pr-1">
       <code className="min-w-0 flex-1 whitespace-pre-wrap break-all py-0.5 text-[12px] text-foreground">{text}</code>
       <CopyButton text={text} />
     </div>

@@ -119,13 +119,13 @@ export function SettingsPage() {
               Added to every VM and container Proxmiu creates, so the in-browser terminal and provisioning can log in. Add it to your Proxmox
               nodes to open terminals on them too.
             </p>
-            <div className="flex items-start gap-2 rounded-md border border-border bg-inset p-3">
+            <div className="flex items-start gap-2 rounded-lg bg-inset p-3">
               <code className="min-w-0 flex-1 break-all text-[12px]">{data?.sshPublicKey}</code>
               {data && <CopyButton text={data.sshPublicKey} />}
             </div>
             <div>
               <div className="eyebrow mb-1.5">Trust it on a host</div>
-              <div className="flex items-start gap-2 rounded-md border border-border bg-inset p-3">
+              <div className="flex items-start gap-2 rounded-lg bg-inset p-3">
                 <code className="min-w-0 flex-1 break-all text-[12px] text-muted">{install}</code>
                 {data && <CopyButton text={install} />}
               </div>
@@ -189,8 +189,8 @@ export function SettingsPage() {
                 <p>
                   Self-update is off. Re-run the installer with <code className="text-foreground">PROXMIU_ALLOW_SELF_UPDATE=1</code> to install the narrow helper used by this button.
                 </p>
-                <div className="flex items-start gap-2 rounded-md border border-border bg-inset p-3">
-                  <pre className="min-w-0 flex-1 overflow-x-auto font-mono text-[12px] text-muted">{enableUpdate}</pre>
+                <div className="flex items-start gap-2 rounded-lg bg-inset p-3">
+                  <pre className="min-w-0 flex-1 whitespace-pre-wrap break-all font-mono text-[12px] text-muted">{enableUpdate}</pre>
                   <CopyButton text={enableUpdate} />
                 </div>
               </>

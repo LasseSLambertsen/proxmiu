@@ -117,7 +117,7 @@ export function Layout({ authRequired, onLogout, onDisconnect }: { authRequired:
           </div>
         </div>
       </aside>
-      <main className="relative min-w-0 flex-1 overflow-y-auto max-sm:pb-[calc(92px+env(safe-area-inset-bottom))]">
+      <main className="relative min-w-0 flex-1 overflow-y-auto max-sm:pb-[calc(112px+env(safe-area-inset-bottom))]">
         <MobileTopBar onSearch={() => setPalette(true)} />
         <div className="pointer-events-none absolute inset-x-0 top-0 h-72 bg-[radial-gradient(ellipse_70%_100%_at_50%_0%,var(--glow),transparent)]" />
         <div className="relative">

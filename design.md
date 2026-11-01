@@ -64,7 +64,7 @@ Shadows: `--shadow-card` is a soft ambient shadow plus a 1px white inner highlig
 - **StatusDot**. 8px dot; running/online pulses softly in green.
 - **Meter**. 4px bar in amber, turning warning above 75% and destructive above 90%.
 - **Sparkline**. Amber by default; CPU uses steel blue. A fading area sits behind the line.
-- **Dialog / menu / palette**. Translucent elevated glass, 22px radius, 2xl blur, soft floating shadow. Footer uses `inset`.
+- **Dialog / menu / palette**. Translucent elevated glass, 22px radius, 2xl blur, soft floating shadow. The outer border is the only outline; the float shadow adds no second ring. Footer uses `inset`.
 - **TemplateTile**. 40px gradient tile tinted per icon (sparkles orange, terminal emerald, bot violet, container sky, server zinc).
 - **Terminal**. `#0b0b0d` background, Geist Mono 13px, brand cursor, Tailwind-400-family ANSI colours. The terminal toolbar adds copy, paste, select all, sticky Ctrl/Alt/Shift and special keys.
 
@@ -74,7 +74,7 @@ Shadows: `--shadow-card` is a soft ambient shadow plus a 1px white inner highlig
 - **Tablet (640–1023px):** the sidebar collapses to a 72px dark icon rail.
 - **Phone (<640px):** no sidebar.
   - A sticky blurred warm top bar holds the logo and search.
-  - A floating dark glass dock holds Overview, Guests, Create, Activity and More; it respects `env(safe-area-inset-*)` and sits above the content with `92px` bottom clearance.
+  - A floating dark glass dock holds Overview, Guests, Create, Activity and More; it respects `env(safe-area-inset-*)` and sits above the content with `112px` bottom clearance.
   - Tables become card lists, and page-header actions hide because the dock covers them.
 
 ## Motion
@@ -103,5 +103,6 @@ Lucide only, 16px in UI (20–22px in the mobile dock), stroke 1.75–2. Icons i
 
 - No opaque white panels on the warm background; use the glass card.
 - No heavy borders or pure-black shadows. Glass depth comes from blur and highlight.
+- No nested outlines. Code blocks and help panels inside cards/dialogs are `inset` fills, not additional bordered boxes; selectable options get a single focus ring, not a border plus a ring.
 - No extra accent colours outside status, stat tints, template tiles and the terminal.
 - No company or third-party branding. The logo is `web/public/logo.svg` (violet tile with three server bars).

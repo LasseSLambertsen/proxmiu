@@ -65,7 +65,7 @@ function JobDetail({ id }: { id: string }) {
             </p>
             {cmd && (
               <div className="flex flex-wrap items-center gap-2">
-                <div className="flex min-w-0 flex-1 items-center justify-between rounded-md border border-border bg-inset px-3 py-1.5">
+                <div className="flex min-w-0 flex-1 items-center justify-between rounded-lg bg-inset px-3 py-1.5">
                   <code className="truncate">{cmd}</code>
                   <CopyButton text={cmd} />
                 </div>

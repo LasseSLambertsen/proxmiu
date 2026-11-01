@@ -244,7 +244,7 @@ function AddConnectionForm({ initial, onClose }: { initial: { host: string; port
               <Field label="Secret">
                 <Input type="password" value={form.secret} onChange={(e) => set('secret', e.target.value)} placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" />
               </Field>
-              <div className="rounded-md border border-border bg-inset p-3 text-[12px] text-muted">
+              <div className="rounded-lg bg-inset p-3 text-[12px] text-muted">
                 Create one in a shell on the Proxmox host:
                 <div className="mt-1.5 flex items-center justify-between gap-2">
                   <code className="truncate text-foreground">{TOKEN_CMD}</code>

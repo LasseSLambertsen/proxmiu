@@ -122,7 +122,7 @@ function SshDialogInner({ request }: { request: SshRequest }) {
               <Textarea rows={5} className="font-mono text-[12px]" value={privateKey} onChange={(e) => setPrivateKey(e.target.value)} placeholder="-----BEGIN OPENSSH PRIVATE KEY-----" />
             </Field>
           )}
-          <div className="flex items-center justify-between rounded-md border border-border bg-inset px-3 py-2">
+          <div className="flex items-center justify-between rounded-lg bg-inset px-3 py-2">
             <code className="truncate text-muted">{command}</code>
             <CopyButton text={command} />
           </div>

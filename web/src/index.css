@@ -35,7 +35,7 @@
   --info-soft: rgba(47, 127, 163, 0.12);
   --overlay: rgba(25, 24, 22, 0.32);
   --shadow-card: 0 18px 45px -30px rgba(55, 42, 26, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.65);
-  --shadow-float: 0 0 0 1px rgba(255, 255, 255, 0.5), 0 24px 70px -20px rgba(55, 42, 26, 0.45);
+  --shadow-float: 0 24px 70px -20px rgba(55, 42, 26, 0.45);
   --glow: rgba(226, 138, 47, 0.15);
   --warm-glow: rgba(247, 198, 148, 0.5);
   --cool-glow: rgba(125, 190, 203, 0.25);
@@ -70,7 +70,7 @@
   --info-soft: rgba(108, 184, 214, 0.13);
   --overlay: rgba(0, 0, 0, 0.7);
   --shadow-card: inset 0 1px 0 rgba(255, 255, 255, 0.07), 0 20px 50px -35px rgba(0, 0, 0, 0.9);
-  --shadow-float: 0 0 0 1px rgba(255, 236, 220, 0.1), 0 24px 70px -12px rgba(0, 0, 0, 0.85);
+  --shadow-float: 0 24px 70px -12px rgba(0, 0, 0, 0.85);
   --glow: rgba(240, 162, 58, 0.14);
   --warm-glow: rgba(160, 85, 30, 0.3);
   --cool-glow: rgba(70, 120, 140, 0.16);
