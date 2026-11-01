@@ -42,20 +42,20 @@ export function Layout({ authRequired, onLogout, onDisconnect }: { authRequired:
   const footerBtn = 'flex h-8 w-full items-center gap-2.5 rounded-md px-2.5 text-[13px] text-muted transition-colors hover:bg-hover hover:text-foreground'
 
   return (
-    <div className="flex h-full overflow-hidden">
-      <aside className="nav-glass sidebar-skew relative w-[248px] shrink-0 max-lg:w-[72px] max-sm:hidden">
+    <div className="flex h-full">
+      <aside className="nav-glass relative w-[248px] shrink-0 max-lg:w-[72px] max-sm:hidden">
         <div
           aria-hidden
           className="nav-sheen pointer-events-none absolute inset-y-3 left-2 right-3 rounded-[26px] border border-white/10 bg-sidebar/90 shadow-[0_24px_60px_-35px_rgba(0,0,0,0.9)] backdrop-blur-2xl max-lg:left-1 max-lg:right-2"
         />
         <div className="relative flex h-full flex-col pb-3">
-          <div className="flex h-16 items-center px-4 max-lg:justify-center max-lg:px-0">
+          <div className="flex h-20 items-center px-5 max-lg:h-16 max-lg:justify-center max-lg:px-0">
             <span className="max-lg:hidden">
               <Logo />
             </span>
             <img src={LOGO} alt="Proxmiu" className="hidden size-7 rounded-[7px] max-lg:block" />
           </div>
-          <div className="px-3 pb-2 max-lg:px-2">
+          <div className="px-4 pb-2 max-lg:px-2">
             <button
               onClick={() => setPalette(true)}
               className="flex h-8 w-full items-center gap-2 rounded-md border border-border bg-card px-2.5 text-[13px] text-faint shadow-[var(--shadow-card)] transition-colors hover:border-border-strong hover:text-muted max-lg:justify-center max-lg:px-0"
@@ -65,7 +65,7 @@ export function Layout({ authRequired, onLogout, onDisconnect }: { authRequired:
               <kbd className="ml-auto rounded border border-border px-1 font-mono text-[10.5px] max-lg:hidden">{isMac ? '⌘' : 'Ctrl '}K</kbd>
             </button>
           </div>
-          <nav className="flex-1 space-y-px px-3 py-1 max-lg:px-2">
+          <nav className="flex-1 space-y-px px-4 py-1 max-lg:px-2">
             {nav.map(({ to, label, icon: Icon, end }) => (
               <NavLink
                 key={to}

@@ -203,16 +203,6 @@
   background-image: linear-gradient(180deg, rgba(255, 255, 255, 0.07), transparent 32%, rgba(0, 0, 0, 0.2));
 }
 
-.sidebar-skew {
-  transform: skewY(-2deg);
-}
-
-@media (max-width: 1023px) {
-  .sidebar-skew {
-    transform: skewY(-1.2deg);
-  }
-}
-
 .tint-warm {
   background-image: linear-gradient(135deg, rgba(255, 222, 190, 0.72), rgba(255, 255, 255, 0.42));
 }
