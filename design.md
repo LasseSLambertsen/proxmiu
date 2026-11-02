@@ -81,6 +81,8 @@ Shadows: `--shadow-card` is a soft ambient shadow plus a 1px white inner highlig
 
 Subtle and quick: 150–200ms, ease-out or `cubic-bezier(0.16,1,0.3,1)`. Animate only opacity, transform, colour and width (meters). No bouncing, nothing longer than 700ms (meter width).
 
+The hidden lynx companion is an intentional exception: five quick logo clicks reveal a small mascot with a swishing tail, blinking eyes and a pet interaction. It stays clear of the mobile dock, closes with Escape or its dismiss button, and disables its animations when reduced motion is requested. The app and presentation site share `lynx-easter-egg.js`.
+
 ## Icons
 
 Lucide only, 16px in UI (20–22px in the mobile dock), stroke 1.75–2. Icons in nav and menus are `faint` until active or hovered.

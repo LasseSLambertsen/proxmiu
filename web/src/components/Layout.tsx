@@ -23,10 +23,10 @@ const LOGO = `${import.meta.env.BASE_URL}logo.png`
 
 export function Logo({ size = 28 }: { size?: number }) {
   return (
-    <div className="flex items-center gap-2.5">
+    <button type="button" data-lynx-trigger className="flex cursor-pointer items-center gap-2.5 rounded-md focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-brand" aria-label="Proxmiu">
       <img src={LOGO} alt="" width={size} height={size} className="shrink-0 rounded-[7px] shadow-[0_2px_8px_-2px_rgba(0,0,0,0.24)]" />
       <span className="text-[15px] font-semibold tracking-[-0.02em]">Proxmiu</span>
-    </div>
+    </button>
   )
 }
 
@@ -53,7 +53,9 @@ export function Layout({ authRequired, onLogout, onDisconnect }: { authRequired:
             <span className="max-lg:hidden">
               <Logo />
             </span>
-            <img src={LOGO} alt="Proxmiu" className="hidden size-7 rounded-[7px] max-lg:block" />
+            <button type="button" data-lynx-trigger aria-label="Proxmiu" className="hidden rounded-[7px] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-brand max-lg:block">
+              <img src={LOGO} alt="" className="size-7 rounded-[7px]" />
+            </button>
           </div>
           <div className="px-4 pb-2 max-lg:px-2">
             <button
