@@ -105,4 +105,4 @@ Lucide only, 16px in UI (20–22px in the mobile dock), stroke 1.75–2. Icons i
 - No heavy borders or pure-black shadows. Glass depth comes from blur and highlight.
 - No nested outlines. Code blocks and help panels inside cards/dialogs are `inset` fills, not additional bordered boxes; selectable options get a single focus ring, not a border plus a ring.
 - No extra accent colours outside status, stat tints, template tiles and the terminal.
-- No company or third-party branding. The logo is `web/public/logo.svg` (violet tile with three server bars).
+- No company or third-party branding. The logo is `web/public/logo.png`: an amber robotic lynx on charcoal, with server cartridges in its visor and a teal status light. `logo.svg` and `favicon.svg` are simplified vector companions for small sizes. The maskable home-screen icon has dedicated safe-area padding.

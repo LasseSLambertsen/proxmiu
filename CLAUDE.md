@@ -94,4 +94,4 @@ web/src/
 - TypeScript strict, ESM, 2-space indent, no semicolons, single quotes.
 - Comments explain *why*, sparingly.
 - UI copy: sentence case, verbs on buttons ("Create container", "Connect"), empty states say what will appear.
-- No third-party or company branding. The product is "Proxmiu" with its own logo (`web/public/logo.svg`).
+- No third-party or company branding. The product is "Proxmiu" with its own logo (`web/public/logo.png`, with a simplified vector companion at `logo.svg`).

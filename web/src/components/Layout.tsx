@@ -19,12 +19,12 @@ const nav = [
   { to: '/settings', label: 'Settings', icon: Settings },
 ]
 
-const LOGO = `${import.meta.env.BASE_URL}logo.svg`
+const LOGO = `${import.meta.env.BASE_URL}logo.png`
 
 export function Logo({ size = 28 }: { size?: number }) {
   return (
     <div className="flex items-center gap-2.5">
-      <img src={LOGO} alt="" width={size} height={size} className="shrink-0 rounded-[7px] shadow-[0_2px_8px_-2px_rgba(91,63,228,0.6)]" />
+      <img src={LOGO} alt="" width={size} height={size} className="shrink-0 rounded-[7px] shadow-[0_2px_8px_-2px_rgba(0,0,0,0.24)]" />
       <span className="text-[15px] font-semibold tracking-[-0.02em]">Proxmiu</span>
     </div>
   )
