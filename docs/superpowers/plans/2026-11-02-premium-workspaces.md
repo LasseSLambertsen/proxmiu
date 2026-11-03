@@ -1,0 +1,58 @@
+# Premium Workspaces Implementation Plan
+
+> **For agentic workers:** Use superpowers:subagent-driven-development or superpowers:executing-plans. Continue autonomously under the user's explicit delegation of product choices and commit authorization.
+
+**Goal:** Ship useful guest workspaces and faster daily operations with a premium, coherent interface.
+**Architecture:** Extend the current React/Vite SPA and Fastify LAN agent; use the existing authenticated API for operations. Persist guest metadata at the agent and saved views in agent-scoped browser storage.
+**Tech Stack:** TypeScript, React, TanStack Query, Fastify, existing SVG/Lucide components.
+**Spec:** `docs/superpowers/specs/2026-11-02-premium-workspaces-design.md`
+
+## Global Constraints
+
+- Preserve the warm glass, amber and lynx identity and all security invariants in CLAUDE.md.
+- No new production dependencies or Proxmox privileges. Notes maximum 4,000 characters.
+- Bulk actions are start/shutdown/reboot only, at most two concurrent requests, with explicit confirmation and individual outcomes.
+- Views are scoped to the current agent, maximum 20, names maximum 40 characters.
+- Validate API inputs; return only whitelisted configuration. Preserve partial failures and empty states.
+- Never claim operation completion merely because a request was accepted.
+
+## Review Focus
+
+- Partial config/history permission failures and offline connections must not fabricate metrics or erase useful state.
+- Favorites survive node migration and partial note/favorite writes cannot overwrite each other.
+- Corrupt browser storage, stale views and deleted guests recover without crashing.
+- Batch selection is explicit and cannot silently include guests hidden by filters; duplicate submission is disabled.
+- CSV text starting with spreadsheet operators is neutralized; long names, text and phone layouts remain usable.
+
+## Task 1: Guest workspaces and durable metadata
+
+Files: new `server/src/guest-insights.ts`, `server/test/guest-insights.test.ts`; modify `server/src/index.ts`, `server/src/store.ts`, `server/dev/mock-proxmox.ts`; new `web/src/pages/GuestDetail.tsx`, `web/src/components/ResourceHistory.tsx`, `web/src/lib/guest-workspace.ts`; modify `web/src/lib/api.ts`, `web/src/lib/queries.ts`, `web/src/App.tsx`, `web/src/components/GuestTable.tsx`.
+
+- [ ] Write failing tests for metadata merging/cleanup and configuration/metric normalization; implement the API contract from the spec.
+- [ ] Add deterministic RRD/config responses to the mock API.
+- [ ] Implement guest identity/path helpers and typed metadata/insights hooks.
+- [ ] Build detail pages, accessible history graphs, editable notes and pin controls; link guest names to their detail pages.
+- [ ] Verify source and mock integration; run typecheck, tests and build; review; commit the working guest workspace.
+
+## Task 2: Inventory views, CSV and bulk operations
+
+Files: new `web/src/lib/guest-inventory.ts`, `web/src/lib/bulk-actions.ts`, `web/test/workspace.test.ts`, `web/src/components/BulkGuestActions.tsx`; modify `web/src/pages/Guests.tsx`, `web/src/components/GuestTable.tsx`, `package.json`.
+
+- [ ] Write and observe failing pure tests for combined filters/sorting, corrupt saved view recovery, CSV injection, concurrency limits and partial failures.
+- [ ] Add filters, sorting, pins, saved views and export; persist views with an agent-specific storage key.
+- [ ] Add explicit guest selection on desktop and phone, a confirmation list, bounded operations, and individual results.
+- [ ] Clear selections on view/filter changes; prevent selection or submission while a batch runs.
+- [ ] Run typecheck, full unit suite, build and browser flows; review; commit the working inventory upgrade.
+
+## Task 3: Overview, product presentation and release validation
+
+Files: modify `web/src/pages/Overview.tsx`, `web/src/components/CommandPalette.tsx`, `README.md`, `design.md`; site `index.html`, `styles.css`, `screenshots/*`.
+
+- [ ] Add health warnings, pinned guest shortcuts and guest-detail navigation from command search.
+- [ ] Update documentation and site copy with implemented capabilities, keeping install and existing mascot flows working.
+- [ ] Capture and inspect the finished app on desktop/light/phone and refresh site screenshots.
+- [ ] Run final checks and fresh whole-change review; address material findings; commit app and site changes and push both repos.
+
+## Progress
+
+- Planning: scope chosen under explicit user delegation. Existing repository contents synchronized with prior pushed work before implementation.
