@@ -10,6 +10,10 @@ A modern web app for managing Proxmox VE on your local network: find hosts, star
 
 <table>
   <tr>
+    <td width="50%"><img src="docs/screenshots/guest-detail.png" alt="Guest workspace with performance history, configuration and notes" /><br /><sub><b>Guest workspace</b>: real history, configuration, notes and your important machines pinned close</sub></td>
+    <td width="50%"><img src="docs/screenshots/bulk-actions.png" alt="Individual results for a reviewed batch of power requests" /><br /><sub><b>Batch requests</b>: review the targets and see an outcome for every guest</sub></td>
+  </tr>
+  <tr>
     <td width="50%"><img src="docs/screenshots/guests.png" alt="Guests with live usage and actions" /><br /><sub><b>Guests</b>: live status, addresses and usage, with one-click SSH, reboot and more</sub></td>
     <td width="50%"><img src="docs/screenshots/create.png" alt="Create a Claude Code server" /><br /><sub><b>Create</b>: a Claude Code server from a template, with every setting adjustable</sub></td>
   </tr>

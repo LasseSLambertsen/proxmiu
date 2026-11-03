@@ -50,8 +50,8 @@ Files: modify `web/src/pages/Overview.tsx`, `web/src/components/CommandPalette.t
 
 - [x] Add health warnings, pinned guest shortcuts and guest-detail navigation from command search.
 - [x] Update documentation and site copy with implemented capabilities, keeping install and existing mascot flows working.
-- [ ] Capture and inspect the finished app on desktop/light/phone and refresh site screenshots.
-- [ ] Run final checks and fresh whole-change review; address material findings; commit app and site changes and push both repos.
+- [x] Capture and inspect the finished app on desktop/light/phone and refresh site screenshots.
+- [x] Run final checks and fresh whole-change review; address material findings; commit app and site changes and push both repos.
 
 ## Progress
 
@@ -61,3 +61,5 @@ Files: modify `web/src/pages/Overview.tsx`, `web/src/components/CommandPalette.t
 - Integration fixture finding resolved: a build changed asset hashes after Fastify startup. A live Vite preview removed the stale registration while developing; the production browser regression serves the final bundle independently.
 - Fresh review found and verified fixes for outage-related draft loss and stale healthy status, then confirmed full phone guest names/addresses and compact completed-batch presentation. Final disposition: ship, no remaining findings from that review.
 - Ruling: cap a batch at 50 explicit targets, retaining the planned two-request concurrency, to keep confirmations and result review manageable.
+- Release evidence (2026-11-03): 22 passing unit tests, typecheck and production build; passing isolated outage and mascot browser checks; passing mock-backed guest/inventory workflows; 12 current screenshots; website desktop/phone checks with all 14 images loaded and working install-copy, screenshot, navigation and mascot flows. Fresh app and website reviewers both returned ship after the identified issues were corrected.
+- Commits are separated into the design plan, functional app upgrade, and presentation/screenshots updates. GitHub publication verifies blob hashes and the complete tree against each local reviewed commit.
