@@ -17,6 +17,8 @@ import { selfUpdateInfo, startSelfUpdate } from './self-update.js'
 import { allTemplates, builtinTemplates, templateSchema } from './templates.js'
 import { communityScriptTemplate, listCommunityScripts } from './template-sources.js'
 import { tlsOptions } from './tls.js'
+import { loadNotes, saveNotes, notesSchema, loadOperations, runOperation, operationSchema, readTask } from './guest-operations.js'
+import { aiSettingsSchema, buildAiContext, reviewSchema, reviewSetup } from './ai.js'
 
 const VERSION = '0.2.0'
 const PASSWORD = process.env.PROXMIU_PASSWORD
@@ -177,7 +179,48 @@ app.get('/api/guest-metadata', async () => store.listGuestMetadata())
 app.put('/api/guest-metadata/:id/:type/:vmid', async (req) => {
   const p = guestMetadataParamsSchema.parse(req.params)
   const patch = guestMetadataPatchSchema.parse(req.body)
+  if (patch.notes !== undefined) return reqNotesMoved()
   return store.updateGuestMetadata(p.id, p.type, p.vmid, patch)
+})
+
+function reqNotesMoved(): never {
+  throw Object.assign(new Error('Notes now use the Proxmox description. Update this UI and save notes from the guest workspace.'), { statusCode: 400 })
+}
+
+app.get('/api/clusters/:id/guests/:node/:type/:vmid/notes', async (req) => {
+  const p = guestInsightsParamsSchema.parse(req.params)
+  const notes = await loadNotes(clientFor(p.id), p)
+  const legacyNotes = store.listGuestMetadata()[`${p.id}/${p.type}/${p.vmid}`]?.notes
+  return { ...notes, ...(legacyNotes ? { legacyNotes } : {}) }
+})
+
+app.put('/api/clusters/:id/guests/:node/:type/:vmid/notes', async (req) => {
+  const p = guestInsightsParamsSchema.parse(req.params)
+  return saveNotes(clientFor(p.id), p, notesSchema.parse(req.body))
+})
+
+app.get('/api/clusters/:id/guests/:node/:type/:vmid/operations', async (req) => {
+  const p = guestInsightsParamsSchema.parse(req.params)
+  return loadOperations(clientFor(p.id), p)
+})
+
+// Task access is limited to tasks started here, tied to the original connection/node.
+const operationTasks = new Map<string, number>()
+const taskKey = (id: string, node: string, upid: string) => JSON.stringify([id, node, upid])
+app.post('/api/clusters/:id/guests/:node/:type/:vmid/operations', async (req) => {
+  const p = guestInsightsParamsSchema.parse(req.params)
+  const op = operationSchema.parse(req.body)
+  const result = await runOperation(clientFor(p.id), p, op)
+  for (const [key, at] of operationTasks) if (Date.now() - at > 7 * 86400_000) operationTasks.delete(key)
+  if (operationTasks.size >= 1000) operationTasks.delete(operationTasks.keys().next().value!)
+  operationTasks.set(taskKey(p.id, result.node, result.upid), Date.now())
+  return result
+})
+
+app.get('/api/clusters/:id/tasks/:node/:upid', async (req, reply) => {
+  const p = z.object({ id: z.string().min(1).max(200).regex(/^[\w-]+$/), node: z.string().min(1).max(253).regex(/^[\w][\w.-]*$/), upid: z.string().startsWith('UPID:').max(500).refine(s => !/[\/\r\n]/.test(s)) }).parse(req.params)
+  if (!operationTasks.has(taskKey(p.id, p.node, p.upid))) return reply.status(404).send({ error: 'Task not tracked by this agent. Check its status in Proxmox; the agent may have restarted.' })
+  return readTask(clientFor(p.id), p.node, p.upid)
 })
 
 app.get('/api/clusters/:id/guests/:node/:type/:vmid/insights', async (req) => {
@@ -372,6 +415,33 @@ app.get<{ Params: { id: string } }>('/api/jobs/:id', async (req, reply) => {
 })
 
 // --- settings & ssh -------------------------------------------------------------
+
+app.get('/api/ai/settings', async () => store.aiSettings())
+app.put('/api/ai/settings', async (req) => store.saveAiSettings(aiSettingsSchema.parse(req.body)))
+app.delete('/api/ai/settings', async () => store.removeAiSettings())
+app.get('/api/ai/context', async () => {
+  const connections = store.listClusters()
+  if (connections.length > 50) throw Object.assign(new Error('Review supports up to 50 connections.'), { statusCode: 400 })
+  const resources = await Promise.all(connections.map(async connection => {
+    try {
+      return { resources: await clientFor(connection.id).get<Record<string, unknown>[]>('/cluster/resources') }
+    } catch { return { error: true } }
+  }))
+  return buildAiContext(resources)
+})
+
+let reviewing = false
+let lastReviewAt = 0
+app.post('/api/ai/review', async (req, reply) => {
+  const { context } = reviewSchema.parse(req.body)
+  const settings = store.aiCredentials()
+  if (!context.clusters.some(c => c.nodes.length || c.guests.length)) return reply.status(400).send({ error: 'No resource readings are available. Reconnect a Proxmox host before requesting advice.' })
+  if (reviewing || Date.now() - lastReviewAt < 10_000) return reply.status(429).send({ error: 'A review was just requested. Wait a moment before trying again.' })
+  reviewing = true
+  lastReviewAt = Date.now()
+  try { return await reviewSetup(settings, context) }
+  finally { reviewing = false }
+})
 
 app.get('/api/settings', async () => {
   const key = store.sshKey()

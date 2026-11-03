@@ -96,6 +96,10 @@ export function Layout({ authRequired, onLogout, onDisconnect }: { authRequired:
             ))}
           </nav>
           <div className="space-y-px border-t border-border-subtle p-3 max-lg:p-2">
+            <button type="button" data-lynx-wake aria-controls="proxmiu-lynx" aria-expanded={false} aria-label="Meet your lynx" title="Meet your lynx" className={cn(footerBtn, 'mb-2 h-10 focus-visible:outline-2 focus-visible:outline-brand max-lg:justify-center max-lg:px-0')}>
+              <img src={LOGO} alt="" className="size-6 shrink-0 rounded-md" />
+              <span className="max-lg:hidden">Meet your lynx</span>
+            </button>
             <div className="mb-1.5 flex items-center gap-2 rounded-md px-2.5 py-1.5 text-[12px] text-faint max-lg:hidden" title={agentUrl || 'Agent serving this page'}>
               <span className="size-1.5 shrink-0 rounded-full bg-success shadow-[0_0_0_3px_var(--success-soft)]" />
               <span className="truncate">{agentUrl ? agentUrl.replace(/^https?:\/\//, '') : 'Local agent'}</span>
@@ -136,7 +140,10 @@ function MobileTopBar({ onSearch }: { onSearch: () => void }) {
   return (
     <div className="sticky top-0 z-30 hidden h-[calc(52px+env(safe-area-inset-top))] items-end border-b border-border-subtle bg-background/80 px-4 pb-2.5 backdrop-blur-xl max-sm:flex">
       <Logo size={26} />
-      <button onClick={onSearch} className="ml-auto flex size-9 items-center justify-center rounded-full text-muted active:bg-hover" aria-label="Search">
+      <button type="button" data-lynx-wake aria-controls="proxmiu-lynx" aria-expanded={false} aria-label="Meet your lynx" title="Meet your lynx" className="ml-auto flex size-11 items-center justify-center rounded-full focus-visible:outline-2 focus-visible:outline-brand active:bg-hover">
+        <img src={LOGO} alt="" className="size-7 rounded-lg" />
+      </button>
+      <button onClick={onSearch} className="flex size-11 items-center justify-center rounded-full text-muted active:bg-hover" aria-label="Search">
         <Search className="size-[18px]" strokeWidth={2} />
       </button>
     </div>

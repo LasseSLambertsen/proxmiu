@@ -81,7 +81,7 @@ Shadows: `--shadow-card` is a soft ambient shadow plus a 1px white inner highlig
 
 Subtle and quick: 150–200ms, ease-out or `cubic-bezier(0.16,1,0.3,1)`. Animate only opacity, transform, colour and width (meters). No bouncing, nothing longer than 700ms (meter width).
 
-The hidden lynx companion is an intentional exception: five quick logo clicks reveal a small mascot with a swishing tail, blinking eyes and a pet interaction. It stays clear of the mobile dock, closes with Escape or its dismiss button, and disables its animations when reduced motion is requested. The app and presentation site share `lynx-easter-egg.js`.
+The visible lynx companion is an intentional exception: the companion button (or five quick logo clicks) reveals a small mascot with a swishing tail, blinking eyes and a pet interaction. It stays clear of the mobile dock, closes with Escape or its dismiss button, and disables its animations when reduced motion is requested. The app and presentation site share `lynx-easter-egg.js`; a mascot-led advisor and site story make it part of the product.
 
 ## Icons
 
@@ -112,7 +112,10 @@ Lucide only, 16px in UI (20–22px in the mobile dock), stroke 1.75–2. Icons i
 ## Guest workspaces and inventory
 
 - Guest names and command-palette results open `/guests/:clusterId/:node/:type/:vmid`. Detail pages keep power actions, SSH, configuration, real RRD history and notes together. History gaps are gaps; missing data is never drawn as zero usage. Charts support pointer inspection and left/right keyboard navigation.
-- Pins and notes belong to the agent, keyed by connection/type/vmid so a node migration retains them. Notes use an explicit save action and remain editable after failed saves; partial updates never replace the other metadata field.
+- Pins belong to the agent, keyed by connection/type/vmid. Notes use the existing Proxmox description and configuration digest, with an explicit save action. Failed or stale saves preserve drafts; older agent notes are recoverable by deliberate user action.
 - Inventory filters are independent, with browser-local saved views scoped to the agent. Advanced filters collapse on phones so the guest list remains useful. Export includes visible inventory fields and neutralizes spreadsheet formulas.
 - Multi-select operations review a fixed target list and report each outcome. At most 50 guests and two concurrent requests; queued requests stop if the page is left or the agent becomes unavailable. Bulk operations use the existing authenticated power routes.
 - Overview health warnings use the latest actual connection/node state and a 90% resource threshold. They do not imply sustained monitoring or background notification delivery.
+
+- Advanced operations live together in the guest workspace. Rollback and snapshot deletion require typed guest-name confirmation. Accepted tasks show their actual running/stopped status and exit result; partial permission errors remain explicit.
+- The optional AI advisor lives in Settings with the lynx mark. Provider credentials are password inputs and never reappear after save. Show the exact anonymous numeric preview before consent, render advice as plain text, and avoid implying a point-in-time reading proves sustained use.

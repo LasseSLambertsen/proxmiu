@@ -30,6 +30,7 @@ interface State {
   /** last username used per SSH host, so the terminal dialog can prefill it */
   sshUsers: Record<string, string>
   guestMetadata: Record<string, GuestMetadata>
+  ai?: { provider: 'openai' | 'anthropic'; model: string; token: string }
 }
 
 mkdirSync(DATA_DIR, { recursive: true, mode: 0o700 })
@@ -75,6 +76,24 @@ function save() {
 }
 
 export const store = {
+  aiSettings() {
+    return { configured: !!state.ai, provider: state.ai?.provider ?? 'openai' as const, model: state.ai?.model ?? 'gpt-4o-mini' }
+  },
+  aiCredentials() {
+    if (!state.ai) throw Object.assign(new Error('Add an AI token in Settings first.'), { statusCode: 409 })
+    return { ...state.ai, token: decrypt(state.ai.token) }
+  },
+  saveAiSettings(input: { provider: 'openai' | 'anthropic'; model: string; token?: string }) {
+    if (!input.token && (!state.ai || state.ai.provider !== input.provider)) throw Object.assign(new Error('Enter a new token when choosing a provider.'), { statusCode: 400 })
+    state.ai = { provider: input.provider, model: input.model, token: input.token ? encrypt(input.token) : state.ai!.token }
+    save()
+    return store.aiSettings()
+  },
+  removeAiSettings() {
+    delete state.ai
+    save()
+    return store.aiSettings()
+  },
   listClusters: () => state.clusters,
   getCluster(id: string) {
     const c = state.clusters.find((c) => c.id === id)

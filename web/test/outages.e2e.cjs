@@ -40,6 +40,8 @@ async function main() {
         if (mode === 'agent-offline') return route.fulfill({ status: 503, json: { error: 'Agent unavailable' } })
         data = { clusters: [mode === 'host-offline' ? { ...cluster, ok: false, nodes: [], guests: [] } : cluster] }
       } else if (url.pathname.endsWith('/insights')) data = { config: { networks: [], disks: [] }, metrics: [] }
+      else if (url.pathname.endsWith('/notes')) data = { notes: '', digest: 'initial' }
+      else if (url.pathname.endsWith('/operations')) data = { snapshots: [], storages: [], targets: [], errors: [] }
       else if (url.pathname.endsWith('/ips')) data = { 'lxc/110': '192.0.2.10' }
       else if (url.pathname === '/api/templates' || url.pathname === '/api/jobs') data = []
       else if (url.pathname !== '/api/guest-metadata') return route.fulfill({ status: 404, json: { error: 'No fixture for this API' } })

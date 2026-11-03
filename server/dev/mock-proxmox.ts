@@ -4,6 +4,7 @@
  * Containers it "creates" report MOCK_GUEST_IP (default 127.0.0.1) so provisioning can SSH somewhere real.
  */
 import { execFileSync } from 'node:child_process'
+import { createHash } from 'node:crypto'
 import { mkdtempSync, readFileSync } from 'node:fs'
 import { createServer } from 'node:https'
 import { tmpdir } from 'node:os'
@@ -62,8 +63,12 @@ function findGuest(node: string, type: string, vmid: string): Guest {
   return guest
 }
 
+const descriptions = new Map<string, string>()
+const snapshots = new Map<string, { name: string; description: string; snaptime: number }[]>()
+const guestKey = (g: Guest) => `${g.type}/${g.vmid}`
 function guestConfig(g: Guest) {
-  const common = { description: `${g.name} — managed in the homelab`, cores: g.maxcpu, memory: g.maxmem / 1024 ** 2, onboot: g.template ? 0 : 1 }
+  const description = descriptions.get(guestKey(g)) ?? `${g.name} — managed in the homelab`
+  const common = { description, digest: createHash('sha1').update(description).digest('hex'), cores: g.maxcpu, memory: g.maxmem / 1024 ** 2, onboot: g.template ? 0 : 1 }
   const diskSize = g.maxdisk / GiB
   if (g.type === 'lxc') return {
     ...common, hostname: g.name, ostype: 'debian', unprivileged: 1,
@@ -158,6 +163,45 @@ const routes: [string, RegExp, Handler][] = [
   ],
   ['POST', /^\/nodes\/[\w-]+\/qemu\/\d+\/config$/, () => null],
   ['GET', /^\/nodes\/([\w.-]+)\/(qemu|lxc)\/(\d+)\/config$/, (m) => guestConfig(findGuest(m[1], m[2], m[3]))],
+  ['PUT', /^\/nodes\/([\w.-]+)\/(qemu|lxc)\/(\d+)\/config$/, (m, b) => {
+    const g = findGuest(m[1], m[2], m[3])
+    if (b.get('digest') !== guestConfig(g).digest) throw Object.assign(new Error('Configuration changed'), { statusCode: 409 })
+    descriptions.set(guestKey(g), b.get('delete') === 'description' ? '' : b.get('description') ?? guestConfig(g).description)
+    return null
+  }],
+  ['GET', /^\/nodes\/([\w.-]+)\/(qemu|lxc)\/(\d+)\/snapshot$/, (m) => {
+    const g = findGuest(m[1], m[2], m[3])
+    return [{ name: 'current' }, ...(snapshots.get(guestKey(g)) ?? [])]
+  }],
+  ['POST', /^\/nodes\/([\w.-]+)\/(qemu|lxc)\/(\d+)\/snapshot$/, (m, b) => {
+    const g = findGuest(m[1], m[2], m[3])
+    const list = snapshots.get(guestKey(g)) ?? []
+    if (list.some(s => s.name === b.get('snapname'))) throw new Error('Snapshot already exists')
+    list.push({ name: b.get('snapname')!, description: b.get('description') ?? '', snaptime: now() })
+    snapshots.set(guestKey(g), list)
+    return task(g.node, 'snapshot', 1200)
+  }],
+  ['DELETE', /^\/nodes\/([\w.-]+)\/(qemu|lxc)\/(\d+)\/snapshot\/([\w-]+)$/, (m) => {
+    const g = findGuest(m[1], m[2], m[3])
+    snapshots.set(guestKey(g), (snapshots.get(guestKey(g)) ?? []).filter(s => s.name !== m[4]))
+    return task(g.node, 'delsnapshot', 1000)
+  }],
+  ['POST', /^\/nodes\/([\w.-]+)\/(qemu|lxc)\/(\d+)\/snapshot\/([\w-]+)\/rollback$/, (m) => {
+    const g = findGuest(m[1], m[2], m[3])
+    if (!(snapshots.get(guestKey(g)) ?? []).some(s => s.name === m[4])) throw new Error('Snapshot not found')
+    return task(g.node, 'rollback', 1500)
+  }],
+  ['POST', /^\/nodes\/([\w.-]+)\/(qemu|lxc)\/(\d+)\/migrate$/, (m, b) => {
+    const g = findGuest(m[1], m[2], m[3])
+    const node = g.node
+    if (!nodes.some(n => n.node === b.get('target') && n.node !== node)) throw new Error('Invalid migration target')
+    g.node = b.get('target')!
+    return task(node, 'migrate', 1500)
+  }],
+  ['POST', /^\/nodes\/([\w.-]+)\/vzdump$/, (m, b) => {
+    if (b.get('storage') !== 'local' || !guests.some(g => g.node === m[1] && g.vmid === Number(b.get('vmid')))) throw new Error('Invalid backup target')
+    return task(m[1], 'vzdump', 1800)
+  }],
   ['GET', /^\/nodes\/([\w.-]+)\/(qemu|lxc)\/(\d+)\/rrddata$/, (m, q) => guestHistory(findGuest(m[1], m[2], m[3]), q)],
   ['PUT', /^\/nodes\/[\w-]+\/qemu\/\d+\/resize$/, () => null],
   [
@@ -224,7 +268,7 @@ createServer({ key: readFileSync(join(dir, 'key.pem')), cert: readFileSync(join(
         try {
           return send(200, { data: fn(m, params) })
         } catch (err) {
-          return send(500, { data: null, message: (err as Error).message })
+          return send((err as Error & { statusCode?: number }).statusCode ?? 500, { data: null, message: (err as Error).message })
         }
       }
     }

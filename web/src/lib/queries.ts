@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { api, type ClusterOverview, type CommunityScript, type Connection, type Guest, type GuestInsights, type GuestMetadata, type Template } from './api'
+import { api, type AiSettings, type ClusterOverview, type CommunityScript, type Connection, type Guest, type GuestInsights, type GuestMetadata, type GuestNotes, type GuestOperations, type GuestTask, type GuestTaskStatus, type Template } from './api'
 import { guestApiPath, guestKey, type HistoryRange } from './guest-workspace'
 
 export const useGuestMetadata = () => useQuery({ queryKey: ['guest-metadata'], queryFn: () => api.get<Record<string, GuestMetadata>>('/guest-metadata') })
@@ -25,6 +25,48 @@ export function useGuestInsights(guest: Guest | undefined, timeframe: HistoryRan
     retry: 1,
   })
 }
+
+export function useGuestNotes(guest: Guest, enabled = true) {
+  return useQuery({
+    queryKey: ['guest-notes', guestKey(guest), guest.node],
+    queryFn: () => api.get<GuestNotes>(`${guestApiPath(guest)}/notes`),
+    enabled,
+    refetchOnWindowFocus: false,
+    retry: false,
+  })
+}
+
+export function useSaveGuestNotes(guest: Guest) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (notes: Pick<GuestNotes, 'notes' | 'digest'>) => api.put<GuestNotes>(`${guestApiPath(guest)}/notes`, notes),
+    onSuccess: value => {
+      qc.setQueryData(['guest-notes', guestKey(guest), guest.node], value)
+      qc.invalidateQueries({ queryKey: ['guest-insights', guestKey(guest)] })
+    },
+  })
+}
+
+export function useGuestOperations(guest: Guest, enabled = true) {
+  return useQuery({
+    queryKey: ['guest-operations', guestKey(guest), guest.node],
+    queryFn: () => api.get<GuestOperations>(`${guestApiPath(guest)}/operations`),
+    enabled,
+    retry: false,
+  })
+}
+
+export function useGuestTask(guest: Guest, task: GuestTask | null) {
+  return useQuery({
+    queryKey: ['guest-task', guest.clusterId, task?.node, task?.upid],
+    queryFn: () => api.get<GuestTaskStatus>(`/clusters/${encodeURIComponent(guest.clusterId)}/tasks/${encodeURIComponent(task!.node)}/${encodeURIComponent(task!.upid)}`),
+    enabled: !!task,
+    refetchInterval: query => query.state.data?.status === 'stopped' ? false : 1500,
+    retry: false,
+  })
+}
+
+export const useAiSettings = () => useQuery({ queryKey: ['ai-settings'], queryFn: () => api.get<AiSettings>('/ai/settings'), retry: false })
 
 export function useOverview() {
   return useQuery({

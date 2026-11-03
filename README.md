@@ -8,7 +8,13 @@ A modern web app for managing Proxmox VE on your local network: find hosts, star
 
 ![Proxmiu overview](docs/screenshots/overview.png)
 
+Screenshots use synthetic data from the bundled Proxmox mock. They do not show a real Proxmox host.
+
 <table>
+  <tr>
+    <td width="50%"><img src="docs/screenshots/guest-operations.png" alt="Snapshot task completion, backup storage and migration controls" /><br /><sub><b>Advanced operations</b>: snapshots, backups and migration with actual task results</sub></td>
+    <td width="50%"><img src="docs/screenshots/ai-settings.png" alt="Optional AI provider token settings and inventory privacy explanation" /><br /><sub><b>Optional AI advice</b>: your encrypted token, reviewed metrics and explicit consent</sub></td>
+  </tr>
   <tr>
     <td width="50%"><img src="docs/screenshots/guest-detail.png" alt="Guest workspace with performance history, configuration and notes" /><br /><sub><b>Guest workspace</b>: real history, configuration, notes and your important machines pinned close</sub></td>
     <td width="50%"><img src="docs/screenshots/bulk-actions.png" alt="Individual results for a reviewed batch of power requests" /><br /><sub><b>Batch requests</b>: review the targets and see an outcome for every guest</sub></td>
@@ -51,10 +57,13 @@ The **agent** is a small Node service that runs on your network (Docker, or any 
 ## Features
 
 - **Guest workspaces** – open any guest for its configuration, network interfaces and disks, current usage, and CPU, memory, network and disk history over an hour, day or week. History comes from Proxmox RRD; unavailable data stays clearly marked.
-- **Pins and notes** – keep important guests on the overview and save up to 4,000 characters of notes per guest. They live on the agent and follow the guest across node migrations and browser changes.
+- **Pins and notes** – keep important guests on the overview and edit the existing Proxmox notes for each guest. Pins live on the agent and follow the guest across node migrations. Notes read and save the guest’s existing Proxmox description, shared with the Proxmox UI; older agent notes remain available for explicit recovery.
 - **Your inventory** – combine status, guest type and node filters, sort by resource usage, save up to 20 named views per browser and agent, and export the visible inventory as CSV.
 - **Bulk power requests** – select up to 50 guests, review the targets, and start, reboot or gracefully shut them down. Requests run two at a time with a result for every guest. Accepted requests and completed power changes are shown separately through the results and live status.
 - **Health at a glance** – spot unavailable connections, offline nodes and guests currently using at least 90% of their allocated CPU or memory. These are current readings, not background alert notifications.
+- **Snapshots, backups and migration** – create snapshots, roll back or delete with typed confirmation, start a snapshot-mode backup to eligible storage, and migrate to another online node. HA-managed guests use Proxmox HA controls. Track the actual Proxmox task through completion or failure. Storage and guest compatibility are checked by Proxmox; LXC migration can restart the container.
+- **Optional AI setup review** – add an OpenAI or Anthropic API token in Settings. The agent encrypts it at rest. Preview the anonymous numeric resource snapshot and explicitly send it for advice. Names, addresses, notes, credentials, logs and configuration are excluded; advice never changes your infrastructure automatically. Provider usage is billed by your provider.
+- **Lynx companion** – a visible companion button brings the mascot into the app; five quick logo clicks still work. Dismiss it with Escape or the close button. Reduced motion is respected.
 - **Discovery** – scans the subnets the agent is on for Proxmox (port 8006) and connects with an API token or password.
 - **Overview** – nodes, VMs and containers across all connections with live CPU, memory, IP addresses and uptime.
 - **Power actions** – start, shut down, reboot, force stop and delete guests; reboot or shut down nodes.
@@ -230,7 +239,7 @@ With the Tailscale app on, connect to `https://<machine>.<tailnet>.ts.net`. To i
 The Proxmox installer does this for you. To add a host by hand, create a limited user and token in a shell on that host:
 
 ```bash
-pveum role add Proxmiu --privs "Sys.Audit,Sys.PowerMgmt,VM.Audit,VM.PowerMgmt,VM.Allocate,VM.Clone,VM.Config.CPU,VM.Config.Memory,VM.Config.Disk,VM.Config.Network,VM.Config.Options,VM.Config.Cloudinit,VM.Config.HWType,Datastore.Audit,Datastore.AllocateSpace,Datastore.AllocateTemplate,SDN.Audit,SDN.Use,VM.GuestAgent.Audit"
+pveum role add Proxmiu --privs "Sys.Audit,Sys.PowerMgmt,VM.Audit,VM.PowerMgmt,VM.Allocate,VM.Clone,VM.Snapshot,VM.Snapshot.Rollback,VM.Backup,VM.Migrate,VM.Config.CPU,VM.Config.Memory,VM.Config.Disk,VM.Config.Network,VM.Config.Options,VM.Config.Cloudinit,VM.Config.HWType,Datastore.Audit,Datastore.AllocateSpace,Datastore.AllocateTemplate,SDN.Audit,SDN.Use,VM.GuestAgent.Audit"
 pveum user add proxmiu@pve
 pveum acl modify / --users proxmiu@pve --roles Proxmiu
 pveum user token add proxmiu@pve agent --privsep 0
@@ -239,6 +248,18 @@ pveum user token add proxmiu@pve agent --privsep 0
 On Proxmox VE 8, replace `VM.GuestAgent.Audit` with `VM.Monitor`. Then go to **Connections → Scan → Connect** in Proxmiu, with token ID `proxmiu@pve!agent` and the secret printed above.
 
 For the quickest test setup, `pveum user token add root@pam proxmiu --privsep 0` also works, but that token has full root access.
+
+### Existing installations: enable advanced guest operations
+
+Updating Proxmiu does not elevate an existing connection's privileges. An administrator can extend the existing `Proxmiu` role on the Proxmox host:
+
+```bash
+pveum role modify Proxmiu --append 1 --privs "VM.Snapshot,VM.Snapshot.Rollback,VM.Backup,VM.Migrate"
+```
+
+Editing notes also needs `VM.Config.Options`; backup storage needs `Datastore.Audit` and `Datastore.AllocateSpace`, already included in the setup above. With a privilege-separated token, grant the required rights to both the user and token. Permission errors stay visible in Proxmiu. These features do not manage backup schedules, storage, firewall, users or cluster membership. Snapshot rollback can discard changes after the snapshot; keep independent backups.
+
+The app tracks tasks started through its advanced workspace for this agent process. After an agent restart, check ongoing tasks in Proxmox before retrying an operation. No real Proxmox host or live AI account has been used for verification; the test suite uses isolated fixtures and a mock Proxmox API.
 
 ## How creating a server works
 
@@ -294,8 +315,12 @@ npm test
 npm run build
 ```
 
-With Playwright available, `node web/test/outages.e2e.cjs` checks draft-note preservation and stale health states against isolated API fixtures after a build. `node web/test/lynx.e2e.cjs` checks the hidden mascot. Set `CHROMIUM_PATH` to use a system Chromium installation. Neither check contacts a Proxmox host.
+With Playwright available, `node web/test/outages.e2e.cjs` checks draft-note preservation and stale health states against isolated API fixtures after a build. `node web/test/lynx.e2e.cjs` checks visible companion controls and the logo Easter egg. Set `CHROMIUM_PATH` to use a system Chromium installation. Neither check contacts a Proxmox host.
 
 Stack: Fastify, ssh2 and undici for the agent; React, TanStack Query, Tailwind CSS v4, Radix and cmdk for the UI, set in Geist.
 
 Contributions are welcome. Read [CONTRIBUTING.md](CONTRIBUTING.md) for the setup, architecture rules and pull-request checklist.
+
+`CHROMIUM_PATH=/usr/bin/chromium node web/test/advanced.e2e.cjs` checks Proxmox notes save/clear/conflict recovery, reviewed guest operations and task failures, plus optional AI settings and consent against isolated fixtures. `server/test/advanced-api.test.ts` also runs the authenticated agent against the bundled Proxmox mock; no live infrastructure or AI provider is contacted.
+
+To reproduce current release screenshots after building, run `CHROMIUM_PATH=/usr/bin/chromium node scripts/capture-advanced.cjs`. It starts an isolated local agent and synthetic Proxmox mock, writes captures to `/tmp/proxmiu-release` (override `CAPTURE_DIR`), and cleans up the servers and agent data. AI remains unconfigured and no provider calls occur.
