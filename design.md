@@ -119,3 +119,6 @@ Lucide only, 16px in UI (20–22px in the mobile dock), stroke 1.75–2. Icons i
 
 - Advanced operations live together in the guest workspace. Rollback and snapshot deletion require typed guest-name confirmation. Accepted tasks show their actual running/stopped status and exit result; partial permission errors remain explicit.
 - The optional AI advisor lives in Settings with the lynx mark. Provider credentials are password inputs and never reappear after save. Show the exact anonymous numeric preview before consent, render advice as plain text, and avoid implying a point-in-time reading proves sustained use.
+
+- Resource edits are a focused form in the guest workspace: label cores per socket and memory in MiB, retain the socket count, review old and new values before save, and explain stopped/pending/unsupported states. Conflicts preserve drafts and require deliberate reload.
+- Backup inventories identify the selected storage and distinguish permission/read failures from a verified empty list. Tracked task logs use the original task node, render plain text and bound both paging and total display.

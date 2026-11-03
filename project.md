@@ -91,3 +91,5 @@ browser ── UI (static SPA) ──► agent (Node, on the LAN) ──► Prox
 See the README table. Key variables: `PROXMIU_PASSWORD`, `PROXMIU_ALLOWED_ORIGINS`, `PROXMIU_TLS`, `PROXMIU_TLS_CERT`/`KEY`, `HOST`, `PORT`, `PROXMIU_DATA_DIR`, `PROXMIU_SECRET_KEY`.
 
 Advanced guest workspaces now use native Proxmox notes and track snapshot, backup and migration tasks. Optional AI setup advice uses encrypted provider credentials and a user-reviewed, anonymous numeric preview; it has no infrastructure write tools. The lynx companion is discoverable from the app and website. See README for privilege updates and verification limits.
+
+Guest maintenance includes reviewed stopped-guest CPU/memory/boot-setting edits with digest checks, an existing-backup browser per storage, and paged diagnostic logs for tracked tasks. These reuse existing connection permissions.

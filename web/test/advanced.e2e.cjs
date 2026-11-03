@@ -70,6 +70,8 @@ async function main() {
       else if (url.pathname === '/api/auth/status') data = { authRequired: false, authenticated: true }
       else if (url.pathname === '/api/overview') data = { clusters: [cluster] }
       else if (url.pathname.endsWith('/insights')) data = { config: { networks: [], disks: [] }, metrics: [] }
+      else if (url.pathname.endsWith('/resource-settings')) data = { cores: 2, sockets: 1, memoryMiB: 2048, onboot: true, digest: 'a'.repeat(40), status: 'running', pending: false, editable: false, reason: 'Shut down this guest before editing its allocation.' }
+      else if (url.pathname.endsWith('/backups')) data = { backups: [], errors: [], truncated: false }
       else if (url.pathname.endsWith('/ips')) data = { 'lxc/110': '192.0.2.10' }
       else if (url.pathname === '/api/templates' || url.pathname === '/api/jobs') data = []
       else if (url.pathname === '/api/guest-metadata') data = {}

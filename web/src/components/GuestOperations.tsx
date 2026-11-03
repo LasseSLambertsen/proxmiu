@@ -2,6 +2,8 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { Archive, Camera, MoveRight, RefreshCw, RotateCcw, Trash2 } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { ConfirmDialog, type ConfirmRequest } from '@/components/ConfirmDialog'
+import { GuestBackups } from '@/components/GuestBackups'
+import { GuestTaskLog } from '@/components/GuestTaskLog'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Field, Input, Select, Textarea } from '@/components/ui/form'
@@ -12,7 +14,7 @@ import { useGuestOperations, useGuestTask } from '@/lib/queries'
 export function GuestOperations({ guest, unavailable = false }: { guest: Guest; unavailable?: boolean }) {
   const qc = useQueryClient()
   const query = useGuestOperations(guest, !unavailable)
-  const [task, setTask] = useState<(GuestTask & { label: string }) | null>(null)
+  const [task, setTask] = useState<(GuestTask & { label: string; action: GuestOperation['action'] }) | null>(null)
   const status = useGuestTask(guest, task)
   const [confirm, setConfirm] = useState<ConfirmRequest | null>(null)
   const [name, setName] = useState('')
@@ -22,7 +24,7 @@ export function GuestOperations({ guest, unavailable = false }: { guest: Guest; 
   const completed = useRef<string | null>(null)
   const operation = useMutation({
     mutationFn: (body: GuestOperation) => api.post<GuestTask>(`${guestApiPath(guest)}/operations`, body),
-    onSuccess: (value, body) => setTask({ ...value, label: ({ snapshot: 'Create snapshot', rollback: 'Roll back snapshot', 'delete-snapshot': 'Delete snapshot', backup: 'Create backup', migrate: 'Migrate guest' })[body.action] }),
+    onSuccess: (value, body) => setTask({ ...value, action: body.action, label: ({ snapshot: 'Create snapshot', rollback: 'Roll back snapshot', 'delete-snapshot': 'Delete snapshot', backup: 'Create backup', migrate: 'Migrate guest' })[body.action] }),
   })
   const stopped = status.data?.status === 'stopped'
   const succeeded = stopped && status.data?.exitstatus === 'OK'
@@ -41,6 +43,8 @@ export function GuestOperations({ guest, unavailable = false }: { guest: Guest; 
     qc.invalidateQueries({ queryKey: ['guest-operations', guestKey(guest)] })
     qc.invalidateQueries({ queryKey: ['guest-insights', guestKey(guest)] })
     qc.invalidateQueries({ queryKey: ['overview'] })
+    if (task.action === 'backup') qc.invalidateQueries({ queryKey: ['guest-backups', guestKey(guest)] })
+    qc.invalidateQueries({ queryKey: ['guest-resource-settings', guestKey(guest)] })
   }, [stopped, task, qc, guest])
 
   const askSnapshot = (action: 'rollback' | 'delete-snapshot', snapshot: string) => setConfirm({
@@ -66,6 +70,7 @@ export function GuestOperations({ guest, unavailable = false }: { guest: Guest; 
         {stopped && !succeeded && <p className="whitespace-pre-wrap break-words">{status.data?.exitstatus ?? 'Proxmox stopped the task without reporting an exit status. Verify the result in Proxmox.'}</p>}
         {status.error && <div role="alert" className="space-y-2"><p>Task status could not refresh: {status.error.message}. Completion is unconfirmed; polling will retry.</p><Button onClick={() => status.refetch()}>Retry task status</Button></div>}
         <details><summary className="cursor-pointer">Task ID</summary><code className="mt-2 block break-all text-[11px]">{task.upid}</code></details>
+        <GuestTaskLog key={task.upid} clusterId={guest.clusterId} task={task} unavailable={unavailable} />
       </div>}
       <section aria-label="Snapshots" className="space-y-4">
         <h4 className="flex items-center gap-2 text-[13px] font-semibold"><Camera className="size-4 text-brand" />Snapshots</h4>
@@ -88,6 +93,7 @@ export function GuestOperations({ guest, unavailable = false }: { guest: Guest; 
           <Field label="Backup storage" className="min-w-0 flex-1 basis-44"><Select aria-label="Backup storage" value={selectedStorage} onChange={event => setStorage(event.target.value)} disabled={disabled || !storages.length}>{storages.length ? storages.map(value => <option key={value}>{value}</option>) : <option value="">No backup storage available</option>}</Select></Field>
           <Button type="submit" disabled={disabled || !selectedStorage}><Archive />Create backup</Button>
         </form>
+        <GuestBackups guest={guest} storages={storages} unavailable={unavailable || !!query.error || !query.data} />
       </section>
       <section aria-label="Migration" className="space-y-3 border-t border-border-subtle pt-5">
         <h4 className="flex items-center gap-2 text-[13px] font-semibold"><MoveRight className="size-4 text-brand" />Migration</h4>

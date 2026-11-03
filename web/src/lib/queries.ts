@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { api, type AiSettings, type ClusterOverview, type CommunityScript, type Connection, type Guest, type GuestInsights, type GuestMetadata, type GuestNotes, type GuestOperations, type GuestTask, type GuestTaskStatus, type Template } from './api'
+import { api, type AiSettings, type ClusterOverview, type CommunityScript, type Connection, type Guest, type GuestBackups, type GuestInsights, type GuestMetadata, type GuestNotes, type GuestOperations, type GuestResourceSettings, type GuestResourceUpdate, type GuestTask, type GuestTaskLog, type GuestTaskStatus, type Template } from './api'
 import { guestApiPath, guestKey, type HistoryRange } from './guest-workspace'
 
 export const useGuestMetadata = () => useQuery({ queryKey: ['guest-metadata'], queryFn: () => api.get<Record<string, GuestMetadata>>('/guest-metadata') })
@@ -53,6 +53,44 @@ export function useGuestOperations(guest: Guest, enabled = true) {
     queryFn: () => api.get<GuestOperations>(`${guestApiPath(guest)}/operations`),
     enabled,
     retry: false,
+  })
+}
+
+export function useGuestResourceSettings(guest: Guest, enabled = true) {
+  return useQuery({
+    queryKey: ['guest-resource-settings', guestKey(guest), guest.node],
+    queryFn: () => api.get<GuestResourceSettings>(`${guestApiPath(guest)}/resource-settings`),
+    enabled,
+    refetchOnWindowFocus: false,
+    retry: false,
+  })
+}
+
+export function useSaveGuestResourceSettings(guest: Guest) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (settings: GuestResourceUpdate) => api.put<GuestResourceSettings>(`${guestApiPath(guest)}/resource-settings`, settings),
+    onSuccess: value => {
+      qc.setQueryData(['guest-resource-settings', guestKey(guest), guest.node], value)
+      qc.invalidateQueries({ queryKey: ['guest-insights', guestKey(guest)] })
+      qc.invalidateQueries({ queryKey: ['overview'] })
+    },
+  })
+}
+
+export function useGuestBackups(guest: Guest, storage: string, enabled = true) {
+  return useQuery({
+    queryKey: ['guest-backups', guestKey(guest), guest.node, storage],
+    queryFn: () => api.get<GuestBackups>(`${guestApiPath(guest)}/backups?storage=${encodeURIComponent(storage)}`),
+    enabled: enabled && !!storage,
+    refetchOnWindowFocus: false,
+    retry: false,
+  })
+}
+
+export function useLoadGuestTaskLog(clusterId: string, task: GuestTask) {
+  return useMutation({
+    mutationFn: (start: number) => api.get<GuestTaskLog>(`/clusters/${encodeURIComponent(clusterId)}/tasks/${encodeURIComponent(task.node)}/${encodeURIComponent(task.upid)}/log?start=${start}`),
   })
 }
 

@@ -85,6 +85,8 @@ async function main() {
     await page.addInitScript(() => { localStorage.setItem('proxmiu-theme', 'dark') })
     const capture = async name => {
       await page.evaluate(() => document.fonts.ready)
+      // Let responsive glass layers finish painting after a viewport/scroll change.
+      await page.waitForTimeout(250)
       assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth && document.querySelector('main').scrollWidth <= document.querySelector('main').clientWidth), `${name} must fit its viewport`)
       const destination = path.join(output, name)
       await page.screenshot({ path: destination, fullPage: true, animations: 'disabled' })
@@ -111,6 +113,10 @@ async function main() {
     await capture('guest-desktop.png')
     await scrollTo('Snapshots, backups & migration')
     await capture('operations-desktop.png')
+    await page.getByRole('button', { name: 'Load task log', exact: true }).click()
+    await page.getByText('Creating snapshot before-maintenance', { exact: true }).waitFor()
+    await scrollTo('Task log')
+    await capture('task-log-desktop.png')
 
     await page.setViewportSize({ width: 390, height: 844 })
     await scrollTop()
@@ -121,6 +127,23 @@ async function main() {
     await capture('operations-mobile.png')
     await scrollTo('Backups')
     await capture('backup-migration-mobile.png')
+    await scrollTo('Existing backups')
+    await capture('backups-mobile.png')
+
+    await page.goto(`${origin}/guests/${connection.id}/pve2/qemu/103`, { waitUntil: 'networkidle' })
+    await page.getByRole('heading', { name: 'Resource settings', exact: true }).waitFor()
+    await page.getByLabel('Cores per socket', { exact: true }).fill('4')
+    await page.getByLabel('Memory (MiB)', { exact: true }).fill('8192')
+    await page.getByRole('button', { name: 'Review resource changes', exact: true }).click()
+    await page.getByRole('dialog').getByRole('button', { name: 'Apply resource changes', exact: true }).click()
+    await page.getByRole('dialog').waitFor({ state: 'detached' })
+    assert.equal((await api(`/clusters/${connection.id}/guests/pve2/qemu/103/resource-settings`)).memoryMiB, 8192)
+    await scrollTo('Resource settings')
+    await capture('resources-mobile.png')
+    await page.setViewportSize({ width: 1440, height: 1200 })
+    await scrollTop()
+    await capture('resources-desktop.png')
+    await page.setViewportSize({ width: 390, height: 844 })
 
     await page.goto(`${origin}/settings`, { waitUntil: 'networkidle' })
     await page.getByText('No AI token configured', { exact: true }).waitFor()

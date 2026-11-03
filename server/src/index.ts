@@ -19,6 +19,8 @@ import { communityScriptTemplate, listCommunityScripts } from './template-source
 import { tlsOptions } from './tls.js'
 import { loadNotes, saveNotes, notesSchema, loadOperations, runOperation, operationSchema, readTask } from './guest-operations.js'
 import { aiSettingsSchema, buildAiContext, reviewSchema, reviewSetup } from './ai.js'
+import { loadResourceSettings, saveResourceSettings, resourceSettingsSchema } from './guest-resource-settings.js'
+import { backupQuerySchema, taskLogQuerySchema, loadGuestBackups, loadTaskLog } from './guest-maintenance.js'
 
 const VERSION = '0.2.0'
 const PASSWORD = process.env.PROXMIU_PASSWORD
@@ -199,9 +201,25 @@ app.put('/api/clusters/:id/guests/:node/:type/:vmid/notes', async (req) => {
   return saveNotes(clientFor(p.id), p, notesSchema.parse(req.body))
 })
 
+app.get('/api/clusters/:id/guests/:node/:type/:vmid/resource-settings', async (req) => {
+  const p = guestInsightsParamsSchema.parse(req.params)
+  return loadResourceSettings(clientFor(p.id), p)
+})
+
+app.put('/api/clusters/:id/guests/:node/:type/:vmid/resource-settings', async (req) => {
+  const p = guestInsightsParamsSchema.parse(req.params)
+  return saveResourceSettings(clientFor(p.id), p, resourceSettingsSchema.parse(req.body))
+})
+
 app.get('/api/clusters/:id/guests/:node/:type/:vmid/operations', async (req) => {
   const p = guestInsightsParamsSchema.parse(req.params)
   return loadOperations(clientFor(p.id), p)
+})
+
+app.get('/api/clusters/:id/guests/:node/:type/:vmid/backups', async (req) => {
+  const p = guestInsightsParamsSchema.parse(req.params)
+  const { storage } = backupQuerySchema.parse(req.query)
+  return loadGuestBackups(clientFor(p.id), p, storage)
 })
 
 // Task access is limited to tasks started here, tied to the original connection/node.
@@ -217,10 +235,18 @@ app.post('/api/clusters/:id/guests/:node/:type/:vmid/operations', async (req) =>
   return result
 })
 
+const taskParamsSchema = z.object({ id: z.string().min(1).max(200).regex(/^[\w-]+$/), node: z.string().min(1).max(253).regex(/^[\w][\w.-]*$/), upid: z.string().startsWith('UPID:').max(500).refine(s => !/[\/\r\n]/.test(s)) })
 app.get('/api/clusters/:id/tasks/:node/:upid', async (req, reply) => {
-  const p = z.object({ id: z.string().min(1).max(200).regex(/^[\w-]+$/), node: z.string().min(1).max(253).regex(/^[\w][\w.-]*$/), upid: z.string().startsWith('UPID:').max(500).refine(s => !/[\/\r\n]/.test(s)) }).parse(req.params)
+  const p = taskParamsSchema.parse(req.params)
   if (!operationTasks.has(taskKey(p.id, p.node, p.upid))) return reply.status(404).send({ error: 'Task not tracked by this agent. Check its status in Proxmox; the agent may have restarted.' })
   return readTask(clientFor(p.id), p.node, p.upid)
+})
+
+app.get('/api/clusters/:id/tasks/:node/:upid/log', async (req, reply) => {
+  const p = taskParamsSchema.parse(req.params)
+  const { start } = taskLogQuerySchema.parse(req.query)
+  if (!operationTasks.has(taskKey(p.id, p.node, p.upid))) return reply.status(404).send({ error: 'Task not tracked by this agent. Check its log in Proxmox; the agent may have restarted.' })
+  return loadTaskLog(clientFor(p.id), p.node, p.upid, start)
 })
 
 app.get('/api/clusters/:id/guests/:node/:type/:vmid/insights', async (req) => {

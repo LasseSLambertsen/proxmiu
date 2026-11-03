@@ -12,6 +12,10 @@ Screenshots use synthetic data from the bundled Proxmox mock. They do not show a
 
 <table>
   <tr>
+    <td width="50%"><img src="docs/screenshots/guest-resources.png" alt="Stopped guest resource configuration" /><br /><sub><b>Resource settings</b>: reviewed CPU, memory and start-at-boot edits</sub></td>
+    <td width="50%"><img src="docs/screenshots/guest-task-log.png" alt="Diagnostic log from a tracked snapshot task" /><br /><sub><b>Task logs</b>: native Proxmox output, with paging and clear limits</sub></td>
+  </tr>
+  <tr>
     <td width="50%"><img src="docs/screenshots/guest-operations.png" alt="Snapshot task completion, backup storage and migration controls" /><br /><sub><b>Advanced operations</b>: snapshots, backups and migration with actual task results</sub></td>
     <td width="50%"><img src="docs/screenshots/ai-settings.png" alt="Optional AI provider token settings and inventory privacy explanation" /><br /><sub><b>Optional AI advice</b>: your encrypted token, reviewed metrics and explicit consent</sub></td>
   </tr>
@@ -62,6 +66,9 @@ The **agent** is a small Node service that runs on your network (Docker, or any 
 - **Bulk power requests** – select up to 50 guests, review the targets, and start, reboot or gracefully shut them down. Requests run two at a time with a result for every guest. Accepted requests and completed power changes are shown separately through the results and live status.
 - **Health at a glance** – spot unavailable connections, offline nodes and guests currently using at least 90% of their allocated CPU or memory. These are current readings, not background alert notifications.
 - **Snapshots, backups and migration** – create snapshots, roll back or delete with typed confirmation, start a snapshot-mode backup to eligible storage, and migrate to another online node. HA-managed guests use Proxmox HA controls. Track the actual Proxmox task through completion or failure. Storage and guest compatibility are checked by Proxmox; LXC migration can restart the container.
+- **Resource settings** – review and change cores per socket, memory in MiB and start-at-boot behavior while a guest is stopped. Pending changes and stale configuration digests block saves, and drafts survive failures. Changes take effect at the next full start.
+- **Existing backups** – browse this guest’s archives on a selected backup storage, with creation dates, sizes, formats and clear permission warnings.
+- **Task logs** – load diagnostic output for operations started through Proxmiu, page through additional lines, and retain output after failed refreshes.
 - **Optional AI setup review** – add an OpenAI or Anthropic API token in Settings. The agent encrypts it at rest. Preview the anonymous numeric resource snapshot and explicitly send it for advice. Names, addresses, notes, credentials, logs and configuration are excluded; advice never changes your infrastructure automatically. Provider usage is billed by your provider.
 - **Lynx companion** – a visible companion button brings the mascot into the app; five quick logo clicks still work. Dismiss it with Escape or the close button. Reduced motion is respected.
 - **Discovery** – scans the subnets the agent is on for Proxmox (port 8006) and connects with an API token or password.
@@ -324,3 +331,5 @@ Contributions are welcome. Read [CONTRIBUTING.md](CONTRIBUTING.md) for the setup
 `CHROMIUM_PATH=/usr/bin/chromium node web/test/advanced.e2e.cjs` checks Proxmox notes save/clear/conflict recovery, reviewed guest operations and task failures, plus optional AI settings and consent against isolated fixtures. `server/test/advanced-api.test.ts` also runs the authenticated agent against the bundled Proxmox mock; no live infrastructure or AI provider is contacted.
 
 To reproduce current release screenshots after building, run `CHROMIUM_PATH=/usr/bin/chromium node scripts/capture-advanced.cjs`. It starts an isolated local agent and synthetic Proxmox mock, writes captures to `/tmp/proxmiu-release` (override `CAPTURE_DIR`), and cleans up the servers and agent data. AI remains unconfigured and no provider calls occur.
+
+`CHROMIUM_PATH=/usr/bin/chromium node web/test/maintenance.e2e.cjs` verifies stopped-resource editing and conflict recovery, draft preservation through migration, backup inventory states, and escaped/paged task logs with a 2,000-line display limit. Resource edits use the existing `VM.Config.CPU`, `VM.Config.Memory` and `VM.Config.Options` permissions.

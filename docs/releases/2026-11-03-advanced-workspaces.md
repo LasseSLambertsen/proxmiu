@@ -28,3 +28,9 @@ A fresh server reviewer found the HA wrapper completion issue and an in-flight d
 ## Limits
 
 These checks use isolated fixtures and the bundled mock, not real Proxmox hosts or paid AI accounts. Backup schedules, restoring archives, storage administration and HA management remain in Proxmox. Proxmox validates snapshot/storage/migration compatibility and may reject a task. Existing installations require an administrator to extend the role as documented in README; the running app never elevates credentials. Task tracking is process-local; after an agent restart check Proxmox before retrying. Public screenshots use mock homelab data; no private infrastructure is pictured.
+
+## Maintenance iteration
+
+The follow-on iteration adds reviewed stopped-guest CPU/memory/start-at-boot changes, a backup archive inventory per storage, and paged logs for tracked tasks. Writes require a fresh digest and verified absence of pending changes. QEMU CPU-hotplug and explicit NUMA mappings are read-only in this editor to avoid invalidating CPU/memory topology. No power operation runs automatically. Backups show archive creation time, size and format for the selected guest; permission failures are distinct from a verified empty list. Task output remains plain text, bounded to 200 rows per request, 2,000 characters per line and 2,000 displayed lines.
+
+Verification now covers 53 tests, full typecheck/build, the new maintenance browser fixture, previous advanced/outage behavior, and website checks. A fresh source/visual reviewer returned ship after topology safeguards; both findings have RED-to-GREEN regression evidence. Public captures were refreshed through the actual local agent and bundled mock. Publication is delegated to a subagent at the user’s explicit request. Merging makes new app source available; existing LAN agents still need an update.

@@ -82,6 +82,32 @@ export interface GuestNotes {
   legacyNotes?: string
 }
 
+export interface GuestResourceSettings {
+  cores: number | null
+  sockets: number
+  memoryMiB: number | null
+  onboot: boolean
+  digest: string
+  status: string
+  pending: boolean
+  editable: boolean
+  reason?: string
+}
+
+export type GuestResourceUpdate = Pick<GuestResourceSettings, 'onboot' | 'digest'> & { cores: number; memoryMiB: number }
+
+export interface GuestBackups {
+  backups: { storage: string; volid: string; size?: number; ctime?: number; format?: string }[]
+  errors: string[]
+  truncated: boolean
+}
+
+export interface GuestTaskLog {
+  lines: { n: number; t: string }[]
+  next: number
+  truncated: boolean
+}
+
 export interface GuestOperations {
   snapshots: { name: string; description?: string; snaptime?: number }[]
   storages: string[]

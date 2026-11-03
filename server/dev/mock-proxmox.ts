@@ -30,6 +30,8 @@ interface Guest {
   tags?: string
   template?: number
   started?: number
+  onboot?: number
+  sockets?: number
 }
 
 const GiB = 1024 ** 3
@@ -66,9 +68,11 @@ function findGuest(node: string, type: string, vmid: string): Guest {
 const descriptions = new Map<string, string>()
 const snapshots = new Map<string, { name: string; description: string; snaptime: number }[]>()
 const guestKey = (g: Guest) => `${g.type}/${g.vmid}`
+const backups = guests.filter(g => !g.template).map(g => ({ storage: 'local', vmid: g.vmid, volid: `local:backup/vzdump-${g.type}-${g.vmid}-2026_11_02-02_00_00.${g.type === 'lxc' ? 'tar.zst' : 'vma.zst'}`, size: Math.floor(g.maxdisk / 2), ctime: now() - 86400, format: g.type === 'lxc' ? 'tar.zst' : 'vma.zst', content: 'backup' }))
 function guestConfig(g: Guest) {
   const description = descriptions.get(guestKey(g)) ?? `${g.name} — managed in the homelab`
-  const common = { description, digest: createHash('sha1').update(description).digest('hex'), cores: g.maxcpu, memory: g.maxmem / 1024 ** 2, onboot: g.template ? 0 : 1 }
+  const allocation = { cores: g.maxcpu / (g.type === 'qemu' ? g.sockets ?? 1 : 1), memory: g.maxmem / 1024 ** 2, onboot: g.onboot ?? (g.template ? 0 : 1) }
+  const common = { description, ...allocation, digest: createHash('sha1').update(JSON.stringify({ description, ...allocation, sockets: g.sockets ?? 1 })).digest('hex') }
   const diskSize = g.maxdisk / GiB
   if (g.type === 'lxc') return {
     ...common, hostname: g.name, ostype: 'debian', unprivileged: 1,
@@ -78,7 +82,7 @@ function guestConfig(g: Guest) {
     'ssh-public-keys': 'ssh-ed25519 MOCK-PRIVATE-CONFIG-DO-NOT-EXPOSE',
   }
   return {
-    ...common, name: g.name, sockets: 1, ostype: g.name === 'win11' ? 'win11' : 'l26',
+    ...common, name: g.name, sockets: g.sockets ?? 1, ostype: g.name === 'win11' ? 'win11' : 'l26',
     net0: 'virtio=BC:24:11:AA:BB:CC,bridge=vmbr0,firewall=1',
     scsi0: `local-lvm:vm-${g.vmid}-disk-0,size=${diskSize}G,discard=on,iothread=1`,
     ide2: `local-lvm:vm-${g.vmid}-cloudinit,media=cdrom`,
@@ -133,7 +137,9 @@ const routes: [string, RegExp, Handler][] = [
         { storage: 'tank', content: 'rootdir,images', type: 'zfspool', avail: 2400 * GiB, total: 4000 * GiB, active: 1 },
       ].filter((s) => !q.get('content') || s.content.includes(q.get('content')!)),
   ],
-  ['GET', /^\/nodes\/[\w-]+\/storage\/([\w-]+)\/content$/, (m) => local.filter((v) => v.startsWith(`${m[1]}:`)).map((volid) => ({ volid }))],
+  ['GET', /^\/nodes\/[\w-]+\/storage\/([\w-]+)\/content$/, (m, q) => q.get('content') === 'backup'
+    ? backups.filter(b => b.storage === m[1] && (!q.get('vmid') || b.vmid === Number(q.get('vmid'))))
+    : local.filter(v => v.startsWith(`${m[1]}:`)).map(volid => ({ volid }))],
   ['GET', /^\/nodes\/[\w-]+\/aplinfo$/, () => ['debian-12-standard_12.7-1_amd64.tar.zst', 'debian-13-standard_13.1-2_amd64.tar.zst', 'ubuntu-24.04-standard_24.04-2_amd64.tar.zst', 'alpine-3.22-default_20250617_amd64.tar.xz'].map((template) => ({ template, section: 'system' }))],
   [
     'POST',
@@ -167,7 +173,14 @@ const routes: [string, RegExp, Handler][] = [
     const g = findGuest(m[1], m[2], m[3])
     if (b.get('digest') !== guestConfig(g).digest) throw Object.assign(new Error('Configuration changed'), { statusCode: 409 })
     descriptions.set(guestKey(g), b.get('delete') === 'description' ? '' : b.get('description') ?? guestConfig(g).description)
+    if (b.has('cores')) g.maxcpu = Number(b.get('cores')) * (g.type === 'qemu' ? g.sockets ?? 1 : 1)
+    if (b.has('memory')) g.maxmem = Number(b.get('memory')) * 1024 ** 2
+    if (b.has('onboot')) g.onboot = Number(b.get('onboot'))
     return null
+  }],
+  ['GET', /^\/nodes\/([\w.-]+)\/(qemu|lxc)\/(\d+)\/pending$/, (m) => {
+    const config = guestConfig(findGuest(m[1], m[2], m[3]))
+    return ['cores', 'memory', 'onboot'].map(key => ({ key, value: config[key as keyof typeof config] }))
   }],
   ['GET', /^\/nodes\/([\w.-]+)\/(qemu|lxc)\/(\d+)\/snapshot$/, (m) => {
     const g = findGuest(m[1], m[2], m[3])
@@ -179,7 +192,7 @@ const routes: [string, RegExp, Handler][] = [
     if (list.some(s => s.name === b.get('snapname'))) throw new Error('Snapshot already exists')
     list.push({ name: b.get('snapname')!, description: b.get('description') ?? '', snaptime: now() })
     snapshots.set(guestKey(g), list)
-    return task(g.node, 'snapshot', 1200)
+    return task(g.node, 'snapshot', 1200, [`Creating snapshot ${b.get('snapname')}`, 'Snapshot data saved'])
   }],
   ['DELETE', /^\/nodes\/([\w.-]+)\/(qemu|lxc)\/(\d+)\/snapshot\/([\w-]+)$/, (m) => {
     const g = findGuest(m[1], m[2], m[3])
@@ -200,7 +213,9 @@ const routes: [string, RegExp, Handler][] = [
   }],
   ['POST', /^\/nodes\/([\w.-]+)\/vzdump$/, (m, b) => {
     if (b.get('storage') !== 'local' || !guests.some(g => g.node === m[1] && g.vmid === Number(b.get('vmid')))) throw new Error('Invalid backup target')
-    return task(m[1], 'vzdump', 1800)
+    const g = guests.find(g => g.vmid === Number(b.get('vmid')))!
+    backups.push({ storage: 'local', vmid: g.vmid, volid: `local:backup/vzdump-${g.type}-${g.vmid}-${now()}.${g.type === 'lxc' ? 'tar.zst' : 'vma.zst'}`, size: Math.floor(g.maxdisk / 2), ctime: now(), format: g.type === 'lxc' ? 'tar.zst' : 'vma.zst', content: 'backup' })
+    return task(m[1], 'vzdump', 1800, [`Starting backup for guest ${g.vmid}`, 'Writing archive to local storage', 'Backup finished'])
   }],
   ['GET', /^\/nodes\/([\w.-]+)\/(qemu|lxc)\/(\d+)\/rrddata$/, (m, q) => guestHistory(findGuest(m[1], m[2], m[3]), q)],
   ['PUT', /^\/nodes\/[\w-]+\/qemu\/\d+\/resize$/, () => null],
