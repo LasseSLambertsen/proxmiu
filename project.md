@@ -18,7 +18,7 @@ Homelab and small-team Proxmox users who want a faster, friendlier front end tha
 
 ## Non-goals
 
-- Replacing the Proxmox UI for cluster administration (storage, HA, backups, firewall, users).
+- Replacing the Proxmox UI for cluster administration (storage, HA, backup scheduling, firewall, users).
 - Running agents for the user. Proxmiu sets up the box; the user runs `claude` / `codex`.
 - Multi-tenant hosting. Each agent belongs to one person or household.
 
@@ -81,10 +81,15 @@ browser ── UI (static SPA) ──► agent (Node, on the LAN) ──► Prox
 - [ ] Exercise the VM clone path; consider a helper that builds a cloud-init template.
 - [ ] Persist provisioning jobs across agent restarts.
 - [ ] Demo mode for the hosted site (client-side mock data) so visitors see the app without an agent.
-- [ ] Guest detail page (config, console via Proxmox termproxy, snapshots).
+- [x] Guest detail workspace with configuration, history, Proxmox notes, snapshots, backups and migration.
+- [ ] Proxmox termproxy console.
 - [ ] Watch WebKit Local Network Access; drop the iOS HTTPS requirement when it ships.
 - [ ] Optionally squash branch history (the first commit contains an earlier logo).
 
 ## Configuration
 
 See the README table. Key variables: `PROXMIU_PASSWORD`, `PROXMIU_ALLOWED_ORIGINS`, `PROXMIU_TLS`, `PROXMIU_TLS_CERT`/`KEY`, `HOST`, `PORT`, `PROXMIU_DATA_DIR`, `PROXMIU_SECRET_KEY`.
+
+Advanced guest workspaces now use native Proxmox notes and track snapshot, backup and migration tasks. Optional AI setup advice uses encrypted provider credentials and a user-reviewed, anonymous numeric preview; it has no infrastructure write tools. The lynx companion is discoverable from the app and website. See README for privilege updates and verification limits.
+
+Guest maintenance includes reviewed stopped-guest CPU/memory/boot-setting edits with digest checks, an existing-backup browser per storage, and paged diagnostic logs for tracked tasks. These reuse existing connection permissions.

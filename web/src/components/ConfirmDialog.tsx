@@ -33,7 +33,7 @@ export function ConfirmDialog({ request, onClose }: { request: ConfirmRequest | 
                 <div>
                   Type <code className="text-foreground">{request.typeToConfirm}</code> to confirm.
                 </div>
-                <Input value={typed} onChange={(e) => setTyped(e.target.value)} disabled={busy} autoFocus />
+                <Input aria-label="Confirmation name" value={typed} onChange={(e) => setTyped(e.target.value)} disabled={busy} autoFocus />
               </div>
             )}
             {error && <p role="alert" className="text-destructive">{error}</p>}

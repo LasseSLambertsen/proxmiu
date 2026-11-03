@@ -2,6 +2,32 @@
   let clicks = 0
   let lastClick = 0
 
+  const illustration = `<svg viewBox="0 0 160 150" fill="none" aria-hidden="true">
+          <ellipse cx="80" cy="136" rx="40" ry="5" fill="#171b23" opacity=".18"/>
+          <g class="lynx-tail"><path d="M105 113c38 4 48-29 31-37" stroke="#e38a24" stroke-width="13" stroke-linecap="round"/><path d="M140 82q0-5-4-6" stroke="#252a34" stroke-width="13" stroke-linecap="round"/></g>
+          <ellipse cx="80" cy="113" rx="33" ry="22" fill="#e38a24"/>
+          <path d="M67 101h26l-5 30H72l-5-30Z" fill="#ffd184"/>
+          <rect x="52" y="117" width="17" height="19" rx="8" fill="#f0a23a"/>
+          <rect x="91" y="117" width="17" height="19" rx="8" fill="#f0a23a"/>
+          <path d="M54 133h13m26 0h13" stroke="#252a34" stroke-width="5" stroke-linecap="round"/>
+          <g class="lynx-head"><g transform="translate(28 7) scale(1.65)">
+            <path d="m12 8 14 14h12L52 8l3 24 5 9-5-1 2 10-6-3-7 9-5-1-7 4-7-4-5 1-7-9-6 3 2-10-5 1 5-9 3-24Z" fill="#f0a23a"/>
+            <path d="m14 15 10 12-11 5 1-17Zm36 0L40 27l11 5-1-17Z" fill="#ffd184"/>
+            <path d="m12 8 14 14 6 11-12-8-8-17Zm40 0L38 22l-6 11 12-8 8-17Z" fill="#ffb640"/>
+            <path d="m19 30 10 3h6l10-3 8 9-7 7-8 2-6-3-6 3-8-2-7-7 8-9Z" fill="#171b23"/>
+            <g class="lynx-eyes"><path d="m17 36 7 2 3 4c-6 1-8-1-10-6Zm30 0-7 2-3 4c6 1 8-1 10-6Z" fill="#ffe1a3"/></g>
+            <rect x="29" y="33" width="6" height="3" rx="1" fill="#54504a"/><rect x="29" y="38" width="6" height="3" rx="1" fill="#54504a"/>
+            <circle class="lynx-led" cx="34" cy="34.5" r="1.2" fill="#39d8c2"/>
+            <path d="m25 48 7 3 7-3-2 7-5 3-5-3-2-7Z" fill="#ffd184"/><path d="m28 49 4 4 4-4h-8Z" fill="#171b23"/>
+          </g></g>
+        </svg>`
+
+  document.querySelectorAll('[data-lynx-portrait]').forEach(portrait => { portrait.innerHTML = illustration })
+  document.querySelectorAll('[data-lynx-wake]').forEach(button => {
+    button.setAttribute('aria-controls', 'proxmiu-lynx')
+    button.setAttribute('aria-expanded', 'false')
+  })
+
   const css = `
     #proxmiu-lynx { position:fixed; right:max(20px,env(safe-area-inset-right)); bottom:24px; z-index:45; width:184px; color:#f5f1e9; font:13px/1.45 system-ui,sans-serif; animation:lynx-arrive .45s cubic-bezier(.16,1,.3,1) both; }
     #proxmiu-lynx * { box-sizing:border-box; }
@@ -28,10 +54,11 @@
     @media(prefers-reduced-motion:reduce) { #proxmiu-lynx, #proxmiu-lynx * { animation:none !important; transition:none !important; } }
   `
 
-  function wake(trigger) {
+  function wake(trigger, moveFocus = false) {
     const existing = document.getElementById('proxmiu-lynx')
     if (existing) {
       existing.querySelector('.lynx-pet').click()
+      if (moveFocus) existing.querySelector('.lynx-pet').focus({ preventScroll: true })
       return
     }
     if (!document.getElementById('proxmiu-lynx-style')) {
@@ -47,32 +74,17 @@
       <p class="lynx-message" role="status">Oh, hi. I live here.</p>
       <button type="button" class="lynx-close" aria-label="Dismiss lynx"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="m4 4 8 8M12 4l-8 8"/></svg></button>
       <button type="button" class="lynx-pet" aria-label="Pet the lynx">
-        <svg viewBox="0 0 160 150" fill="none" aria-hidden="true">
-          <ellipse cx="80" cy="136" rx="40" ry="5" fill="#171b23" opacity=".18"/>
-          <g class="lynx-tail"><path d="M105 113c38 4 48-29 31-37" stroke="#e38a24" stroke-width="13" stroke-linecap="round"/><path d="M140 82q0-5-4-6" stroke="#252a34" stroke-width="13" stroke-linecap="round"/></g>
-          <ellipse cx="80" cy="113" rx="33" ry="22" fill="#e38a24"/>
-          <path d="M67 101h26l-5 30H72l-5-30Z" fill="#ffd184"/>
-          <rect x="52" y="117" width="17" height="19" rx="8" fill="#f0a23a"/>
-          <rect x="91" y="117" width="17" height="19" rx="8" fill="#f0a23a"/>
-          <path d="M54 133h13m26 0h13" stroke="#252a34" stroke-width="5" stroke-linecap="round"/>
-          <g class="lynx-head"><g transform="translate(28 7) scale(1.65)">
-            <path d="m12 8 14 14h12L52 8l3 24 5 9-5-1 2 10-6-3-7 9-5-1-7 4-7-4-5 1-7-9-6 3 2-10-5 1 5-9 3-24Z" fill="#f0a23a"/>
-            <path d="m14 15 10 12-11 5 1-17Zm36 0L40 27l11 5-1-17Z" fill="#ffd184"/>
-            <path d="m12 8 14 14 6 11-12-8-8-17Zm40 0L38 22l-6 11 12-8 8-17Z" fill="#ffb640"/>
-            <path d="m19 30 10 3h6l10-3 8 9-7 7-8 2-6-3-6 3-8-2-7-7 8-9Z" fill="#171b23"/>
-            <g class="lynx-eyes"><path d="m17 36 7 2 3 4c-6 1-8-1-10-6Zm30 0-7 2-3 4c6 1 8-1 10-6Z" fill="#ffe1a3"/></g>
-            <rect x="29" y="33" width="6" height="3" rx="1" fill="#54504a"/><rect x="29" y="38" width="6" height="3" rx="1" fill="#54504a"/>
-            <circle class="lynx-led" cx="34" cy="34.5" r="1.2" fill="#39d8c2"/>
-            <path d="m25 48 7 3 7-3-2 7-5 3-5-3-2-7Z" fill="#ffd184"/><path d="m28 49 4 4 4-4h-8Z" fill="#171b23"/>
-          </g></g>
-        </svg>
+        ${illustration}
       </button>`
     document.body.append(panel)
+    document.querySelectorAll('[data-lynx-wake]').forEach(button => button.setAttribute('aria-expanded', 'true'))
+    if (moveFocus) panel.querySelector('.lynx-pet').focus({ preventScroll: true })
     let purrTimer
     const dismiss = () => {
       const restoreFocus = panel.contains(document.activeElement)
       clearTimeout(purrTimer)
       panel.remove()
+      document.querySelectorAll('[data-lynx-wake]').forEach(button => button.setAttribute('aria-expanded', 'false'))
       document.removeEventListener('keydown', onKey)
       if (restoreFocus && trigger.isConnected) trigger.focus({ preventScroll: true })
     }
@@ -89,6 +101,12 @@
 
   document.addEventListener('click', (event) => {
     if (!(event.target instanceof Element) || event.metaKey || event.ctrlKey || event.altKey || event.shiftKey || event.button !== 0) return
+    const companion = event.target.closest('[data-lynx-wake]')
+    if (companion) {
+      clicks = 0
+      wake(companion, true)
+      return
+    }
     const trigger = event.target.closest('[data-lynx-trigger]')
     if (!trigger) return
     if (trigger instanceof HTMLAnchorElement) {

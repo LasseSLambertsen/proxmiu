@@ -76,6 +76,75 @@ export interface GuestMetadata {
   updatedAt: string
 }
 
+export interface GuestNotes {
+  notes: string
+  digest: string
+  legacyNotes?: string
+}
+
+export interface GuestResourceSettings {
+  cores: number | null
+  sockets: number
+  memoryMiB: number | null
+  onboot: boolean
+  digest: string
+  status: string
+  pending: boolean
+  editable: boolean
+  reason?: string
+}
+
+export type GuestResourceUpdate = Pick<GuestResourceSettings, 'onboot' | 'digest'> & { cores: number; memoryMiB: number }
+
+export interface GuestBackups {
+  backups: { storage: string; volid: string; size?: number; ctime?: number; format?: string }[]
+  errors: string[]
+  truncated: boolean
+}
+
+export interface GuestTaskLog {
+  lines: { n: number; t: string }[]
+  next: number
+  truncated: boolean
+}
+
+export interface GuestOperations {
+  snapshots: { name: string; description?: string; snaptime?: number }[]
+  storages: string[]
+  targets: string[]
+  errors: string[]
+}
+
+export type GuestOperation =
+  | { action: 'snapshot'; name: string; description?: string }
+  | { action: 'rollback' | 'delete-snapshot'; name: string; confirm: string }
+  | { action: 'backup'; storage: string }
+  | { action: 'migrate'; target: string }
+
+export interface GuestTask {
+  upid: string
+  node: string
+}
+
+export interface GuestTaskStatus {
+  status: string
+  exitstatus?: string
+}
+
+export interface AiSettings {
+  configured: boolean
+  provider: 'openai' | 'anthropic'
+  model: string
+}
+
+export interface AiContext {
+  clusters: {
+    nodes: { cpu?: number; maxcpu?: number; mem?: number; maxmem?: number }[]
+    guests: { type: string; status?: string; cpu?: number; maxcpu?: number; mem?: number; maxmem?: number; disk?: number; maxdisk?: number }[]
+  }[]
+  unavailableConnections: number
+}
+
 export interface GuestInsights {
   config: {
     name?: string

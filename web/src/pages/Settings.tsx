@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Check, CloudDownload, KeyRound, Loader2, RefreshCw, ShieldAlert, ShieldCheck } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { toast } from 'sonner'
+import { AiAdvisor } from '@/components/AiAdvisor'
 import { ConfirmDialog, type ConfirmRequest } from '@/components/ConfirmDialog'
 import { CopyButton } from '@/components/CopyButton'
 import { PageHeader } from '@/components/PageHeader'
@@ -93,6 +94,7 @@ export function SettingsPage() {
     <>
       <PageHeader title="Settings" />
       <div className="max-w-3xl space-y-4 px-8 pb-10 max-md:px-4">
+        <AiAdvisor />
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
