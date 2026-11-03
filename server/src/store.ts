@@ -3,6 +3,7 @@ import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from '
 import { join, resolve } from 'node:path'
 import ssh2 from 'ssh2'
 import type { TemplateDef } from './templates.js'
+import { guestMetadataParamsSchema, guestMetadataPatchSchema, type GuestMetadata } from './guest-insights.js'
 
 export const DATA_DIR = resolve(process.env.PROXMIU_DATA_DIR ?? 'data')
 const STATE_FILE = join(DATA_DIR, 'state.json')
@@ -28,6 +29,7 @@ interface State {
   sshKey?: { public: string; private: string; createdAt: string }
   /** last username used per SSH host, so the terminal dialog can prefill it */
   sshUsers: Record<string, string>
+  guestMetadata: Record<string, GuestMetadata>
 }
 
 mkdirSync(DATA_DIR, { recursive: true, mode: 0o700 })
@@ -59,7 +61,7 @@ export function decrypt(payload: string): string {
 }
 
 function load(): State {
-  const empty: State = { clusters: [], templates: [], sshUsers: {} }
+  const empty: State = { clusters: [], templates: [], sshUsers: {}, guestMetadata: {} }
   if (!existsSync(STATE_FILE)) return empty
   return { ...empty, ...JSON.parse(readFileSync(STATE_FILE, 'utf8')) }
 }
@@ -87,7 +89,23 @@ export const store = {
   },
   removeCluster(id: string) {
     state.clusters = state.clusters.filter((c) => c.id !== id)
+    for (const key of Object.keys(state.guestMetadata)) {
+      if (key.startsWith(`${id}/`)) delete state.guestMetadata[key]
+    }
     save()
+  },
+
+  listGuestMetadata: () => structuredClone(state.guestMetadata),
+  updateGuestMetadata(id: string, type: 'qemu' | 'lxc', vmid: number, patch: { favorite?: boolean; notes?: string }): GuestMetadata {
+    store.getCluster(id)
+    guestMetadataParamsSchema.parse({ id, type, vmid: String(vmid) })
+    const changes = guestMetadataPatchSchema.parse(patch)
+    const key = `${id}/${type}/${vmid}`
+    const previous = state.guestMetadata[key] ?? { favorite: false, notes: '' }
+    const metadata = { ...previous, ...changes, updatedAt: new Date().toISOString() }
+    state.guestMetadata[key] = metadata
+    save()
+    return { ...metadata }
   },
 
   listCustomTemplates: () => state.templates,

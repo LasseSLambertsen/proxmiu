@@ -108,3 +108,11 @@ Lucide only, 16px in UI (20–22px in the mobile dock), stroke 1.75–2. Icons i
 - No nested outlines. Code blocks and help panels inside cards/dialogs are `inset` fills, not additional bordered boxes; selectable options get a single focus ring, not a border plus a ring.
 - No extra accent colours outside status, stat tints, template tiles and the terminal.
 - No company or third-party branding. The logo is `web/public/logo.png`: an amber robotic lynx on charcoal, with server cartridges in its visor and a teal status light. `logo.svg` and `favicon.svg` are simplified vector companions for small sizes. The maskable home-screen icon has dedicated safe-area padding.
+
+## Guest workspaces and inventory
+
+- Guest names and command-palette results open `/guests/:clusterId/:node/:type/:vmid`. Detail pages keep power actions, SSH, configuration, real RRD history and notes together. History gaps are gaps; missing data is never drawn as zero usage. Charts support pointer inspection and left/right keyboard navigation.
+- Pins and notes belong to the agent, keyed by connection/type/vmid so a node migration retains them. Notes use an explicit save action and remain editable after failed saves; partial updates never replace the other metadata field.
+- Inventory filters are independent, with browser-local saved views scoped to the agent. Advanced filters collapse on phones so the guest list remains useful. Export includes visible inventory fields and neutralizes spreadsheet formulas.
+- Multi-select operations review a fixed target list and report each outcome. At most 50 guests and two concurrent requests; queued requests stop if the page is left or the agent becomes unavailable. Bulk operations use the existing authenticated power routes.
+- Overview health warnings use the latest actual connection/node state and a 90% resource threshold. They do not imply sustained monitoring or background notification delivery.

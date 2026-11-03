@@ -56,6 +56,54 @@ function task(node: string, kind: string, ms = 1500, log: string[] = []) {
 }
 const usage = (g: Guest) => (g.status === 'running' ? { cpu: Math.random() * 0.4, mem: Math.floor(g.maxmem * (0.3 + Math.random() * 0.4)), uptime: now() - (g.started ?? now()) } : { cpu: 0, mem: 0, uptime: 0 })
 
+function findGuest(node: string, type: string, vmid: string): Guest {
+  const guest = guests.find((g) => g.node === node && g.type === type && g.vmid === Number(vmid))
+  if (!guest) throw new Error('Guest not found')
+  return guest
+}
+
+function guestConfig(g: Guest) {
+  const common = { description: `${g.name} — managed in the homelab`, cores: g.maxcpu, memory: g.maxmem / 1024 ** 2, onboot: g.template ? 0 : 1 }
+  const diskSize = g.maxdisk / GiB
+  if (g.type === 'lxc') return {
+    ...common, hostname: g.name, ostype: 'debian', unprivileged: 1,
+    net0: `name=eth0,bridge=vmbr0,hwaddr=BC:24:11:00:00:${g.vmid.toString(16).padStart(2, '0')},ip=${g.ip ?? '192.168.1.99'}/24,gw=192.168.1.1,firewall=1,type=veth`,
+    rootfs: `local-lvm:vm-${g.vmid}-disk-0,size=${diskSize}G`,
+    ...(g.name === 'jellyfin' ? { mp0: '/srv/media,mp=/media,ro=1' } : {}),
+    'ssh-public-keys': 'ssh-ed25519 MOCK-PRIVATE-CONFIG-DO-NOT-EXPOSE',
+  }
+  return {
+    ...common, name: g.name, sockets: 1, ostype: g.name === 'win11' ? 'win11' : 'l26',
+    net0: 'virtio=BC:24:11:AA:BB:CC,bridge=vmbr0,firewall=1',
+    scsi0: `local-lvm:vm-${g.vmid}-disk-0,size=${diskSize}G,discard=on,iothread=1`,
+    ide2: `local-lvm:vm-${g.vmid}-cloudinit,media=cdrom`,
+    sshkeys: 'ssh-ed25519 MOCK-PRIVATE-CONFIG-DO-NOT-EXPOSE', cipassword: 'MOCK-PRIVATE-CONFIG-DO-NOT-EXPOSE',
+  }
+}
+
+function guestHistory(g: Guest, query: URLSearchParams) {
+  const timeframe = query.get('timeframe') ?? 'hour'
+  const steps: Record<string, { count: number; step: number }> = { hour: { count: 61, step: 60 }, day: { count: 49, step: 1800 }, week: { count: 57, step: 10800 } }
+  if (!steps[timeframe] || query.get('cf') !== 'AVERAGE') throw new Error('Unsupported history query')
+  const { count, step } = steps[timeframe]
+  const end = Math.floor(now() / step) * step
+  // Stable waves make chart comparisons repeatable; one missing sample exercises RRD gaps.
+  return Array.from({ length: count }, (_, index) => {
+    const time = end - (count - 1 - index) * step
+    if (index === Math.floor(count / 3)) return { time }
+    const running = g.status === 'running'
+    const wave = (Math.sin(index * 0.35 + g.vmid) + 1) / 2
+    return {
+      time, cpu: running ? 0.04 + wave * 0.45 : 0,
+      mem: running ? Math.floor(g.maxmem * (0.32 + wave * 0.24)) : 0, maxmem: g.maxmem,
+      netin: running ? Math.floor(1024 * (18 + wave * 450)) : 0,
+      netout: running ? Math.floor(1024 * (7 + wave * 110)) : 0,
+      diskread: running ? Math.floor(1024 * (5 + wave * 230)) : 0,
+      diskwrite: running ? Math.floor(1024 * (3 + wave * 80)) : 0,
+    }
+  })
+}
+
 type Handler = (m: RegExpMatchArray, body: URLSearchParams) => unknown
 const routes: [string, RegExp, Handler][] = [
   ['GET', /^\/version$/, () => ({ version: '8.4.1', release: '8.4' })],
@@ -109,7 +157,8 @@ const routes: [string, RegExp, Handler][] = [
     },
   ],
   ['POST', /^\/nodes\/[\w-]+\/qemu\/\d+\/config$/, () => null],
-  ['GET', /^\/nodes\/[\w-]+\/qemu\/\d+\/config$/, () => ({ net0: 'virtio=BC:24:11:AA:BB:CC,bridge=vmbr0', scsi0: 'local-lvm:vm-disk-0,size=3G' })],
+  ['GET', /^\/nodes\/([\w.-]+)\/(qemu|lxc)\/(\d+)\/config$/, (m) => guestConfig(findGuest(m[1], m[2], m[3]))],
+  ['GET', /^\/nodes\/([\w.-]+)\/(qemu|lxc)\/(\d+)\/rrddata$/, (m, q) => guestHistory(findGuest(m[1], m[2], m[3]), q)],
   ['PUT', /^\/nodes\/[\w-]+\/qemu\/\d+\/resize$/, () => null],
   [
     'POST',

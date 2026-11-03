@@ -46,6 +46,11 @@ The **agent** is a small Node service that runs on your network (Docker, or any 
 
 ## Features
 
+- **Guest workspaces** – open any guest for its configuration, network interfaces and disks, current usage, and CPU, memory, network and disk history over an hour, day or week. History comes from Proxmox RRD; unavailable data stays clearly marked.
+- **Pins and notes** – keep important guests on the overview and save up to 4,000 characters of notes per guest. They live on the agent and follow the guest across node migrations and browser changes.
+- **Your inventory** – combine status, guest type and node filters, sort by resource usage, save up to 20 named views per browser and agent, and export the visible inventory as CSV.
+- **Bulk power requests** – select up to 50 guests, review the targets, and start, reboot or gracefully shut them down. Requests run two at a time with a result for every guest. Accepted requests and completed power changes are shown separately through the results and live status.
+- **Health at a glance** – spot unavailable connections, offline nodes and guests currently using at least 90% of their allocated CPU or memory. These are current readings, not background alert notifications.
 - **Discovery** – scans the subnets the agent is on for Proxmox (port 8006) and connects with an API token or password.
 - **Overview** – nodes, VMs and containers across all connections with live CPU, memory, IP addresses and uptime.
 - **Power actions** – start, shut down, reboot, force stop and delete guests; reboot or shut down nodes.
@@ -284,6 +289,8 @@ npm run typecheck
 npm test
 npm run build
 ```
+
+With Playwright available, `node web/test/outages.e2e.cjs` checks draft-note preservation and stale health states against isolated API fixtures after a build. `node web/test/lynx.e2e.cjs` checks the hidden mascot. Set `CHROMIUM_PATH` to use a system Chromium installation. Neither check contacts a Proxmox host.
 
 Stack: Fastify, ssh2 and undici for the agent; React, TanStack Query, Tailwind CSS v4, Radix and cmdk for the UI, set in Geist.
 

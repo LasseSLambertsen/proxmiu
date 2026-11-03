@@ -70,6 +70,39 @@ export interface Guest extends Resource {
   vmid: number
 }
 
+export interface GuestMetadata {
+  favorite: boolean
+  notes: string
+  updatedAt: string
+}
+
+export interface GuestInsights {
+  config: {
+    name?: string
+    description?: string
+    cores?: number
+    sockets?: number
+    memory?: number
+    ostype?: string
+    onboot?: boolean
+    unprivileged?: boolean
+    networks: { name: string; value: string }[]
+    disks: { name: string; value: string }[]
+  } | null
+  metrics: {
+    time: number
+    cpu?: number
+    mem?: number
+    maxmem?: number
+    netin?: number
+    netout?: number
+    diskread?: number
+    diskwrite?: number
+  }[]
+  configError?: string
+  metricsError?: string
+}
+
 export interface Connection {
   id: string
   name: string

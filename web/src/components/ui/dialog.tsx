@@ -33,7 +33,7 @@ export function DialogContent({
               <DialogPrimitive.Description className="sr-only">{title}</DialogPrimitive.Description>
             )}
           </div>
-          <DialogPrimitive.Close className="-mr-1.5 rounded-md p-1.5 text-faint transition-colors hover:bg-hover hover:text-foreground">
+          <DialogPrimitive.Close aria-label="Close dialog" className="-mr-1.5 rounded-md p-1.5 text-faint transition-colors hover:bg-hover hover:text-foreground">
             <X className="size-4" strokeWidth={2} />
           </DialogPrimitive.Close>
         </div>

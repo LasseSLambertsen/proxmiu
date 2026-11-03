@@ -28,31 +28,36 @@
 
 Files: new `server/src/guest-insights.ts`, `server/test/guest-insights.test.ts`; modify `server/src/index.ts`, `server/src/store.ts`, `server/dev/mock-proxmox.ts`; new `web/src/pages/GuestDetail.tsx`, `web/src/components/ResourceHistory.tsx`, `web/src/lib/guest-workspace.ts`; modify `web/src/lib/api.ts`, `web/src/lib/queries.ts`, `web/src/App.tsx`, `web/src/components/GuestTable.tsx`.
 
-- [ ] Write failing tests for metadata merging/cleanup and configuration/metric normalization; implement the API contract from the spec.
-- [ ] Add deterministic RRD/config responses to the mock API.
-- [ ] Implement guest identity/path helpers and typed metadata/insights hooks.
-- [ ] Build detail pages, accessible history graphs, editable notes and pin controls; link guest names to their detail pages.
-- [ ] Verify source and mock integration; run typecheck, tests and build; review; commit the working guest workspace.
+- [x] Write failing tests for metadata merging/cleanup and configuration/metric normalization; implement the API contract from the spec.
+- [x] Add deterministic RRD/config responses to the mock API.
+- [x] Implement guest identity/path helpers and typed metadata/insights hooks.
+- [x] Build detail pages, accessible history graphs, editable notes and pin controls; link guest names to their detail pages.
+- [x] Verify source and mock integration; run typecheck, tests and build; review; commit the working guest workspace.
 
 ## Task 2: Inventory views, CSV and bulk operations
 
 Files: new `web/src/lib/guest-inventory.ts`, `web/src/lib/bulk-actions.ts`, `web/test/workspace.test.ts`, `web/src/components/BulkGuestActions.tsx`; modify `web/src/pages/Guests.tsx`, `web/src/components/GuestTable.tsx`, `package.json`.
 
-- [ ] Write and observe failing pure tests for combined filters/sorting, corrupt saved view recovery, CSV injection, concurrency limits and partial failures.
-- [ ] Add filters, sorting, pins, saved views and export; persist views with an agent-specific storage key.
-- [ ] Add explicit guest selection on desktop and phone, a confirmation list, bounded operations, and individual results.
-- [ ] Clear selections on view/filter changes; prevent selection or submission while a batch runs.
-- [ ] Run typecheck, full unit suite, build and browser flows; review; commit the working inventory upgrade.
+- [x] Write and observe failing pure tests for combined filters/sorting, corrupt saved view recovery, CSV injection, concurrency limits and partial failures.
+- [x] Add filters, sorting, pins, saved views and export; persist views with an agent-specific storage key.
+- [x] Add explicit guest selection on desktop and phone, a confirmation list, bounded operations, and individual results.
+- [x] Clear selections on view/filter changes; prevent selection or submission while a batch runs.
+- [x] Run typecheck, full unit suite, build and browser flows; review; commit the working inventory upgrade.
 
 ## Task 3: Overview, product presentation and release validation
 
 Files: modify `web/src/pages/Overview.tsx`, `web/src/components/CommandPalette.tsx`, `README.md`, `design.md`; site `index.html`, `styles.css`, `screenshots/*`.
 
-- [ ] Add health warnings, pinned guest shortcuts and guest-detail navigation from command search.
-- [ ] Update documentation and site copy with implemented capabilities, keeping install and existing mascot flows working.
+- [x] Add health warnings, pinned guest shortcuts and guest-detail navigation from command search.
+- [x] Update documentation and site copy with implemented capabilities, keeping install and existing mascot flows working.
 - [ ] Capture and inspect the finished app on desktop/light/phone and refresh site screenshots.
 - [ ] Run final checks and fresh whole-change review; address material findings; commit app and site changes and push both repos.
 
 ## Progress
 
 - Planning: scope chosen under explicit user delegation. Existing repository contents synchronized with prior pushed work before implementation.
+- Implementation: backend metadata/insights/mock data and guest detail UI are in place. Saved views, inventory filters, CSV, selection/bulk UI, overview health/pins and command-palette links are implemented.
+- Full typecheck, all 22 unit tests and production build passed. Mock-backed browser checks passed for notes/pins/history, saved views, CSV, bulk confirmation/cancellation/partial failures, selection reset and mobile controls. The isolated outage and existing lynx browser regressions passed.
+- Integration fixture finding resolved: a build changed asset hashes after Fastify startup. A live Vite preview removed the stale registration while developing; the production browser regression serves the final bundle independently.
+- Fresh review found and verified fixes for outage-related draft loss and stale healthy status, then confirmed full phone guest names/addresses and compact completed-batch presentation. Final disposition: ship, no remaining findings from that review.
+- Ruling: cap a batch at 50 explicit targets, retaining the planned two-request concurrency, to keep confirmations and result review manageable.

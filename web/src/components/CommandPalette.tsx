@@ -3,6 +3,7 @@ import { Activity, LayoutDashboard, LayoutTemplate, Moon, Network, Plus, Server,
 import { useEffect, type ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useGuests, useTemplates } from '@/lib/queries'
+import { guestHref } from '@/lib/guest-workspace'
 import { StatusDot } from './StatusDot'
 import { TemplateIcon } from './TemplateIcon'
 
@@ -69,7 +70,7 @@ export function CommandPalette({ open, onOpenChange, dark, toggleTheme }: { open
             {guests
               .filter((g) => !g.template)
               .map((g) => (
-                <Item key={`${g.clusterId}-${g.id}`} value={`guest ${g.name} ${g.vmid} ${g.node}`} onSelect={() => go(`/guests?q=${encodeURIComponent(g.name ?? String(g.vmid))}`)}>
+                <Item key={`${g.clusterId}-${g.id}`} value={`guest ${g.name} ${g.vmid} ${g.node}`} onSelect={() => go(guestHref(g))}>
                   <StatusDot status={g.status} className="mx-1" />
                   <span className="text-foreground">{g.name}</span>
                   <span className="tnum ml-auto font-mono text-[12px] text-faint">

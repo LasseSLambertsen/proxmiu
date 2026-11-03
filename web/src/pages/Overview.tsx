@@ -1,5 +1,5 @@
 import { useMutation } from '@tanstack/react-query'
-import { AlertTriangle, ArrowRight, Cpu, MemoryStick, MoreHorizontal, Network, Plus, Power, RotateCw, Server, SquareTerminal } from 'lucide-react'
+import { ArrowRight, Cpu, MemoryStick, MoreHorizontal, Network, Plus, Power, RotateCw, Server, SquareTerminal } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { toast } from 'sonner'
@@ -11,6 +11,7 @@ import { PageHeader } from '@/components/PageHeader'
 import { SshDialog, type SshRequest } from '@/components/SshDialog'
 import { StatusDot } from '@/components/StatusDot'
 import { TemplateTile } from '@/components/TemplateIcon'
+import { WorkspaceOverview } from '@/components/WorkspaceOverview'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
@@ -59,7 +60,8 @@ function Stat({
 }
 
 export function Overview() {
-  const { data, isLoading } = useOverview()
+  const overview = useOverview()
+  const { data, isLoading } = overview
   const templates = useTemplates()
   const [ssh, setSsh] = useState<SshRequest | null>(null)
   const [confirm, setConfirm] = useState<ConfirmRequest | null>(null)
@@ -89,6 +91,7 @@ export function Overview() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data])
   if (!isLoading && clusters.length === 0) {
+    if (overview.error) return <div className="p-8"><EmptyState icon={Network} title="Could not load your homelab" action={<Button onClick={() => overview.refetch()}>Try again</Button>}>The agent could not refresh your connections. Check that it is running, then try again.</EmptyState></div>
     return (
       <>
         <PageHeader title="Overview" />
@@ -140,24 +143,13 @@ export function Overview() {
         }
       />
       <div className="space-y-6 px-8 pb-10 max-md:px-4">
-        {clusters
-          .filter((c) => !c.ok)
-          .map((c) => (
-            <div key={c.id} className="flex items-start gap-3 rounded-md border border-border bg-destructive-soft px-4 py-3 text-[13px]">
-              <AlertTriangle className="mt-0.5 size-4 shrink-0 text-destructive" strokeWidth={1.5} />
-              <div>
-                <span className="font-medium text-destructive">{c.name} is unreachable.</span> <span className="text-muted">{c.error}</span>
-              </div>
-            </div>
-          ))}
-
         <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
           <Stat label="Guests running" icon={Server} value={running} sub={`of ${guests.length} VMs and containers`} tint="warm" />
           <Stat label="Nodes online" icon={Network} value={online.length} sub={`of ${nodes.length}`} tint="cool" />
           <Stat
             label="CPU"
             icon={Cpu}
-            value={`${cpuPct.toFixed(0)}%`}
+            value={cpuTotal ? `${cpuPct.toFixed(0)}%` : '—'}
             sub={`${cpuTotal} cores`}
             trend={history.cpu}
             tint="blue"
@@ -166,13 +158,15 @@ export function Overview() {
           <Stat
             label="Memory"
             icon={MemoryStick}
-            value={`${memPct.toFixed(0)}%`}
+            value={memTotal ? `${memPct.toFixed(0)}%` : '—'}
             sub={`${formatBytes(memUsed)} of ${formatBytes(memTotal, 0)}`}
             trend={history.mem}
             tint="lilac"
             trendColor="var(--brand)"
           />
         </div>
+
+        <WorkspaceOverview clusters={clusters} loading={isLoading} error={overview.error?.message} updatedAt={overview.dataUpdatedAt} onRetry={() => overview.refetch()} />
 
         {featured.length > 0 && (
           <section>

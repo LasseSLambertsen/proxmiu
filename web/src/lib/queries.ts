@@ -1,5 +1,30 @@
-import { useQuery } from '@tanstack/react-query'
-import { api, type ClusterOverview, type CommunityScript, type Connection, type Guest, type Template } from './api'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { api, type ClusterOverview, type CommunityScript, type Connection, type Guest, type GuestInsights, type GuestMetadata, type Template } from './api'
+import { guestApiPath, guestKey, type HistoryRange } from './guest-workspace'
+
+export const useGuestMetadata = () => useQuery({ queryKey: ['guest-metadata'], queryFn: () => api.get<Record<string, GuestMetadata>>('/guest-metadata') })
+
+export function useSaveGuestMetadata() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ guest, patch }: { guest: Guest; patch: Partial<Pick<GuestMetadata, 'favorite' | 'notes'>> }) =>
+      api.put<GuestMetadata>(`/guest-metadata/${encodeURIComponent(guest.clusterId)}/${guest.type}/${guest.vmid}`, patch),
+    onSuccess: (value, { guest }) => {
+      qc.setQueryData<Record<string, GuestMetadata>>(['guest-metadata'], previous => ({ ...previous, [guestKey(guest)]: value }))
+      qc.invalidateQueries({ queryKey: ['guest-metadata'] })
+    },
+  })
+}
+
+export function useGuestInsights(guest: Guest | undefined, timeframe: HistoryRange, enabled = true) {
+  return useQuery({
+    queryKey: ['guest-insights', guest ? guestKey(guest) : '', guest?.node, timeframe],
+    queryFn: () => api.get<GuestInsights>(`${guestApiPath(guest!)}/insights?timeframe=${timeframe}`),
+    enabled: !!guest && enabled,
+    refetchInterval: 60_000,
+    retry: 1,
+  })
+}
 
 export function useOverview() {
   return useQuery({

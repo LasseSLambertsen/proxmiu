@@ -9,6 +9,7 @@ import { Connect } from '@/pages/Connect'
 import { Connections } from '@/pages/Connections'
 import { Create } from '@/pages/Create'
 import { Guests } from '@/pages/Guests'
+import { GuestDetail } from '@/pages/GuestDetail'
 import { Overview } from '@/pages/Overview'
 import { SettingsPage } from '@/pages/Settings'
 import { Templates } from '@/pages/Templates'
@@ -100,6 +101,7 @@ export function App() {
         >
           <Route index element={<Overview />} />
           <Route path="guests" element={<Guests />} />
+          <Route path="guests/:clusterId/:node/:type/:vmid" element={<GuestDetail />} />
           <Route path="create" element={<Create />} />
           <Route path="create/:templateId" element={<Create />} />
           <Route path="templates" element={<Templates />} />

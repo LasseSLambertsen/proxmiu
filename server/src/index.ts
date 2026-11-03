@@ -7,6 +7,7 @@ import { existsSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { z } from 'zod'
+import { guestInsightsParamsSchema, guestInsightsQuerySchema, guestMetadataParamsSchema, guestMetadataPatchSchema, loadGuestInsights } from './guest-insights.js'
 import { discoverProxmox, localSubnets } from './network.js'
 import { getJob, listJobs, provisionSchema, startProvision, startUpdate, updateSchema } from './provision.js'
 import { forgetClient, guestIp, ProxmoxClient, type ClusterResource } from './proxmox.js'
@@ -170,6 +171,20 @@ app.delete<{ Params: { id: string } }>('/api/clusters/:id', async (req) => {
 })
 
 const clientFor = (id: string) => ProxmoxClient.fromRecord(store.getCluster(id))
+
+app.get('/api/guest-metadata', async () => store.listGuestMetadata())
+
+app.put('/api/guest-metadata/:id/:type/:vmid', async (req) => {
+  const p = guestMetadataParamsSchema.parse(req.params)
+  const patch = guestMetadataPatchSchema.parse(req.body)
+  return store.updateGuestMetadata(p.id, p.type, p.vmid, patch)
+})
+
+app.get('/api/clusters/:id/guests/:node/:type/:vmid/insights', async (req) => {
+  const p = guestInsightsParamsSchema.parse(req.params)
+  const { timeframe } = guestInsightsQuerySchema.parse(req.query)
+  return loadGuestInsights(clientFor(p.id), p, timeframe)
+})
 
 // --- overview & actions -------------------------------------------------------
 

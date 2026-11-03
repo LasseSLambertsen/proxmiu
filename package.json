@@ -17,7 +17,7 @@
     "build:web": "vite build",
     "start": "node dist/server/index.js",
     "typecheck": "tsc -p server/tsconfig.json --noEmit && tsc -p web/tsconfig.json --noEmit",
-    "test": "node --import tsx --test server/test/*.test.ts",
+    "test": "node --import tsx --test server/test/*.test.ts web/test/*.test.ts",
     "mock": "tsx server/dev/mock-proxmox.ts"
   },
   "dependencies": {
