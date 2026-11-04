@@ -79,6 +79,7 @@ function findGuest(node: string, type: string, vmid: string): Guest {
 }
 
 const descriptions = new Map<string, string>()
+const cloneConfigs = new Map<number, Record<string, string>>()
 const snapshots = new Map<string, { name: string; description: string; snaptime: number }[]>()
 const guestKey = (g: Guest) => `${g.type}/${g.vmid}`
 const backups = guests.filter(g => !g.template).map(g => ({ storage: 'local', vmid: g.vmid, volid: `local:backup/vzdump-${g.type}-${g.vmid}-2026_11_02-02_00_00.${g.type === 'lxc' ? 'tar.zst' : 'vma.zst'}`, size: Math.floor(g.maxdisk / 2), ctime: now() - 86400, format: g.type === 'lxc' ? 'tar.zst' : 'vma.zst', content: 'backup' }))
@@ -95,11 +96,12 @@ function guestConfig(g: Guest) {
     'ssh-public-keys': 'ssh-ed25519 MOCK-PRIVATE-CONFIG-DO-NOT-EXPOSE',
   }
   return {
-    ...common, name: g.name, sockets: g.sockets ?? 1, ostype: g.name === 'win11' ? 'win11' : 'l26',
+    ...common, name: g.name, template: g.template ?? 0, sockets: g.sockets ?? 1, ostype: g.name === 'win11' ? 'win11' : 'l26',
     net0: 'virtio=BC:24:11:AA:BB:CC,bridge=vmbr0,firewall=1',
     scsi0: `local-lvm:vm-${g.vmid}-disk-0,size=${diskSize}G,discard=on,iothread=1`,
     ide2: `local-lvm:vm-${g.vmid}-cloudinit,media=cdrom`,
     sshkeys: 'ssh-ed25519 MOCK-PRIVATE-CONFIG-DO-NOT-EXPOSE', cipassword: 'MOCK-PRIVATE-CONFIG-DO-NOT-EXPOSE',
+    ...cloneConfigs.get(g.vmid),
   }
 }
 
@@ -176,11 +178,24 @@ const routes: [string, RegExp, Handler][] = [
     'POST',
     /^\/nodes\/([\w-]+)\/qemu\/(\d+)\/clone$/,
     (m, b) => {
-      guests.push({ vmid: Number(b.get('newid')), type: 'qemu', name: b.get('name')!, node: m[1], status: 'stopped', maxcpu: 2, maxmem: 2 * GiB, maxdisk: 3 * GiB, ip: GUEST_IP })
+      const source = findGuest(m[1], 'qemu', m[2])
+      if (!source.template) throw new Error('Source is not a VM template')
+      guests.push({ ...source, vmid: Number(b.get('newid')), template: 0, name: b.get('name')!, status: 'stopped', ip: GUEST_IP })
       return task(m[1], 'qmclone', 3000, ['create full clone of drive scsi0', 'transferred 3.0 GiB of 3.0 GiB (100.00%)'])
     },
   ],
-  ['POST', /^\/nodes\/[\w-]+\/qemu\/\d+\/config$/, () => null],
+  ['POST', /^\/nodes\/([\w.-]+)\/qemu\/(\d+)\/config$/, (m, b) => {
+    const g = findGuest(m[1], 'qemu', m[2])
+    if (b.has('sockets')) g.sockets = Number(b.get('sockets'))
+    if (b.has('cores')) g.maxcpu = Number(b.get('cores')) * (g.sockets ?? 1)
+    if (b.has('memory')) g.maxmem = Number(b.get('memory')) * 1024 ** 2
+    if (b.has('onboot')) g.onboot = Number(b.get('onboot'))
+    if (b.has('tags')) g.tags = b.get('tags')!
+    const extra = cloneConfigs.get(g.vmid) ?? {}
+    for (const key of ['net0', 'vcpus', 'ciuser', 'ipconfig0', 'agent']) if (b.has(key)) extra[key] = b.get(key)!
+    cloneConfigs.set(g.vmid, extra)
+    return task(m[1], 'qmconfig', 1500, ['Cloud-init configuration updated'], g.vmid)
+  }],
   ['GET', /^\/nodes\/([\w.-]+)\/(qemu|lxc)\/(\d+)\/config$/, (m) => guestConfig(findGuest(m[1], m[2], m[3]))],
   ['PUT', /^\/nodes\/([\w.-]+)\/(qemu|lxc)\/(\d+)\/config$/, (m, b) => {
     const g = findGuest(m[1], m[2], m[3])
@@ -231,7 +246,14 @@ const routes: [string, RegExp, Handler][] = [
     return task(m[1], 'vzdump', 1800, [`Starting backup for guest ${g.vmid}`, 'Writing archive to local storage', 'Backup finished'], g.vmid)
   }],
   ['GET', /^\/nodes\/([\w.-]+)\/(qemu|lxc)\/(\d+)\/rrddata$/, (m, q) => guestHistory(findGuest(m[1], m[2], m[3]), q)],
-  ['PUT', /^\/nodes\/[\w-]+\/qemu\/\d+\/resize$/, () => null],
+  ['PUT', /^\/nodes\/([\w.-]+)\/qemu\/(\d+)\/resize$/, (m, b) => {
+    const g = findGuest(m[1], 'qemu', m[2])
+    if (b.get('disk') !== 'scsi0' || !/^\d+G$/.test(b.get('size') ?? '')) throw new Error('Unsupported mock disk resize')
+    const size = Number(b.get('size')!.slice(0, -1)) * GiB
+    if (size < g.maxdisk) throw new Error('Shrinking a disk is not supported')
+    g.maxdisk = size
+    return task(m[1], 'qmresize', 1500, ['Boot disk extended'], g.vmid)
+  }],
   [
     'POST',
     /^\/nodes\/([\w-]+)\/(qemu|lxc)\/(\d+)\/status\/(\w+)$/,

@@ -139,6 +139,7 @@ function CreateForm({ template, lynxDraft, draftError }: { template: Template; l
   const [gateway, setGateway] = useState('')
   const [osTemplate, setOsTemplate] = useState('')
   const [sourceVmid, setSourceVmid] = useState('')
+  const [sourceError, setSourceError] = useState('')
   const [password, setPassword] = useState('')
   const [sshKeys, setSshKeys] = useState(readKeys)
   const [onboot, setOnboot] = useState(true)
@@ -170,7 +171,11 @@ function CreateForm({ template, lynxDraft, draftError }: { template: Template; l
       setStorage([...(storages ?? [])].sort((a, b) => (b.avail ?? 0) - (a.avail ?? 0))[0]?.storage ?? '')
     }
     if (!o.bridges.includes(bridge)) setBridge(o.bridges.includes('vmbr0') ? 'vmbr0' : (o.bridges[0] ?? 'vmbr0'))
-    if (kind === 'qemu' && !sourceVmid && o.vmTemplates[0]) setSourceVmid(String(o.vmTemplates[0].vmid))
+    if (kind === 'qemu') {
+      const source = o.vmTemplates.find(t => String(t.vmid) === sourceVmid) ?? o.vmTemplates[0]
+      setSourceVmid(source ? String(source.vmid) : '')
+      if (source) setNode(source.node)
+    }
   }, [o, kind, node, storage, storages, bridge, sourceVmid])
 
   const autoOs = useMemo(() => {
@@ -220,7 +225,10 @@ function CreateForm({ template, lynxDraft, draftError }: { template: Template; l
     onSuccess: (job) => navigate(`/activity/${job.id}`),
   })
 
-  const canSubmit = !!o && !opts.isFetching && !opts.error && !!clusterId && !!storage && !!hostname && (!lynxDraft || reviewed) && (kind === 'lxc' || !!sourceVmid) && (ipMode === 'dhcp' || ipCidr.includes('/'))
+  const selectedSource = o?.vmTemplates.find(t => String(t.vmid) === sourceVmid)
+  const sourceReady = !!o && !opts.isFetching && !opts.error && o.node === node && selectedSource?.node === node && !!selectedSource
+  useEffect(() => { if (kind !== 'qemu' || sourceReady) setSourceError('') }, [kind, sourceReady])
+  const canSubmit = !!o && !opts.isFetching && !opts.error && !!clusterId && !!storage && !!hostname && (!lynxDraft || reviewed) && (kind === 'lxc' || sourceReady) && (ipMode === 'dhcp' || ipCidr.includes('/'))
 
   return (
     <>
@@ -246,6 +254,10 @@ function CreateForm({ template, lynxDraft, draftError }: { template: Template; l
         className="grid gap-6 px-8 pb-10 max-md:px-4 lg:grid-cols-[minmax(0,1fr)_300px]"
         onSubmit={(e) => {
           e.preventDefault()
+          if (kind === 'qemu' && !sourceReady) {
+            setSourceError('Select an available cloud-init template and wait for its node options to load before creating the VM.')
+            return
+          }
           if (!canSubmit || submitBusy.current) return
           submitBusy.current = true
           create.mutate(undefined, { onSettled: () => { submitBusy.current = false } })
@@ -261,6 +273,7 @@ function CreateForm({ template, lynxDraft, draftError }: { template: Template; l
                     onChange={(e) => {
                       setClusterId(e.target.value)
                       setNode(undefined)
+                      setSourceVmid('')
                     }}
                   >
                     {connections.data?.map((c) => (
@@ -373,7 +386,7 @@ function CreateForm({ template, lynxDraft, draftError }: { template: Template; l
               <Field label="Memory (GiB)">
                 <Input type="number" min={0.25} step={lynxDraft ? 1 / 1024 : 0.25} value={memoryGiB} onChange={(e) => setMemoryGiB(Number(e.target.value))} />
               </Field>
-              <Field label="Disk (GiB)">
+              <Field label="Disk (GiB)" help={kind === 'qemu' ? 'Minimum size. Larger template disks are kept; smaller boot disks grow to this size.' : undefined}>
                 <Input type="number" min={2} value={disk} onChange={(e) => setDisk(Number(e.target.value))} />
               </Field>
             </div>
@@ -488,6 +501,7 @@ function CreateForm({ template, lynxDraft, draftError }: { template: Template; l
               </dl>
               {create.error && <p className="text-[13px] text-destructive">{create.error.message}</p>}
               {opts.error && <p className="text-[13px] text-destructive">{opts.error.message}</p>}
+              {sourceError && <p role="alert" className="text-[13px] text-destructive">{sourceError}</p>}
               {lynxDraft && <label className="flex cursor-pointer items-start gap-2.5 text-[12px] leading-relaxed"><input type="checkbox" aria-label="I reviewed placement, resources, networking and access" checked={reviewed} className="mt-0.5 size-4 shrink-0 accent-brand" onChange={event => setReviewedValues(event.target.checked ? reviewValues : null)} /><span>I reviewed placement, resources, networking and access. Create will provision this guest and run the selected template.</span></label>}
               <Button variant="primary" size="md" className="w-full" type="submit" loading={create.isPending} disabled={!canSubmit}>
                 <Rocket strokeWidth={1.5} />

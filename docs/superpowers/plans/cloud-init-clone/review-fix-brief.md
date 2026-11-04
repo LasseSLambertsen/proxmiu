@@ -1,0 +1,9 @@
+# One consolidated review fix wave
+
+Reviewer found two material P2 gaps. Complete both before handoff; no unrelated source changes or subagents/commits/pushes.
+
+1. `server/src/ssh.ts` runScript resolves null/absent exit status as zero. ssh2 uses null for signal-terminated channels and can omit exit status on closure. Require an explicit numeric zero for success; missing/signal status must fail honestly through the existing job error path. Preserve explicit numeric nonzero exit behavior. Extend the actual authenticated SSH fixture and runner tests for signal termination and channel closure without exit status. Emit protocol packets only; never kill/execute actual guest commands. Assert job error/no success result/no “All done.” and retained partial identity. Observe RED on old production code, then GREEN after minimum fix. Avoid changing interactive terminal behavior.
+
+2. `web/src/pages/Create.tsx` still retains sourceVmid on QEMU→LXC→select another node→QEMU, leaving source pve1 and locked Node pve2. Changing connections also retains stale source IDs. Synchronize/reset source+displayed node when guest kind/connection/catalog changes, preserve a still-valid user selection and refresh node storage/bridge options. No template available must prevent submission of stale source ID. Extend browser fixture to exercise kind transitions, connection change to a different source catalog (including no templates if needed to pin safe submission) and explicit user submission. Preserve existing LXC and Lynx review flows. Observe RED before source change, then GREEN on final web build (root can own final GREEN build if coordinated).
+
+Report exact RED→GREEN evidence and changed contracts in task-1-report.md. Root owns final full tests/build; do not repeat them. Focused tests/typecheck only. Source ownership expands narrowly to shared runScript failure handling and these source-selection transitions. Read-only reviewer found no other material issue.

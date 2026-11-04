@@ -9,7 +9,7 @@ Refine light tokens toward cleaner warm paper: quieter low-chroma ambient glows,
 - [x] Capture incumbent light/dark Connections views and measure adjacent gutter pixels across desktop/tablet sidebar boundaries; observe the seam regression before the fix.
 - [x] Adjust shared light tokens and remove main-column glow; check readable text/semantic contrast on light surfaces and theme-toggle/meta persistence.
 - [x] One batched visual pass at desktop/tablet/390px in both modes, fix material issues together, then one confirmation if needed. Preserve focus, dialogs, overflow and existing app flows.
-- [ ] Run required typecheck/tests/build and relevant fixtures. Include this final scope in the reviewed/published app PR; site publication still describes durable setup history.
+- [x] Run required typecheck/tests/build and relevant fixtures. Include this final scope in the reviewed/published app PR; site publication still describes durable setup history.
 
 No new dependencies, infrastructure behavior, auth changes or provider sharing. The prior journal review continues independently; UI styles are a separate review scope.
 
@@ -17,4 +17,4 @@ Rendered baseline showed an RGB step of up to 8 at the main-column boundary; aft
 
 The single visual pass found pre-existing Connections clipping at 390px despite root overflow being hidden. A control-bounds assertion failed before the fix (Scan began at x388); `grid-cols-1` constrains the implicit grid track. The confirmation captures show Scan, input and Remove within the phone viewport. Both-mode desktop/tablet/phone checks pass. No further visual changes are needed.
 
-Required final typecheck, 107 tests, full build and retained/native history browser fixtures pass. Independent theme review approved specification and quality with no material defects; source, assertions and final captures reviewed. Publication remains to be recorded.
+Required final typecheck, 107 tests, full build and retained/native history browser fixtures pass. Independent theme review approved specification and quality with no material defects; source, assertions and final captures reviewed. Published with app PR #9 (`04840db`) after exact-head Linux/Windows checks passed; site PR #6/production proof is in the durable-history plan.

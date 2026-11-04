@@ -8,6 +8,7 @@ import { JobHistory, jobSecrets, type Job } from './job-history.js'
 export type { Job } from './job-history.js'
 import { buildCommunityScript, fetchGitHubScript, resolveCommunityScript } from './template-sources.js'
 import { buildScript, buildUpdateScript, getTemplate, type TemplateDef } from './templates.js'
+import { cloneNetwork, diskGiB, preflightClone, type VmConfig } from './vm-clone.js'
 
 export const provisionSchema = z.object({
   clusterId: z.string(),
@@ -211,7 +212,7 @@ async function run(job: Job, req: ProvisionRequest, template: TemplateDef) {
   const staticIp = req.ipMode === 'static' ? req.ipCidr?.split('/')[0] : undefined
   if (req.ipMode === 'static' && !req.ipCidr?.includes('/')) throw new Error('Static IP must be in CIDR form, e.g. 192.168.1.50/24')
 
-  let node = req.node
+  const node = req.node
   const vmid = await step(job, 'prepare', async () => {
     const id = req.vmid ?? Number(await client.get<string>('/cluster/nextid'))
     job.target = { vmid: id, node, type: req.kind, hostname: req.hostname }
@@ -250,13 +251,9 @@ async function run(job: Job, req: ProvisionRequest, template: TemplateDef) {
     })
   } else {
     if (!req.sourceVmid) throw new Error('Pick a cloud-init VM template to clone')
+    let disk: string
     await step(job, 'create', async () => {
-      const resources = await client.get<{ vmid: number; node: string; type: string }[]>('/cluster/resources', { type: 'vm' })
-      const src = resources.find((r) => r.vmid === req.sourceVmid)
-      if (!src) throw new Error(`VM template ${req.sourceVmid} not found`)
-      node = src.node
-      job.target = { vmid, node, type: req.kind, hostname: req.hostname }
-      history.checkpoint()
+      disk = await preflightClone(client, node, req.sourceVmid!)
       say(`Cloning VM ${req.sourceVmid} on ${node}`)
       const upid = await client.post<string>(`/nodes/${node}/qemu/${req.sourceVmid}/clone`, {
         newid: vmid,
@@ -268,8 +265,12 @@ async function run(job: Job, req: ProvisionRequest, template: TemplateDef) {
     })
     await step(job, 'configure', async () => {
       const ip = req.ipMode === 'static' ? `ip=${req.ipCidr}${req.gateway ? `,gw=${req.gateway}` : ''}` : 'ip=dhcp'
-      await client.post(`/nodes/${node}/qemu/${vmid}/config`, {
+      const config = await client.get<VmConfig>(`/nodes/${node}/qemu/${vmid}/config`)
+      const currentGiB = diskGiB(config, disk)
+      const configureTask = await client.post<string | null>(`/nodes/${node}/qemu/${vmid}/config`, {
         cores: req.cores,
+        sockets: 1,
+        vcpus: req.cores,
         memory: req.memory,
         ciuser: user,
         cipassword: req.password,
@@ -279,21 +280,16 @@ async function run(job: Job, req: ProvisionRequest, template: TemplateDef) {
         agent: 'enabled=1',
         onboot: req.onboot,
         tags: `proxmiu;${template.id}`,
+        net0: cloneNetwork(typeof config.net0 === 'string' ? config.net0 : undefined, req.bridge, req.vlan),
       })
-      const config = await client.get<Record<string, string>>(`/nodes/${node}/qemu/${vmid}/config`)
-      const net0 = config.net0 ?? ''
-      if ((req.bridge && !net0.includes(`bridge=${req.bridge}`)) || req.vlan) {
-        const model = net0.split(',')[0] || 'virtio'
-        await client.post(`/nodes/${node}/qemu/${vmid}/config`, { net0: `${model},bridge=${req.bridge}${vlanTag}` })
-      }
-      const disk = ['scsi0', 'virtio0', 'sata0', 'ide0'].find((d) => config[d] && !config[d].includes('media=cdrom'))
-      if (disk) {
-        try {
-          await client.put(`/nodes/${node}/qemu/${vmid}/resize`, { disk, size: `${req.disk}G` })
-          say(`Resized ${disk} to ${req.disk}G`)
-        } catch (err) {
-          say(`Skipped disk resize: ${(err as Error).message}`)
-        }
+      // Some config updates finish synchronously; a returned UPID must finish before resize/start.
+      if (configureTask) await client.waitForTask(node, configureTask, { onProgress: say })
+      if (currentGiB < req.disk) {
+        const resizeTask = await client.put<string>(`/nodes/${node}/qemu/${vmid}/resize`, { disk, size: `${req.disk}G` })
+        await client.waitForTask(node, resizeTask, { onProgress: say })
+        say(`Resized ${disk} to ${req.disk}G`)
+      } else {
+        say(`Keeping ${disk} at ${currentGiB}G (requested minimum ${req.disk}G)`)
       }
     })
     await step(job, 'start', async () => {
