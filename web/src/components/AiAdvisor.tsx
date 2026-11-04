@@ -37,12 +37,14 @@ export function AiAdvisor() {
       setEdited(false)
       setConsent(false)
       qc.setQueryData(['ai-settings'], data)
+      window.dispatchEvent(new Event('proxmiu:ai-settings-changed'))
     },
   })
   const remove = useMutation({
     mutationFn: () => api.del<AiSettings>('/ai/settings'),
     onSuccess: data => {
       qc.setQueryData(['ai-settings'], data)
+      window.dispatchEvent(new Event('proxmiu:ai-settings-changed'))
       setToken('')
       setEdited(false)
       setConsent(false)
