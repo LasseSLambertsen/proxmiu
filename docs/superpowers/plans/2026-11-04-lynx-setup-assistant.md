@@ -21,4 +21,4 @@ The user wants Lynx to help with their actual setup, with a professional, percep
 
 ## Ledger
 
-- Task 1: pending; base 475436234d9e7790d552560be871794657cc82e4.
+- Task 1: complete (commits 4754362..1383586, review clean). Independent spec-compliance and task-quality reviews pass with no material findings. All 84 tests, both TypeScript projects, full build, new setup/ordinary-chat browser fixtures, no-key companion and website desktop/mobile checks pass. Publication follows through the authorized publishing subagent.
