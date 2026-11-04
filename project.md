@@ -30,7 +30,7 @@ browser ── UI (static SPA) ──► agent (Node, on the LAN) ──► Prox
 ```
 
 - **UI:** React + Vite SPA. Served by the agent, or deployed to Vercel/Netlify (`vercel.json`, `netlify.toml`).
-- **Agent:** Fastify. Holds encrypted credentials, scans the LAN, bridges SSH over WebSockets, and runs provisioning jobs (in memory).
+- **Agent:** Fastify. Holds encrypted credentials, scans the LAN, bridges SSH over WebSockets, and runs provisioning jobs with encrypted, retained diagnostic history.
 - **Why an agent:** cloud hosts can't reach private networks; Proxmox sends no CORS headers; browsers can't open raw TCP/SSH or discover devices.
 
 ### Hosted UI → agent connectivity
@@ -54,7 +54,7 @@ browser ── UI (static SPA) ──► agent (Node, on the LAN) ──► Prox
 - Guest updates: re-run the template's GitHub/inline install script, or the upstream Community Scripts update entrypoint, with the same live job log.
 - Opt-in agent self-update from Settings: a narrow root helper runs the update in a transient systemd unit, so the agent can restart and the UI reconnects.
 - Provisioning: LXC creation (auto-downloads the OS template) or cloud-init VM clone; IP discovery via LXC interfaces, guest agent, or ARP; live step and log view.
-- ⌘K command palette; light and dark themes; phone layout with bottom tab bar; installable (web manifest).
+- ⌘K command palette; light and dark themes with a continuous ambient canvas and readable light surfaces; phone layout with bottom tab bar; installable (web manifest).
 - One-command install on a Proxmox host (`scripts/proxmox-install.sh`): autostarting LXC, systemd service, limited `proxmiu@pve` user/role, API token and host registration; `scripts/install.sh` for any Debian/Ubuntu box and for updates.
 
 ## Status
@@ -79,7 +79,7 @@ browser ── UI (static SPA) ──► agent (Node, on the LAN) ──► Prox
 - [x] README screenshots (`docs/screenshots/`).
 - [ ] Validate against a real Proxmox host; fix API differences from the mock.
 - [ ] Exercise the VM clone path; consider a helper that builds a cloud-init template.
-- [ ] Persist provisioning jobs across agent restarts.
+- [x] Persist provisioning jobs across agent restarts, with interrupted outcomes and manual recovery.
 - [ ] Demo mode for the hosted site (client-side mock data) so visitors see the app without an agent.
 - [x] Guest detail workspace with configuration, history, Proxmox notes, snapshots, backups and migration.
 - [ ] Proxmox termproxy console.
@@ -98,4 +98,4 @@ Lynx can also draft a new guest from the public built-in template catalog. Only 
 
 Guest maintenance includes reviewed stopped-guest CPU/memory/boot-setting edits with digest checks, an existing-backup browser per storage, and paged diagnostic logs for tracked tasks. These reuse existing connection permissions.
 
-Native Proxmox task history is available in Activity and guest workspaces. It reads retained node tasks, including operations started outside Proxmiu, and re-enables historical status/log access after agent restart. Activity keeps provisioning runs on a separate tab; those local jobs remain process-local. Source and log access are scoped to the original connection and node, with paging and explicit offline/stale/unknown states.
+Native Proxmox task history is available in Activity and guest workspaces. It reads retained node tasks, including operations started outside Proxmiu, and re-enables historical status/log access after agent restart. Activity keeps provisioning/update runs on a separate tab, backed by an encrypted bounded journal. Restarted work becomes interrupted without automatic continuation; last saved diagnostics and intended guest identity guide manual inspection. Source and log access remain scoped to the original connection and node, with explicit offline/stale/unknown states.

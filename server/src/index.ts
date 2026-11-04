@@ -9,7 +9,7 @@ import { fileURLToPath } from 'node:url'
 import { z } from 'zod'
 import { guestInsightsParamsSchema, guestInsightsQuerySchema, guestMetadataParamsSchema, guestMetadataPatchSchema, loadGuestInsights } from './guest-insights.js'
 import { discoverProxmox, localSubnets } from './network.js'
-import { getJob, listJobs, provisionSchema, startProvision, startUpdate, updateSchema } from './provision.js'
+import { flushJobHistory, jobHistoryStatus, getJob, listJobs, provisionSchema, startProvision, startUpdate, updateSchema } from './provision.js'
 import { forgetClient, guestIp, ProxmoxClient, type ClusterResource } from './proxmox.js'
 import { handleTerminalSocket } from './ssh.js'
 import { sign, store } from './store.js'
@@ -448,6 +448,7 @@ app.post('/api/updates', async (req) => {
   return startUpdate(body)
 })
 
+app.get('/api/jobs/status', async () => jobHistoryStatus())
 app.get('/api/jobs', async () => listJobs().map(({ log: _log, ...j }) => j))
 app.get<{ Params: { id: string } }>('/api/jobs/:id', async (req, reply) => {
   const job = getJob(req.params.id)
@@ -526,6 +527,15 @@ if (existsSync(webDir)) {
     return reply.sendFile('index.html')
   })
 }
+
+// Flush synchronously and preserve the process's usual signal termination behavior.
+for (const signal of ['SIGINT', 'SIGTERM'] as const) {
+  process.once(signal, () => {
+    flushJobHistory()
+    process.kill(process.pid, signal)
+  })
+}
+process.once('exit', flushJobHistory)
 
 await app.listen({ host: HOST, port: PORT })
 if (ALLOWED_ORIGINS.size) app.log.info(`Hosted UIs allowed: ${[...ALLOWED_ORIGINS].join(', ')}`)

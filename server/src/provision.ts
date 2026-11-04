@@ -3,7 +3,9 @@ import { z } from 'zod'
 import { ipForMac } from './network.js'
 import { guestIp, ProxmoxClient, sleep, type ClusterResource } from './proxmox.js'
 import { runScript, waitForSsh } from './ssh.js'
-import { store } from './store.js'
+import { DATA_DIR, store } from './store.js'
+import { JobHistory, jobSecrets, type Job } from './job-history.js'
+export type { Job } from './job-history.js'
 import { buildCommunityScript, fetchGitHubScript, resolveCommunityScript } from './template-sources.js'
 import { buildScript, buildUpdateScript, getTemplate, type TemplateDef } from './templates.js'
 
@@ -44,27 +46,14 @@ export const updateSchema = z.object({
 })
 export type UpdateRequest = z.infer<typeof updateSchema>
 
-type StepStatus = 'pending' | 'running' | 'done' | 'error' | 'skipped'
-export interface Job {
-  id: string
-  title: string
-  kind?: 'provision' | 'update'
-  templateId: string
-  clusterId: string
-  status: 'running' | 'success' | 'error'
-  createdAt: string
-  finishedAt?: string
-  steps: { id: string; label: string; status: StepStatus }[]
-  log: string[]
-  error?: string
-  result?: { vmid: number; node: string; type: 'lxc' | 'qemu'; hostname: string; ip?: string; user: string; notes: string }
-}
-
-const jobs = new Map<string, Job>()
-export const listJobs = () => [...jobs.values()].sort((a, b) => b.createdAt.localeCompare(a.createdAt))
-export const getJob = (id: string) => jobs.get(id)
+const history = new JobHistory(DATA_DIR)
+export const listJobs = () => history.list()
+export const getJob = (id: string) => history.get(id)
+export const jobHistoryStatus = () => history.status()
+export const flushJobHistory = () => history.flush()
 
 export function startProvision(req: ProvisionRequest): Job {
+  history.assertAdmission()
   const template = getTemplate(req.templateId)
   const steps =
     req.kind === 'lxc'
@@ -80,19 +69,19 @@ export function startProvision(req: ProvisionRequest): Job {
     createdAt: new Date().toISOString(),
     steps: steps.map(([id, label]) => ({ id, label, status: 'pending' })),
     log: [],
+    target: { ...(req.vmid ? { vmid: req.vmid } : {}), node: req.node, type: req.kind, hostname: req.hostname },
   }
-  jobs.set(job.id, job)
-  // Keep memory bounded.
-  for (const old of listJobs().slice(50)) jobs.delete(old.id)
+  history.register(job, jobSecrets(req, template))
 
   run(job, req, template).catch((err: Error) => {
     job.status = 'error'
     job.error = err.message
     job.finishedAt = new Date().toISOString()
     for (const s of job.steps) if (s.status === 'running') s.status = 'error'
-    log(job, req, `ERROR: ${err.message}`)
+    logLine(job, `ERROR: ${err.message}`)
+    history.checkpoint()
   })
-  return job
+  return history.get(job.id)!
 }
 
 function templateFromTags(tags?: string) {
@@ -108,6 +97,7 @@ function templateFromTags(tags?: string) {
 }
 
 export async function startUpdate(req: UpdateRequest): Promise<Job> {
+  history.assertAdmission()
   const client = ProxmoxClient.fromRecord(store.getCluster(req.clusterId))
   const resources = await client.get<ClusterResource[]>('/cluster/resources', { type: 'vm' })
   const guest = resources.find((g) => g.vmid === req.vmid && g.type === req.type && g.node === req.node)
@@ -132,9 +122,9 @@ export async function startUpdate(req: UpdateRequest): Promise<Job> {
       { id: 'update', label: `Update ${template.name}`, status: 'pending' },
     ],
     log: [],
+    target: { vmid: req.vmid, node: req.node, type: req.type, hostname: guest.name ?? String(req.vmid) },
   }
-  jobs.set(job.id, job)
-  for (const old of listJobs().slice(50)) jobs.delete(old.id)
+  history.register(job, jobSecrets({}, template))
 
   runUpdate(job, req, template, guest).catch((err: Error) => {
     job.status = 'error'
@@ -142,31 +132,22 @@ export async function startUpdate(req: UpdateRequest): Promise<Job> {
     job.finishedAt = new Date().toISOString()
     for (const s of job.steps) if (s.status === 'running') s.status = 'error'
     logLine(job, `ERROR: ${err.message}`)
+    history.checkpoint()
   })
-  return job
+  return history.get(job.id)!
 }
-
-const secretValues = (req: ProvisionRequest) =>
-  [req.password, ...Object.values(req.options).filter((v): v is string => typeof v === 'string' && v.length >= 6)].filter(
-    (v): v is string => !!v,
-  )
 
 function logLine(job: Job, line: string) {
-  job.log.push(line)
-  if (job.log.length > 5000) job.log.splice(0, job.log.length - 5000)
-}
-
-function log(job: Job, req: ProvisionRequest, line: string) {
-  let clean = line
-  for (const s of secretValues(req)) clean = clean.split(s).join('••••••')
-  logLine(job, clean)
+  history.append(job, line)
 }
 
 async function step<T>(job: Job, id: string, fn: () => Promise<T>): Promise<T> {
   const s = job.steps.find((s) => s.id === id)!
   s.status = 'running'
+  history.checkpoint()
   const out = await fn()
   s.status = 'done'
+  history.checkpoint()
   return out
 }
 
@@ -222,7 +203,7 @@ async function renderUpdateScript(template: TemplateDef, env: Record<string, str
 
 async function run(job: Job, req: ProvisionRequest, template: TemplateDef) {
   const client = ProxmoxClient.fromRecord(store.getCluster(req.clusterId))
-  const say = (line: string) => log(job, req, line)
+  const say = (line: string) => logLine(job, line)
   const appKey = store.sshKey().public
   const keys = [appKey, ...(req.sshKeys ?? '').split('\n').map((k) => k.trim()).filter(Boolean)].join('\n')
   const user = template.user
@@ -233,6 +214,8 @@ async function run(job: Job, req: ProvisionRequest, template: TemplateDef) {
   let node = req.node
   const vmid = await step(job, 'prepare', async () => {
     const id = req.vmid ?? Number(await client.get<string>('/cluster/nextid'))
+    job.target = { vmid: id, node, type: req.kind, hostname: req.hostname }
+    history.checkpoint()
     say(`Using VMID ${id} on node ${node}`)
     return id
   })
@@ -272,6 +255,8 @@ async function run(job: Job, req: ProvisionRequest, template: TemplateDef) {
       const src = resources.find((r) => r.vmid === req.sourceVmid)
       if (!src) throw new Error(`VM template ${req.sourceVmid} not found`)
       node = src.node
+      job.target = { vmid, node, type: req.kind, hostname: req.hostname }
+      history.checkpoint()
       say(`Cloning VM ${req.sourceVmid} on ${node}`)
       const upid = await client.post<string>(`/nodes/${node}/qemu/${req.sourceVmid}/clone`, {
         newid: vmid,
@@ -364,6 +349,7 @@ async function run(job: Job, req: ProvisionRequest, template: TemplateDef) {
   job.status = 'success'
   job.finishedAt = new Date().toISOString()
   say('All done.')
+  history.checkpoint()
 }
 
 async function runUpdate(job: Job, req: UpdateRequest, template: TemplateDef, guest: ClusterResource) {
@@ -407,6 +393,7 @@ async function runUpdate(job: Job, req: UpdateRequest, template: TemplateDef, gu
   job.status = 'success'
   job.finishedAt = new Date().toISOString()
   say('Update finished.')
+  history.checkpoint()
 }
 
 async function resolveOsTemplate(client: ProxmoxClient, node: string, req: ProvisionRequest, template: TemplateDef, say: (l: string) => void) {

@@ -73,6 +73,7 @@ The **agent** is a small Node service that runs on your network (Docker, or any 
 - **Resource settings** – review and change cores per socket, memory in MiB and start-at-boot behavior while a guest is stopped. Pending changes and stale configuration digests block saves, and drafts survive failures. Changes take effect at the next full start.
 - **Existing backups** – browse this guest’s archives on a selected backup storage, with creation dates, sizes, formats and clear permission warnings.
 - **Native task history** – browse Proxmox-retained tasks in Activity or a guest workspace, choose a connection/node, filter by guest ID and inspect actual results. Operations started outside Proxmiu are included when permitted by Proxmox. History can reopen older task logs after an agent restart.
+- **Retained setup history** – provisioning and template-update runs survive agent restarts in an encrypted local journal. Interrupted runs keep the last saved steps and diagnostic tail, with manual recovery guidance; the agent never replays setup automatically.
 - **Task logs** – inspect native task output, page through additional lines, and retain loaded output after failed refreshes. Access stays tied to the original connection and node.
 - **Optional AI setup review** – add an OpenAI, Anthropic or OpenRouter API token in Settings. The agent encrypts it at rest. Preview the anonymous numeric resource snapshot and explicitly send it for advice. Names, addresses, notes, credentials, logs and configuration are excluded; advice never changes your infrastructure automatically. Provider usage is billed by your provider.
 - **Lynx companion** – a visible companion button brings the mascot into the app; five quick logo clicks still work. Dismiss it with Escape or the close button. Reduced motion is respected.
@@ -296,8 +297,8 @@ To update a guest later, open its menu on **Guests** and choose **Update…**. P
 | `PROXMIU_TLS_CERT` / `PROXMIU_TLS_KEY` | – | Paths to your own certificate and key |
 | `HOST` | `127.0.0.1`, or `0.0.0.0` with a password | |
 | `PORT` | `8787` | |
-| `PROXMIU_DATA_DIR` | `./data` | State, encrypted credentials, SSH key, TLS certificate |
-| `PROXMIU_SECRET_KEY` | generated | 32-byte base64 key for encrypting credentials and signing sessions |
+| `PROXMIU_DATA_DIR` | `./data` | State, encrypted credentials and job history, SSH key, TLS certificate |
+| `PROXMIU_SECRET_KEY` | generated | 32-byte base64 key for encrypting credentials/job history and signing sessions |
 
 ## Security
 
@@ -341,6 +342,18 @@ To reproduce current release screenshots after building, run `CHROMIUM_PATH=/usr
 
 `CHROMIUM_PATH=/usr/bin/chromium node web/test/task-history.e2e.cjs` checks native source selection, guest filters, paging, result states, log access recovery, stale history during real-shaped outages, source races, existing provisioning deep links and phone layouts. Server integration tests exercise task log recovery across an actual agent restart. History reads use existing audit permissions and never stop or alter tasks.
 
+### Provisioning history after a restart
+
+Activity's **Provisioning** tab retains creation and template-update runs on the agent in an encrypted `jobs.json` journal. It keeps up to 50 runs, with the newest diagnostic tail bounded to 5,000 lines and 128 KiB of serialized data per run. Truncated logs are labeled. Active runs are preserved when older completed runs are evicted; when all slots are active, wait for a run to finish before starting another.
+
+After a restart, a previously running job is **Interrupted**, with its last saved steps and intended guest identity where known. The guest or a remote operation may still exist or be running. Inspect Proxmox and the guest before starting again. Restoration never resumes commands, retries provisioning or changes infrastructure automatically. Completed history records what happened during that run; saved addresses and results are not a current guest health check. Jobs already lost by an older agent cannot be recovered.
+
+Activity reports journal availability and write failures. An unreadable, unsupported or undecryptable journal stays untouched and blocks new setup runs; it does not silently become empty history. A write failure during an existing run preserves live execution and shows that recent diagnostics may not survive a restart. Initial registration and state transitions are saved immediately; log-only updates may coalesce for up to 250 ms, so a hard kill can lose the last uncheckpointed tail.
+
+Run one active agent process per data directory. Back up the entire data directory, including `secret.key`, or retain the configured `PROXMIU_SECRET_KEY`. The same key is needed to restore job history and credentials. If history cannot load, stop the agent before repairing disk/permissions or restoring a valid journal and matching key from backup. Provisioning request, credential, option, script and resume fields are never recorded in the journal; known secrets are redacted from diagnostic text, and the journal itself is encrypted because script output can contain other sensitive data. No job data is automatically sent to an AI provider.
+
+`CHROMIUM_PATH=/usr/bin/chromium node web/test/job-history.e2e.cjs` checks retained and interrupted setup history, persistence degradation/unavailability, truncation, historical result wording, read failures and desktop/390px layouts with isolated API fixtures. Server integration tests restart the real local agent and verify that recovery makes no source connections or command replays.
+
 ### Chat with Lynx
 
 Save an OpenAI, Anthropic or OpenRouter API key in Settings, then open the lynx companion to chat about Proxmox and Proxmiu. Messages are sent to your configured provider and model when you press Send; inventory, notes and logs are not attached automatically. Conversation stays in the open app’s memory and can be cleared. Existing inventory reviews in Settings retain their separate preview and consent flow. Without a configured key, the lynx keeps its pet interaction. Provider charges apply to chat requests.
@@ -352,3 +365,5 @@ Lynx can propose CPU cores per socket, memory in MiB and start-at-boot settings.
 To plan a new guest, enable **Plan a new guest** in chat and describe the workload. Lynx can suggest one of the built-in templates with CPU, memory and disk values. It receives only your messages and public template presets in this mode; custom templates, scripts and infrastructure data are excluded. Creation planning and selected-guest snapshot sharing are separate modes, and switching clears the conversation and proposals.
 
 Choose **Review in Create** to copy the suggested resources into the existing creation form. The template is checked again before opening it; an unavailable template leaves your current form intact. The handoff stays in memory, belongs to the current agent and template, expires after ten minutes, and is consumed once. Back navigation and reload do not reapply a consumed handoff. Replacing an open form needs explicit confirmation. Placement, networking, credentials and template options use the normal form defaults and remain editable. A review checkbox gates the final **Create** submission; Lynx never starts provisioning on its own. Keep secrets in the form, outside chat.
+
+`node web/test/themes.e2e.cjs` checks light text/semantic contrast, background continuity beside the desktop/tablet sidebar, theme persistence/browser chrome, dialogs and visible Connections controls at 390px using local fixtures.

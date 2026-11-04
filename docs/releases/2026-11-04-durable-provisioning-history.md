@@ -1,0 +1,13 @@
+# Retained setup history and theme refinement
+
+The agent retains bounded provisioning/update diagnostic snapshots in an encrypted `jobs.json` journal using its existing data key. The job list and detail APIs keep their existing shape, with additive interrupted/target/truncation metadata and a persistence-status endpoint. History is not attached to AI requests.
+
+Initial job admission persists before external mutation. Step transitions and terminal outcomes checkpoint immediately; log-only writes may coalesce for up to 250 ms. Atomic restrictive-permission writes preserve the previous good journal on failure. Retention is limited to 50 records and 5,000 lines/128 KiB serialized data per job, keeping the newest diagnostic tail and preserving active jobs. Raw request/option/credential/script fields and resume instructions are excluded; known diagnostic secrets are redacted and the journal is encrypted to protect other script output.
+
+After restart, previously running work is interrupted, with last saved step outcomes, intended guest identity where known and manual recovery guidance. No operation is resumed or retried and no infrastructure is changed during restoration. Completed records and deep links survive, while saved successes and addresses remain historical facts rather than live health checks. Old jobs already lost by earlier agents are not recoverable.
+
+Activity exposes journal health, unavailable/read-error states, truncation and interrupted outcomes. Corrupt, oversized, unsupported or undecryptable history remains untouched and blocks new work rather than silently resetting. Runtime persistence failures leave live execution intact and explain that recent changes may not survive a restart. Backups require the matching encryption key. A hard kill can lose only the last uncheckpointed tail.
+
+Verification: typecheck, 107 tests, full production build, retained/native history browser fixtures and theme fixtures pass. Website presentation/companion checks pass. Independent journal review approved the implementation after the known-secret lone-CR redaction regression was fixed and tested. Tests use synthetic local data and mock services; no real host, paid provider or actual guest installation is required. Existing LAN agents need an update to activate this behavior.
+
+Light mode has a quieter warm-paper canvas, clearer card/input separation, restrained shadows and stronger text/semantic colors. Removing a second main-column glow keeps the ambient background continuous beside the sidebar in both themes. Browser chrome follows the selected theme. Connections now constrains its single-column grid on smaller screens, keeping Scan and Remove controls visible at 390px.

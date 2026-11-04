@@ -1,6 +1,6 @@
 # Design
 
-Proxmiu should feel like a calm, warm glass dashboard seen through dark glass: a floating dark-frosted sidebar, deep amber and teal ambient glows, translucent smoky cards, and a small set of confident accents. Dark is the primary experience; light mode keeps the same glass language in cream tones. The marketing hero uses a flat dark device frame with the same glass.
+Proxmiu should feel like a calm, warm glass dashboard seen through dark glass: a floating dark-frosted sidebar, deep amber and teal ambient glows, translucent smoky cards, and a small set of confident accents. Dark is the primary experience; light mode keeps the same glass language on quiet warm paper with clearer white surfaces. The marketing hero uses a flat dark device frame with the same glass.
 
 ## Principles
 
@@ -17,21 +17,21 @@ Defined in `web/src/index.css` as CSS variables and exposed to Tailwind via `@th
 
 | Token (Tailwind) | Light | Dark | Use |
 |---|---|---|---|
-| `background` | `#f6f0e7` | `#0b0d12` | Page; the body adds warm/cool radial glows |
+| `background` | `#f7f5f0` | `#0b0d12` | Page; the body adds warm/cool radial glows |
 | `sidebar` | dark glass | dark glass | Sidebar, mobile dock |
-| `card` | white 55% | white 5% over navy | Cards, tables |
-| `card-elevated` | white 86% | navy 92% | Dialogs, menus, palette |
-| `hover` | 6% navy | 7% white | Hover and selected rows/items |
-| `inset` | white 45% | white 4.5% | Inputs, code blocks, dialog footers |
-| `border` / `border-subtle` / `border-strong` | 13% / 8% / 22% navy | 10% / 6% / 18% white | Hairlines; cards also use a white glass edge |
-| `foreground` | `#1b2030` | `#f5f1e9` | Primary text |
-| `muted` | `#4e5563` | `#aaa6b4` | Secondary text, labels |
-| `faint` | `#7c8290` | `#74707f` | Tertiary text, icons, placeholders |
+| `card` | white 78% | white 5% over navy | Cards, tables |
+| `card-elevated` | warm white 97% | navy 92% | Dialogs, menus, palette |
+| `hover` | 5.5% charcoal | 7% white | Hover and selected rows/items |
+| `inset` | cool pale grey 62% | white 4.5% | Inputs, code blocks, dialog footers |
+| `border` / `border-subtle` / `border-strong` | 16% / 9% / 28% charcoal | 10% / 6% / 18% white | Shared hairlines, including card boundaries |
+| `foreground` | `#20252f` | `#f5f1e9` | Primary text |
+| `muted` | `#505965` | `#aaa6b4` | Secondary text, labels |
+| `faint` | `#626b77` | `#74707f` | Tertiary text, icons, placeholders |
 | `primary` / `primary-foreground` | `#1b2030` / cream | `#f5f1e9` / navy | Primary button (dark glass CTA) |
-| `brand` / `brand-soft` | `#e28a2f` / 14% | `#f0a23a` / 16% | Accent: active nav icon, focus ring, switches, meters, sparklines |
+| `brand` / `brand-soft` | `#9c5416` / 10% | `#f0a23a` / 16% | Accent: active nav icon, focus ring, switches, meters, sparklines |
 | `success`, `warning`, `destructive`, `info` (+ `-soft`) | teal, amber, coral, steel blue | mint, amber, coral, sky | Status only |
 
-Shadows: `--shadow-card` is a soft ambient shadow plus a 1px white inner highlight; `--shadow-float` is used for dialogs, menus and the mobile dock. The body gradient is warm at the top-left and cool at the top-right, with a faint grid.
+Shadows: `--shadow-card` is a soft ambient shadow plus a 1px white inner highlight; `--shadow-float` is used for dialogs, menus and the mobile dock. The body gradient is warm at the top-left and cool at the top-right, with a faint grid. Paint ambient light on this shared canvas only; a main-column overlay creates a visible seam beside the sidebar. Light-mode text and semantic colors meet 4.5:1 on their card/soft surfaces. Browser chrome follows the active background token.
 
 ## Typography
 
@@ -48,7 +48,7 @@ Shadows: `--shadow-card` is a soft ambient shadow plus a 1px white inner highlig
 
 ## Components
 
-- **Card** (`ui/card.tsx`). Translucent glass, 22px radius, white glass edge in light mode and a white/10 hairline in dark mode, with a 2xl backdrop blur.
+- **Card** (`ui/card.tsx`). Translucent glass, 22px radius, a shared `border` token for legible boundaries in both modes, with a 2xl backdrop blur.
 - **Stat card** (`pages/Overview.tsx`). Optional decorative tints: `tint-warm`, `tint-cool`, `tint-blue`, `tint-lilac`. These are the only place multiple hues appear alongside template tiles.
 - **Button** (`ui/button.tsx`). Variants:
   - `primary`: dark navy glass, the default main action
@@ -123,7 +123,7 @@ Lucide only, 16px in UI (20–22px in the mobile dock), stroke 1.75–2. Icons i
 - Resource edits are a focused form in the guest workspace: label cores per socket and memory in MiB, retain the socket count, review old and new values before save, and explain stopped/pending/unsupported states. Conflicts preserve drafts and require deliberate reload.
 - Backup inventories identify the selected storage and distinguish permission/read failures from a verified empty list. Tracked task logs use the original task node, render plain text and bound both paging and total display.
 
-- Activity separates Proxmox-retained task history from process-local provisioning. History initializes a source once and retains it, its last-known node, selection and loaded logs during offline overviews that omit nodes. It never silently switches connections. Source/filter changes deliberately reset list and selection; late responses cannot replace the new source.
+- Activity separates Proxmox-retained task history from the agent's retained provisioning/update journal. Native history initializes a source once and retains it, its last-known node, selection and loaded logs during offline overviews that omit nodes. It never silently switches connections. Source/filter changes deliberately reset list and selection; late responses cannot replace the new source.
 - Native task outcomes distinguish running, success, warnings, failure and unknown. Unknown Proxmox terminal markers remain unknown. Native logs may be reopened after agent restart by refreshing history and selecting the task; permissions and retention stay authoritative.
 
 - With a configured AI key the lynx wake controls open a branded conversational dialog; without one they retain the companion. Chat exposes the provider/model and intentional message-sharing boundary, uses plain text, preserves failed drafts, and clears on provider change, key removal or agent switch. The dialog fits390px and restores keyboard focus.
@@ -131,3 +131,5 @@ Lucide only, 16px in UI (20–22px in the mobile dock), stroke 1.75–2. Icons i
 - Setup help inside chat starts with an explicit guest choice, exact read-only preview and affirmative consent. Keep the trusted guest identity distinct from anonymous data sent to the provider. Proposals show cores per socket/socket count, MiB and boot behavior before and after, with an explicit apply confirmation and real success/failure state. Unsupported or running guests stay read-only. Lynx's voice is professional and observant with restrained fox/lynx flair; never trade precise consent or technical meaning for a joke.
 
 - Creation planning is a separate explicit chat mode. Draft cards identify the built-in template and resource units and hand off through “Review in Create.” Keep the existing form's layout; show the suggested values and a review acknowledgment beside Create. Replacing an open form is deliberate, failed template checks preserve it, and no draft enters URLs or persistent browser storage. No placement, networking or secret fields come from the model.
+
+- Provisioning history survives agent restarts with an explicit interrupted state, saved diagnostic tails and intended guest identity. Show persistence health and truncation near the history controls, and distinguish unavailable history from an empty list. Interrupted work never spins as running or appears successful. Historical success and SSH details describe that run's saved outcome, with current-state verification left to the user. Recovery guidance is precise and manual; no automatic retry/resume controls.

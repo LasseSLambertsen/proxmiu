@@ -60,8 +60,10 @@ async function main() {
       else if (url.pathname === '/api/auth/status') data = { authRequired: false, authenticated: true }
       else if (url.pathname === '/api/overview') data = { clusters }
       else if (url.pathname === '/api/templates') data = []
-      else if (url.pathname === '/api/jobs') data = [{ id: 'old-job', title: 'Earlier provisioning', createdAt: '2026-11-03T08:00:00Z', status: 'success', steps: [], log: ['Provisioning log retained for this process'] }]
-      else if (url.pathname === '/api/jobs/old-job') data = { id: 'old-job', title: 'Earlier provisioning', createdAt: '2026-11-03T08:00:00Z', status: 'success', steps: [], log: ['Provisioning log retained for this process'] }
+      else if (url.pathname === '/api/ai/settings') data = { configured: false, provider: 'openai', model: 'gpt-4o-mini' }
+      else if (url.pathname === '/api/jobs/status') data = { available: true, writable: true, retention: { maxJobs: 50, maxLogLines: 5000, maxJobBytes: 131072 } }
+      else if (url.pathname === '/api/jobs') data = [{ id: 'old-job', title: 'Earlier provisioning', createdAt: '2026-11-03T08:00:00Z', status: 'success', steps: [], log: ['Provisioning log retained across restarts'] }]
+      else if (url.pathname === '/api/jobs/old-job') data = { id: 'old-job', title: 'Earlier provisioning', createdAt: '2026-11-03T08:00:00Z', status: 'success', steps: [], log: ['Provisioning log retained across restarts'] }
       else if (url.pathname === '/api/guest-metadata') data = {}
       else if (/^\/api\/clusters\/(fixture|archive)\/ips$/.test(url.pathname)) data = {}
       else if (/^\/api\/clusters\/(fixture|archive)\/task-history$/.test(url.pathname)) {
@@ -253,10 +255,10 @@ async function main() {
     await inspect('pve9-operation').waitFor()
     assert.deepEqual(historyReads.at(-1), { connection: 'archive', node: 'pve9', start: 0, vmid: '110' })
     await page.getByRole('tab', { name: 'Provisioning', exact: true }).click()
-    await page.getByText('Provisioning log retained for this process', { exact: true }).waitFor()
+    await page.getByText('Provisioning log retained across restarts', { exact: true }).waitFor()
     await page.goto(`${base}/activity/old-job`, { waitUntil: 'networkidle' })
     assert.equal(await page.getByRole('tab', { name: 'Provisioning', exact: true }).getAttribute('aria-selected'), 'true')
-    await page.getByText('Provisioning log retained for this process', { exact: true }).waitFor()
+    await page.getByText('Provisioning log retained across restarts', { exact: true }).waitFor()
     await page.getByRole('tab', { name: 'Proxmox tasks', exact: true }).click()
     await inspect('qmigrate').waitFor()
     await inspect('vzdump').click()

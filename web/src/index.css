@@ -7,38 +7,37 @@
 :root {
   --radius: 10px;
 
-  --background: #f6f0e7;
-  --background-deep: #efe6d9;
-  --sidebar: rgba(17, 21, 31, 0.78);
-  --card: rgba(255, 255, 255, 0.55);
-  --card-elevated: rgba(255, 253, 249, 0.86);
-  --hover: rgba(28, 32, 44, 0.06);
-  --inset: rgba(255, 255, 255, 0.45);
-  --border: rgba(35, 41, 54, 0.13);
-  --border-subtle: rgba(35, 41, 54, 0.08);
-  --border-strong: rgba(35, 41, 54, 0.22);
-  --foreground: #1b2030;
-  --muted-foreground: #4e5563;
-  --faint-foreground: #7c8290;
+  --background: #f7f5f0;
+  --background-deep: #eeeae2;
+  --sidebar: rgba(26, 31, 39, 0.92);
+  --card: rgba(255, 255, 255, 0.78);
+  --card-elevated: rgba(255, 254, 251, 0.97);
+  --hover: rgba(35, 42, 54, 0.055);
+  --inset: rgba(232, 234, 235, 0.62);
+  --border: rgba(35, 41, 54, 0.16);
+  --border-subtle: rgba(35, 41, 54, 0.09);
+  --border-strong: rgba(35, 41, 54, 0.28);
+  --foreground: #20252f;
+  --muted-foreground: #505965;
+  --faint-foreground: #626b77;
   --primary: #1b2030;
   --primary-hover: #303849;
   --primary-foreground: #fffdf8;
-  --brand: #e28a2f;
-  --brand-soft: rgba(226, 138, 47, 0.14);
-  --success: #1f9d78;
-  --success-soft: rgba(31, 157, 120, 0.12);
-  --warning: #d97706;
-  --warning-soft: rgba(217, 119, 6, 0.12);
-  --destructive: #d9534f;
-  --destructive-soft: rgba(217, 83, 79, 0.1);
-  --info: #2f7fa3;
-  --info-soft: rgba(47, 127, 163, 0.12);
+  --brand: #9c5416;
+  --brand-soft: rgba(156, 84, 22, 0.1);
+  --success: #167254;
+  --success-soft: rgba(22, 114, 84, 0.1);
+  --warning: #92570a;
+  --warning-soft: rgba(146, 87, 10, 0.1);
+  --destructive: #b63e3a;
+  --destructive-soft: rgba(182, 62, 58, 0.09);
+  --info: #236881;
+  --info-soft: rgba(35, 104, 129, 0.1);
   --overlay: rgba(25, 24, 22, 0.32);
-  --shadow-card: 0 18px 45px -30px rgba(55, 42, 26, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.65);
-  --shadow-float: 0 24px 70px -20px rgba(55, 42, 26, 0.45);
-  --glow: rgba(226, 138, 47, 0.15);
-  --warm-glow: rgba(247, 198, 148, 0.5);
-  --cool-glow: rgba(125, 190, 203, 0.25);
+  --shadow-card: 0 10px 30px -18px rgba(30, 35, 42, 0.16), inset 0 1px 0 rgba(255, 255, 255, 0.9);
+  --shadow-float: 0 22px 60px -24px rgba(25, 33, 42, 0.24);
+  --warm-glow: rgba(205, 156, 96, 0.1);
+  --cool-glow: rgba(111, 158, 172, 0.1);
 }
 
 .dark {
@@ -71,7 +70,6 @@
   --overlay: rgba(0, 0, 0, 0.7);
   --shadow-card: inset 0 1px 0 rgba(255, 255, 255, 0.07), 0 20px 50px -35px rgba(0, 0, 0, 0.9);
   --shadow-float: 0 24px 70px -12px rgba(0, 0, 0, 0.85);
-  --glow: rgba(240, 162, 58, 0.14);
   --warm-glow: rgba(160, 85, 30, 0.3);
   --cool-glow: rgba(70, 120, 140, 0.16);
 }
@@ -143,6 +141,7 @@
     color-scheme: dark;
   }
   body {
+    /* One viewport canvas keeps ambient light continuous across the navigation gutter. */
     background:
       radial-gradient(ellipse 75% 55% at 12% -5%, var(--warm-glow), transparent 65%),
       radial-gradient(ellipse 55% 45% at 95% 5%, var(--cool-glow), transparent 65%),
@@ -196,6 +195,7 @@
   --border-strong: rgba(255, 255, 255, 0.2);
   --brand: #f6b45c;
   --brand-soft: rgba(246, 180, 92, 0.18);
+  --shadow-card: 0 8px 24px -16px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.06);
   color: var(--foreground);
 }
 

@@ -59,7 +59,7 @@ export function Connections() {
           </Button>
         }
       />
-      <div className="grid gap-6 px-8 pb-10 max-md:px-4 xl:grid-cols-2">
+      <div className="grid grid-cols-1 gap-6 px-8 pb-10 max-md:px-4 xl:grid-cols-2">
         <Card className="self-start">
           <CardHeader>
             <CardTitle>Find on this network</CardTitle>
