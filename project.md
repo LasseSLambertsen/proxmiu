@@ -61,13 +61,14 @@ browser ── UI (static SPA) ──► agent (Node, on the LAN) ──► Prox
 
 **Verified** against the mock Proxmox API with real SSH:
 - LXC provisioning end to end (base, Claude Code, AI dev box scripts)
+- App-level QEMU clone pipeline with strict local HTTPS and authenticated SSH protocol fixtures; generated setup scripts captured without execution. This does not verify a real clone, cloud-init boot or guest installation.
 - browser terminal, same-origin and cross-origin
 - auth, CORS and origin blocking
 - hosted UI flow in Chromium; mobile layout in an iPhone viewport
 
 **Not yet verified**
 - Against a real Proxmox VE host.
-- The QEMU/cloud-init clone path (never executed).
+- A real QEMU/cloud-init clone, guest boot and installation on a Proxmox host.
 - Completing the Claude Code / Codex installs (sandbox network blocked the downloads; failure handling verified).
 - HTTPS agent mode (`PROXMIU_TLS=1`) in a browser, and the Tailscale route on a real iPhone.
 - Chrome LNA behaviour for WebSockets (terminal) from a hosted https page.
@@ -78,7 +79,8 @@ browser ── UI (static SPA) ──► agent (Node, on the LAN) ──► Prox
 
 - [x] README screenshots (`docs/screenshots/`).
 - [ ] Validate against a real Proxmox host; fix API differences from the mock.
-- [ ] Exercise the VM clone path; consider a helper that builds a cloud-init template.
+- [x] Exercise the app VM clone path with strict local HTTPS/SSH protocol fixtures and correct source/configuration/disk task handling.
+- [ ] Validate real QEMU/cloud-init boot and storage behavior; consider a helper that builds a cloud-init template.
 - [x] Persist provisioning jobs across agent restarts, with interrupted outcomes and manual recovery.
 - [ ] Demo mode for the hosted site (client-side mock data) so visitors see the app without an agent.
 - [x] Guest detail workspace with configuration, history, Proxmox notes, snapshots, backups and migration.
@@ -99,3 +101,5 @@ Lynx can also draft a new guest from the public built-in template catalog. Only 
 Guest maintenance includes reviewed stopped-guest CPU/memory/boot-setting edits with digest checks, an existing-backup browser per storage, and paged diagnostic logs for tracked tasks. These reuse existing connection permissions.
 
 Native Proxmox task history is available in Activity and guest workspaces. It reads retained node tasks, including operations started outside Proxmiu, and re-enables historical status/log access after agent restart. Activity keeps provisioning/update runs on a separate tab, backed by an encrypted bounded journal. Restarted work becomes interrupted without automatic continuation; last saved diagnostics and intended guest identity guide manual inspection. Source and log access remain scoped to the original connection and node, with explicit offline/stale/unknown states.
+
+VM creation refreshes the selected source template/node/cloud-init/boot-disk config before cloning. It waits for configuration and required disk-growth tasks, preserves larger disks, sets the requested vCPU count and keeps unrelated NIC options. Default source selection refreshes the displayed node and its storage/network options. Failed partial clones remain available for manual inspection, without automatic cleanup or retry.

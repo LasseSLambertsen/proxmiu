@@ -68,9 +68,11 @@ export function runScript(conn: Client, script: string, opts: { sudo?: boolean; 
       }
       stream.on('data', push)
       stream.stderr.on('data', push)
-      stream.on('close', (code: number | null) => {
+      stream.on('close', (code: number | null | undefined, signal?: string) => {
         if (buf) opts.onLine(buf)
-        resolve(code ?? 0)
+        if (signal) return reject(new Error(`Script terminated by SSH signal ${signal}`))
+        if (typeof code !== 'number') return reject(new Error('SSH script closed without an exit status'))
+        resolve(code)
       })
       stream.end(script)
     })

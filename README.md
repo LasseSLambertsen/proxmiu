@@ -285,7 +285,11 @@ When it's done you get `ssh dev@<ip>` and a button to open a terminal. For the A
 
 To update a guest later, open its menu on **Guests** and choose **Update…**. Proxmiu finds the template from the `proxmiu;<template>` tag and re-runs its install script; Community Scripts guests use their upstream `/usr/bin/update` entrypoint. The run shows up in **Activity** with a live log.
 
-**VMs** need an existing cloud-init VM template on the node (see [Cloud-Init Support](https://pve.proxmox.com/wiki/Cloud-Init_Support)).
+**VMs** need an existing Debian/Ubuntu cloud-init VM template with a cloud-init drive on the selected node (see [Cloud-Init Support](https://pve.proxmox.com/wiki/Cloud-Init_Support)). The image must support SSH key login for the selected template user and passwordless sudo, and should include the QEMU guest agent for DHCP address discovery. Proxmiu does not build or repair the image.
+
+Before cloning, Proxmiu refreshes the source identity/configuration and checks placement, cloud-init and boot-disk selection. Set an explicit boot disk in Proxmox for multi-disk templates. **Disk (GiB)** is a minimum for VMs: a larger source disk is kept; a smaller boot disk is grown. Disks are never shrunk. Requested CPU cores use one socket, and selected bridge/VLAN changes preserve the other NIC settings.
+
+Configuration and growth tasks must finish successfully before the VM starts. If a clone or later step fails, inspect the retained job and any partially created VM in Proxmox before trying again. Proxmiu does not automatically delete or retry it.
 
 ## Agent configuration
 
@@ -367,3 +371,5 @@ To plan a new guest, enable **Plan a new guest** in chat and describe the worklo
 Choose **Review in Create** to copy the suggested resources into the existing creation form. The template is checked again before opening it; an unavailable template leaves your current form intact. The handoff stays in memory, belongs to the current agent and template, expires after ten minutes, and is consumed once. Back navigation and reload do not reapply a consumed handoff. Replacing an open form needs explicit confirmation. Placement, networking, credentials and template options use the normal form defaults and remain editable. A review checkbox gates the final **Create** submission; Lynx never starts provisioning on its own. Keep secrets in the form, outside chat.
 
 `node web/test/themes.e2e.cjs` checks light text/semantic contrast, background continuity beside the desktop/tablet sidebar, theme persistence/browser chrome, dialogs and visible Connections controls at 390px using local fixtures.
+
+`node --import tsx --test server/test/vm-clone.test.ts` exercises the production VM runner against strict local HTTPS and authenticated SSH protocol fixtures. `node web/test/vm-clone.e2e.cjs` checks source/node/options alignment and explicitly submitted VM creation after a build. Neither test creates a real VM or executes the generated setup script.

@@ -27,7 +27,7 @@ Read `durable-provisioning-history/task-1-brief.md` for the exact implementation
 - [x] TDD encrypted journal/retention/recovery/failure behavior and runner integration.
 - [x] Activity interrupted/status/truncation/read-error UX and meaningful browser fixtures.
 - [x] Implementer report, fresh review and material fixes; consolidated typecheck/full tests/build/browser checks.
-- [ ] Update docs/site; commit and push; publishing subagent waits exact-head CI and verifies guarded squash merges and live Netlify provenance.
+- [x] Update docs/site; commit and push; publishing subagent waits exact-head CI and verifies guarded squash merges and live Netlify provenance.
 
 ## Review focus
 
@@ -45,3 +45,5 @@ Read `durable-provisioning-history/task-1-brief.md` for the exact implementation
 - Independent journal review found one P2: lone-CR secrets were split differently from SSH output. Redaction now follows production CRLF/lone-CR/LF normalization. Three actual SSH-to-journal regressions observed RED then GREEN; scoped re-review approved specification and quality with no remaining material findings.
 - Final consolidated verification: typecheck, all 107 tests and full production build passed. Retained-history and native-task-history browser fixtures passed on the final build, with local synthetic services only. Site presentation and companion fixtures passed.
 - Latest user steering adds the separately scoped light palette/background continuity fix documented in `2026-11-04-light-theme-continuity.md`; no additional journal behavior change.
+
+- Published: app PR #9 head `63ecc8d9ee966f88d32f6fe5bae0cddd8a22d5d7` merged as `04840dbe33a01c16328de72f0bb082e91b272c55`; site PR #6 merged as `a5f734d72ea463732f80956280bc3584b41bad9d`. Exact-head Ubuntu/Windows Node22 CI run 41899742366 passed. Netlify production `6aeb8bdd721e671d6dab812f` current at site merge, live HTML bytes equal committed content.
