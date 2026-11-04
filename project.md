@@ -93,3 +93,5 @@ See the README table. Key variables: `PROXMIU_PASSWORD`, `PROXMIU_ALLOWED_ORIGIN
 Advanced guest workspaces now use native Proxmox notes and track snapshot, backup and migration tasks. Optional AI setup advice uses encrypted provider credentials and a user-reviewed, anonymous numeric preview; it has no infrastructure write tools. The lynx companion is discoverable from the app and website. See README for privilege updates and verification limits.
 
 Guest maintenance includes reviewed stopped-guest CPU/memory/boot-setting edits with digest checks, an existing-backup browser per storage, and paged diagnostic logs for tracked tasks. These reuse existing connection permissions.
+
+Native Proxmox task history is available in Activity and guest workspaces. It reads retained node tasks, including operations started outside Proxmiu, and re-enables historical status/log access after agent restart. Activity keeps provisioning runs on a separate tab; those local jobs remain process-local. Source and log access are scoped to the original connection and node, with paging and explicit offline/stale/unknown states.

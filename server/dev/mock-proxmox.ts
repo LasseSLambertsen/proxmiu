@@ -49,13 +49,26 @@ const guests: Guest[] = [
   { vmid: 110, type: 'lxc', name: 'claude-box', node: 'pve1', status: 'running', maxcpu: 4, maxmem: 8 * GiB, maxdisk: 32 * GiB, ip: '192.168.1.80', tags: 'proxmiu;claude-code', started: now() - 3600 * 30 },
   { vmid: 9000, type: 'qemu', name: 'debian-12-cloud', node: 'pve1', status: 'stopped', maxcpu: 2, maxmem: 2 * GiB, maxdisk: 3 * GiB, template: 1 },
 ]
-const tasks = new Map<string, { done: number; log: string[] }>()
+const tasks = new Map<string, { done: number; log: string[]; exitstatus?: string }>()
 const local = ['local:vztmpl/debian-12-standard_12.7-1_amd64.tar.zst']
 
-function task(node: string, kind: string, ms = 1500, log: string[] = []) {
-  const upid = `UPID:${node}:0000${Math.floor(Math.random() * 9999)}:0:${now().toString(16)}:${kind}::root@pam:`
+let nextTaskPid = 0x100
+function task(node: string, kind: string, ms = 1500, log: string[] = [], vmid?: number) {
+  const upid = `UPID:${node}:${(nextTaskPid++).toString(16).padStart(8, '0')}:00000000:${now().toString(16)}:${kind}:${vmid ?? ''}:root@pam:`
   tasks.set(upid, { done: Date.now() + ms, log })
   return upid
+}
+// Native history predates the agent and remains available after agent restarts.
+for (const [index, seed] of [
+  { node: 'pve1', type: 'vzdump', vmid: 110, ago: 3600, result: 'OK', log: ['Starting backup for guest 110', 'Backup finished'] },
+  { node: 'pve1', type: 'snapshot', vmid: 110, ago: 1800, result: 'OK', log: ['Creating snapshot before-upgrade', 'Snapshot saved'] },
+  { node: 'pve1', type: 'qmstart', vmid: 100, ago: 900, result: 'ERROR: guest agent did not respond', log: ['Starting guest 100', 'Guest agent did not respond'] },
+  { node: 'pve2', type: 'vzdump', vmid: 103, ago: 7200, result: 'WARNINGS: one volume was excluded', log: ['Starting backup for guest 103', 'One volume was excluded'] },
+  { node: 'pve1', type: 'vzdump', vmid: 110, ago: 600, result: 'OK', log: ['Starting backup for guest 110', 'Backup finished'], owner: 'history-verification-service-account@pve!agent-token-for-history-verification' },
+].entries()) {
+  const start = now() - seed.ago
+  const upid = `UPID:${seed.node}:${(index + 1).toString(16).padStart(8, '0')}:00000000:${start.toString(16)}:${seed.type}:${seed.vmid}:${seed.owner ?? 'root@pam'}:`
+  tasks.set(upid, { done: (start + 30) * 1000, log: seed.log, exitstatus: seed.result })
 }
 const usage = (g: Guest) => (g.status === 'running' ? { cpu: Math.random() * 0.4, mem: Math.floor(g.maxmem * (0.3 + Math.random() * 0.4)), uptime: now() - (g.started ?? now()) } : { cpu: 0, mem: 0, uptime: 0 })
 
@@ -192,30 +205,30 @@ const routes: [string, RegExp, Handler][] = [
     if (list.some(s => s.name === b.get('snapname'))) throw new Error('Snapshot already exists')
     list.push({ name: b.get('snapname')!, description: b.get('description') ?? '', snaptime: now() })
     snapshots.set(guestKey(g), list)
-    return task(g.node, 'snapshot', 1200, [`Creating snapshot ${b.get('snapname')}`, 'Snapshot data saved'])
+    return task(g.node, 'snapshot', 1200, [`Creating snapshot ${b.get('snapname')}`, 'Snapshot data saved'], g.vmid)
   }],
   ['DELETE', /^\/nodes\/([\w.-]+)\/(qemu|lxc)\/(\d+)\/snapshot\/([\w-]+)$/, (m) => {
     const g = findGuest(m[1], m[2], m[3])
     snapshots.set(guestKey(g), (snapshots.get(guestKey(g)) ?? []).filter(s => s.name !== m[4]))
-    return task(g.node, 'delsnapshot', 1000)
+    return task(g.node, 'delsnapshot', 1000, [], g.vmid)
   }],
   ['POST', /^\/nodes\/([\w.-]+)\/(qemu|lxc)\/(\d+)\/snapshot\/([\w-]+)\/rollback$/, (m) => {
     const g = findGuest(m[1], m[2], m[3])
     if (!(snapshots.get(guestKey(g)) ?? []).some(s => s.name === m[4])) throw new Error('Snapshot not found')
-    return task(g.node, 'rollback', 1500)
+    return task(g.node, 'rollback', 1500, [], g.vmid)
   }],
   ['POST', /^\/nodes\/([\w.-]+)\/(qemu|lxc)\/(\d+)\/migrate$/, (m, b) => {
     const g = findGuest(m[1], m[2], m[3])
     const node = g.node
     if (!nodes.some(n => n.node === b.get('target') && n.node !== node)) throw new Error('Invalid migration target')
     g.node = b.get('target')!
-    return task(node, 'migrate', 1500)
+    return task(node, 'migrate', 1500, [], g.vmid)
   }],
   ['POST', /^\/nodes\/([\w.-]+)\/vzdump$/, (m, b) => {
     if (b.get('storage') !== 'local' || !guests.some(g => g.node === m[1] && g.vmid === Number(b.get('vmid')))) throw new Error('Invalid backup target')
     const g = guests.find(g => g.vmid === Number(b.get('vmid')))!
     backups.push({ storage: 'local', vmid: g.vmid, volid: `local:backup/vzdump-${g.type}-${g.vmid}-${now()}.${g.type === 'lxc' ? 'tar.zst' : 'vma.zst'}`, size: Math.floor(g.maxdisk / 2), ctime: now(), format: g.type === 'lxc' ? 'tar.zst' : 'vma.zst', content: 'backup' })
-    return task(m[1], 'vzdump', 1800, [`Starting backup for guest ${g.vmid}`, 'Writing archive to local storage', 'Backup finished'])
+    return task(m[1], 'vzdump', 1800, [`Starting backup for guest ${g.vmid}`, 'Writing archive to local storage', 'Backup finished'], g.vmid)
   }],
   ['GET', /^\/nodes\/([\w.-]+)\/(qemu|lxc)\/(\d+)\/rrddata$/, (m, q) => guestHistory(findGuest(m[1], m[2], m[3]), q)],
   ['PUT', /^\/nodes\/[\w-]+\/qemu\/\d+\/resize$/, () => null],
@@ -227,7 +240,7 @@ const routes: [string, RegExp, Handler][] = [
       const action = m[4]
       g.status = action === 'start' || action === 'reboot' ? 'running' : 'stopped'
       if (action === 'start' || action === 'reboot') g.started = now()
-      return task(m[1], `${m[2]}${action}`, 800)
+      return task(m[1], `${m[2]}${action}`, 800, [], g.vmid)
     },
   ],
   ['GET', /^\/nodes\/[\w-]+\/(qemu|lxc)\/(\d+)\/status\/current$/, (m) => ({ status: guests.find((g) => g.vmid === Number(m[2]))?.status })],
@@ -249,9 +262,16 @@ const routes: [string, RegExp, Handler][] = [
     return { result: [{ name: 'eth0', 'ip-addresses': [{ 'ip-address': g.ip, 'ip-address-type': 'ipv4' }] }] }
   }],
   ['POST', /^\/nodes\/[\w-]+\/status$/, () => null],
+  ['GET', /^\/nodes\/([\w.-]+)\/tasks$/, (m, q) => [...tasks.entries()].flatMap(([upid, t]) => {
+    const parts = upid.split(':')
+    if (parts[1] !== m[1] || (q.get('vmid') && parts[6] !== q.get('vmid'))) return []
+    const completed = Date.now() >= t.done
+    return [{ upid, node: parts[1], type: parts[5], id: parts[6], starttime: parseInt(parts[4], 16), ...(completed ? { endtime: Math.floor(t.done / 1000), status: t.exitstatus ?? 'OK' } : { status: 'RUNNING' }) }]
+  }).sort((a, b) => b.starttime - a.starttime || a.upid.localeCompare(b.upid)).slice(Number(q.get('start') ?? 0), Number(q.get('start') ?? 0) + Number(q.get('limit') ?? 50))],
   ['GET', /^\/nodes\/[\w-]+\/tasks\/([^/]+)\/status$/, (m) => {
     const t = tasks.get(decodeURIComponent(m[1]))
-    return t && Date.now() < t.done ? { status: 'running' } : { status: 'stopped', exitstatus: 'OK' }
+    if (!t) throw new Error('Task no longer retained by Proxmox')
+    return Date.now() < t.done ? { status: 'running' } : { status: 'stopped', exitstatus: t.exitstatus ?? 'OK' }
   }],
   ['GET', /^\/nodes\/[\w-]+\/tasks\/([^/]+)\/log$/, (m, q) => {
     const t = tasks.get(decodeURIComponent(m[1]))

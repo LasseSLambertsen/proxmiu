@@ -45,6 +45,7 @@ async function main() {
       else if (url.pathname.endsWith('/notes')) data = { notes: '', digest: 'initial' }
       else if (url.pathname.endsWith('/operations')) data = { snapshots: [], storages: [], targets: [], errors: [] }
       else if (url.pathname.endsWith('/ips')) data = { 'lxc/110': '192.0.2.10' }
+      else if (url.pathname.endsWith('/task-history')) data = { tasks: [], next: 0, hasMore: false, warnings: [] }
       else if (url.pathname === '/api/templates' || url.pathname === '/api/jobs') data = []
       else if (url.pathname !== '/api/guest-metadata') return route.fulfill({ status: 404, json: { error: 'No fixture for this API' } })
       return route.fulfill({ json: data })
@@ -54,12 +55,12 @@ async function main() {
     await notes.fill('Keep this unsaved draft through an outage.')
     mode = 'host-offline'
     await page.getByRole('button', { name: 'Refresh guest', exact: true }).click()
-    await page.getByText(/This connection is unavailable/).waitFor()
+    await page.getByText(/This connection is unavailable\. Showing the last known guest details/).waitFor()
     assert.equal(await notes.inputValue(), 'Keep this unsaved draft through an outage.')
     assert.ok(await page.getByRole('button', { name: 'Reboot', exact: true }).isDisabled())
     mode = 'live'
     await page.getByRole('button', { name: 'Try reconnecting', exact: true }).click()
-    await page.getByText(/This connection is unavailable/).waitFor({ state: 'detached' })
+    await page.getByText(/This connection is unavailable\. Showing the last known guest details/).waitFor({ state: 'detached' })
     assert.equal(await notes.inputValue(), 'Keep this unsaved draft through an outage.')
     await page.goto(base, { waitUntil: 'networkidle' })
     await page.getByText('All connected nodes are online', { exact: true }).waitFor()

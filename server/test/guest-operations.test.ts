@@ -95,3 +95,9 @@ test('operations validate confirmation/storage/target and choose correct QEMU vs
   assert.equal(calls.at(-1)?.path, '/nodes/pve1/lxc/100/snapshot/before-upgrade/rollback')
   assert.deepEqual(await readTask(client, 'pve1', 'UPID:test'), { status: 'stopped', exitstatus: 'backup failed' })
 })
+
+test('upstream task-status authentication errors do not masquerade as an expired agent session', async () => {
+  const { client } = fixture()
+  const denied = { ...client, async get<T>(): Promise<T> { throw Object.assign(new Error('Upstream secret body'), { statusCode: 401 }) } }
+  await assert.rejects(readTask(denied, 'pve1', 'UPID:test'), error => (error as { statusCode?: number }).statusCode === 502 && !String(error).includes('secret'))
+})

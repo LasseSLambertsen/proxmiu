@@ -1,10 +1,11 @@
 import { useQuery } from '@tanstack/react-query'
 import { Activity as ActivityIcon, Check, CircleAlert, Loader2, SquareTerminal, X } from 'lucide-react'
-import { Fragment, useEffect, useRef, useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { Fragment, useEffect, useRef, useState, type KeyboardEvent } from 'react'
+import { Link, useNavigate, useParams } from 'react-router-dom'
 import { CopyButton } from '@/components/CopyButton'
 import { EmptyState } from '@/components/EmptyState'
 import { PageHeader } from '@/components/PageHeader'
+import { ProxmoxTaskHistory } from '@/components/ProxmoxTaskHistory'
 import { SshDialog, type SshRequest } from '@/components/SshDialog'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -143,12 +144,30 @@ function JobDetail({ id }: { id: string }) {
 
 export function Activity() {
   const { jobId } = useParams()
+  const navigate = useNavigate()
+  const [tab, setTab] = useState<'native' | 'provisioning'>(jobId ? 'provisioning' : 'native')
   const { data: jobs } = useQuery({ queryKey: ['jobs'], queryFn: () => api.get<Job[]>('/jobs'), refetchInterval: 3000 })
   const selected = jobId ?? jobs?.[0]?.id
+  useEffect(() => { if (jobId) setTab('provisioning') }, [jobId])
+  const switchTab = (value: 'native' | 'provisioning') => {
+    setTab(value)
+    if (value === 'native' && jobId) navigate('/activity')
+  }
+  const navigateTabs = (event: KeyboardEvent<HTMLDivElement>) => {
+    if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return
+    event.preventDefault()
+    const tabs = [...event.currentTarget.querySelectorAll<HTMLButtonElement>('[role="tab"]')]
+    const next = event.key === 'Home' ? tabs[0] : event.key === 'End' ? tabs[1] : tabs[tab === 'native' ? 1 : 0]
+    next.focus()
+    next.click()
+  }
 
   return (
     <>
-      <PageHeader title="Activity" description="Provisioning and update runs since Proxmiu started" />
+      <PageHeader title="Activity" description="Proxmox task history and local provisioning runs" />
+      <div className="px-8 pb-5 max-md:px-4"><div role="tablist" aria-label="Activity type" onKeyDown={navigateTabs} className="inline-flex gap-1 rounded-lg bg-inset p-1">{([{ value: 'native', label: 'Proxmox tasks' }, { value: 'provisioning', label: 'Provisioning' }] as const).map(item => <button key={item.value} id={`activity-${item.value}-tab`} type="button" role="tab" aria-selected={tab === item.value} aria-controls={`activity-${item.value}-panel`} tabIndex={tab === item.value ? 0 : -1} onClick={() => switchTab(item.value)} className={cn('rounded-md px-3 py-2 text-[13px] font-medium transition-colors focus-visible:outline-2 focus-visible:outline-brand', tab === item.value ? 'bg-hover text-foreground' : 'text-muted hover:text-foreground')}>{item.label}</button>)}</div></div>
+      {tab === 'native' ? <div id="activity-native-panel" role="tabpanel" aria-labelledby="activity-native-tab" className="px-8 pb-10 max-md:px-4"><ProxmoxTaskHistory /></div> : <div id="activity-provisioning-panel" role="tabpanel" aria-labelledby="activity-provisioning-tab">
+      <p className="px-8 pb-5 text-[12px] text-muted max-md:px-4">Template creation and update runs held in this agent process. These runs clear when the agent restarts.</p>
       {!jobs?.length ? (
         <EmptyState
           icon={ActivityIcon}
@@ -187,6 +206,7 @@ export function Activity() {
           {selected && <JobDetail id={selected} />}
         </div>
       )}
+      </div>}
     </>
   )
 }
