@@ -91,7 +91,9 @@ export async function runOperation(client: Client, guest: Guest, input: z.infer<
 }
 
 export async function readTask(client: Client, node: string, upid: string) {
-  const task = await client.get<{ status: string; exitstatus?: string }>(`/nodes/${node}/tasks/${encodeURIComponent(upid)}/status`)
+  const task = await client.get<{ status: string; exitstatus?: string }>(`/nodes/${node}/tasks/${encodeURIComponent(upid)}/status`).catch(() => {
+    throw failure('Task status could not load. Check Proxmox connection access and refresh task history.', 502)
+  })
   if (task?.status !== 'running' && task?.status !== 'stopped') throw failure('Proxmox returned an unknown task status.', 502)
   return { status: task.status, ...(typeof task.exitstatus === 'string' ? { exitstatus: task.exitstatus.slice(0, 1000) } : {}) }
 }

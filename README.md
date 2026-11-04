@@ -12,6 +12,10 @@ Screenshots use synthetic data from the bundled Proxmox mock. They do not show a
 
 <table>
   <tr>
+    <td width="50%"><img src="docs/screenshots/task-history.png" alt="Native Proxmox task history in Activity" /><br /><sub><b>Native history</b>: retained Proxmox tasks, source filters and actual results</sub></td>
+    <td width="50%" align="center"><img src="docs/screenshots/mobile-history-log.png" width="240" alt="Historical task logs on a phone" /><br /><sub><b>Reopen logs</b>: refresh history after restarting the agent</sub></td>
+  </tr>
+  <tr>
     <td width="50%"><img src="docs/screenshots/guest-resources.png" alt="Stopped guest resource configuration" /><br /><sub><b>Resource settings</b>: reviewed CPU, memory and start-at-boot edits</sub></td>
     <td width="50%"><img src="docs/screenshots/guest-task-log.png" alt="Diagnostic log from a tracked snapshot task" /><br /><sub><b>Task logs</b>: native Proxmox output, with paging and clear limits</sub></td>
   </tr>
@@ -68,7 +72,8 @@ The **agent** is a small Node service that runs on your network (Docker, or any 
 - **Snapshots, backups and migration** – create snapshots, roll back or delete with typed confirmation, start a snapshot-mode backup to eligible storage, and migrate to another online node. HA-managed guests use Proxmox HA controls. Track the actual Proxmox task through completion or failure. Storage and guest compatibility are checked by Proxmox; LXC migration can restart the container.
 - **Resource settings** – review and change cores per socket, memory in MiB and start-at-boot behavior while a guest is stopped. Pending changes and stale configuration digests block saves, and drafts survive failures. Changes take effect at the next full start.
 - **Existing backups** – browse this guest’s archives on a selected backup storage, with creation dates, sizes, formats and clear permission warnings.
-- **Task logs** – load diagnostic output for operations started through Proxmiu, page through additional lines, and retain output after failed refreshes.
+- **Native task history** – browse Proxmox-retained tasks in Activity or a guest workspace, choose a connection/node, filter by guest ID and inspect actual results. Operations started outside Proxmiu are included when permitted by Proxmox. History can reopen older task logs after an agent restart.
+- **Task logs** – inspect native task output, page through additional lines, and retain loaded output after failed refreshes. Access stays tied to the original connection and node.
 - **Optional AI setup review** – add an OpenAI or Anthropic API token in Settings. The agent encrypts it at rest. Preview the anonymous numeric resource snapshot and explicitly send it for advice. Names, addresses, notes, credentials, logs and configuration are excluded; advice never changes your infrastructure automatically. Provider usage is billed by your provider.
 - **Lynx companion** – a visible companion button brings the mascot into the app; five quick logo clicks still work. Dismiss it with Escape or the close button. Reduced motion is respected.
 - **Discovery** – scans the subnets the agent is on for Proxmox (port 8006) and connects with an API token or password.
@@ -266,7 +271,7 @@ pveum role modify Proxmiu --append 1 --privs "VM.Snapshot,VM.Snapshot.Rollback,V
 
 Editing notes also needs `VM.Config.Options`; backup storage needs `Datastore.Audit` and `Datastore.AllocateSpace`, already included in the setup above. With a privilege-separated token, grant the required rights to both the user and token. Permission errors stay visible in Proxmiu. These features do not manage backup schedules, storage, firewall, users or cluster membership. Snapshot rollback can discard changes after the snapshot; keep independent backups.
 
-The app tracks tasks started through its advanced workspace for this agent process. After an agent restart, check ongoing tasks in Proxmox before retrying an operation. No real Proxmox host or live AI account has been used for verification; the test suite uses isolated fixtures and a mock Proxmox API.
+Tasks started through the workspace are immediately available. After an agent restart, browse native task history and select the operation to reopen its status and logs before retrying it. Availability depends on Proxmox retention and token permissions. If historical task access expires, refresh history and select the task again. No real Proxmox host or live AI account has been used for verification; the test suite uses isolated fixtures and a mock Proxmox API.
 
 ## How creating a server works
 
@@ -333,3 +338,5 @@ Contributions are welcome. Read [CONTRIBUTING.md](CONTRIBUTING.md) for the setup
 To reproduce current release screenshots after building, run `CHROMIUM_PATH=/usr/bin/chromium node scripts/capture-advanced.cjs`. It starts an isolated local agent and synthetic Proxmox mock, writes captures to `/tmp/proxmiu-release` (override `CAPTURE_DIR`), and cleans up the servers and agent data. AI remains unconfigured and no provider calls occur.
 
 `CHROMIUM_PATH=/usr/bin/chromium node web/test/maintenance.e2e.cjs` verifies stopped-resource editing and conflict recovery, draft preservation through migration, backup inventory states, and escaped/paged task logs with a 2,000-line display limit. Resource edits use the existing `VM.Config.CPU`, `VM.Config.Memory` and `VM.Config.Options` permissions.
+
+`CHROMIUM_PATH=/usr/bin/chromium node web/test/task-history.e2e.cjs` checks native source selection, guest filters, paging, result states, log access recovery, stale history during real-shaped outages, source races, existing provisioning deep links and phone layouts. Server integration tests exercise task log recovery across an actual agent restart. History reads use existing audit permissions and never stop or alter tasks.

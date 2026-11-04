@@ -21,11 +21,13 @@ import { loadNotes, saveNotes, notesSchema, loadOperations, runOperation, operat
 import { aiSettingsSchema, buildAiContext, reviewSchema, reviewSetup } from './ai.js'
 import { loadResourceSettings, saveResourceSettings, resourceSettingsSchema } from './guest-resource-settings.js'
 import { backupQuerySchema, taskLogQuerySchema, loadGuestBackups, loadTaskLog } from './guest-maintenance.js'
+import { loadTaskHistory, taskHistoryQuerySchema, TaskHistoryAccess } from './task-history.js'
 
 const VERSION = '0.2.0'
 const PASSWORD = process.env.PROXMIU_PASSWORD
 const HOST = process.env.HOST ?? (PASSWORD ? '0.0.0.0' : '127.0.0.1')
 const PORT = Number(process.env.PORT ?? 8787)
+const historyAccess = new TaskHistoryAccess()
 /** Origins of hosted UIs (e.g. a Vercel or Netlify deployment) allowed to talk to this agent. */
 const ALLOWED_ORIGINS = new Set(
   (process.env.PROXMIU_ALLOWED_ORIGINS ?? '')
@@ -50,7 +52,7 @@ if (!PASSWORD && process.env.PROXMIU_ALLOW_NO_AUTH !== '1') {
 }
 
 const tls = await tlsOptions()
-const app = Fastify({ logger: { level: process.env.LOG_LEVEL ?? 'info' }, trustProxy: true, ...(tls ? { https: tls } : {}) })
+const app = Fastify({ logger: { level: process.env.LOG_LEVEL ?? 'info' }, trustProxy: true, routerOptions: { maxParamLength: 2048 }, ...(tls ? { https: tls } : {}) })
 
 app.setErrorHandler((err: Error & { statusCode?: number }, _req, reply) => {
   if (err instanceof z.ZodError) {
@@ -170,6 +172,7 @@ app.post('/api/clusters', async (req) => {
 
 app.delete<{ Params: { id: string } }>('/api/clusters/:id', async (req) => {
   store.removeCluster(req.params.id)
+  historyAccess.removeConnection(req.params.id)
   forgetClient(req.params.id)
   return { ok: true }
 })
@@ -222,7 +225,15 @@ app.get('/api/clusters/:id/guests/:node/:type/:vmid/backups', async (req) => {
   return loadGuestBackups(clientFor(p.id), p, storage)
 })
 
-// Task access is limited to tasks started here, tied to the original connection/node.
+app.get('/api/clusters/:id/task-history', async (req) => {
+  const { id } = z.object({ id: guestMetadataParamsSchema.shape.id }).parse(req.params)
+  const { node, ...query } = taskHistoryQuerySchema.parse(req.query)
+  const page = await loadTaskHistory(clientFor(id), node, query)
+  historyAccess.remember(id, node, page.tasks)
+  return page
+})
+
+// Only locally started tasks or tasks returned by validated native history are eligible.
 const operationTasks = new Map<string, number>()
 const taskKey = (id: string, node: string, upid: string) => JSON.stringify([id, node, upid])
 app.post('/api/clusters/:id/guests/:node/:type/:vmid/operations', async (req) => {
@@ -235,17 +246,17 @@ app.post('/api/clusters/:id/guests/:node/:type/:vmid/operations', async (req) =>
   return result
 })
 
-const taskParamsSchema = z.object({ id: z.string().min(1).max(200).regex(/^[\w-]+$/), node: z.string().min(1).max(253).regex(/^[\w][\w.-]*$/), upid: z.string().startsWith('UPID:').max(500).refine(s => !/[\/\r\n]/.test(s)) })
+const taskParamsSchema = z.object({ id: z.string().min(1).max(200).regex(/^[\w-]+$/), node: z.string().min(1).max(253).regex(/^[\w][\w.-]*$/), upid: z.string().startsWith('UPID:').max(1024).refine(s => !/[\/\r\n]/.test(s)) })
 app.get('/api/clusters/:id/tasks/:node/:upid', async (req, reply) => {
   const p = taskParamsSchema.parse(req.params)
-  if (!operationTasks.has(taskKey(p.id, p.node, p.upid))) return reply.status(404).send({ error: 'Task not tracked by this agent. Check its status in Proxmox; the agent may have restarted.' })
+  if (!operationTasks.has(taskKey(p.id, p.node, p.upid)) && !historyAccess.canRead(p.id, p.node, p.upid)) return reply.status(404).send({ error: 'Task access is not current. Refresh Proxmox task history, select the task again and retry.' })
   return readTask(clientFor(p.id), p.node, p.upid)
 })
 
 app.get('/api/clusters/:id/tasks/:node/:upid/log', async (req, reply) => {
   const p = taskParamsSchema.parse(req.params)
   const { start } = taskLogQuerySchema.parse(req.query)
-  if (!operationTasks.has(taskKey(p.id, p.node, p.upid))) return reply.status(404).send({ error: 'Task not tracked by this agent. Check its log in Proxmox; the agent may have restarted.' })
+  if (!operationTasks.has(taskKey(p.id, p.node, p.upid)) && !historyAccess.canRead(p.id, p.node, p.upid)) return reply.status(404).send({ error: 'Task access is not current. Refresh Proxmox task history, select the task again and retry.' })
   return loadTaskLog(clientFor(p.id), p.node, p.upid, start)
 })
 

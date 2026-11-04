@@ -52,6 +52,7 @@ async function main() {
       if (url.pathname === '/api/health') data = { name: 'proxmiu-agent', version: 'test', authRequired: false }
       else if (url.pathname === '/api/auth/status') data = { authRequired: false, authenticated: true }
       else if (url.pathname === '/api/overview') data = { clusters: [cluster] }
+      else if (url.pathname.endsWith('/task-history')) data = { tasks: [], next: 0, hasMore: false, warnings: [] }
       else if (url.pathname === '/api/templates' || url.pathname === '/api/jobs') data = []
       else if (url.pathname === '/api/guest-metadata') data = {}
       else if (url.pathname === '/api/clusters/fixture/ips') data = {}

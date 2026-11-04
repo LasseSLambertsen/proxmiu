@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { api, type AiSettings, type ClusterOverview, type CommunityScript, type Connection, type Guest, type GuestBackups, type GuestInsights, type GuestMetadata, type GuestNotes, type GuestOperations, type GuestResourceSettings, type GuestResourceUpdate, type GuestTask, type GuestTaskLog, type GuestTaskStatus, type Template } from './api'
+import { api, type AiSettings, type ClusterOverview, type CommunityScript, type Connection, type Guest, type GuestBackups, type GuestInsights, type GuestMetadata, type GuestNotes, type GuestOperations, type GuestResourceSettings, type GuestResourceUpdate, type GuestTask, type GuestTaskLog, type GuestTaskStatus, type NativeTaskHistory, type Template } from './api'
 import { guestApiPath, guestKey, type HistoryRange } from './guest-workspace'
 
 export const useGuestMetadata = () => useQuery({ queryKey: ['guest-metadata'], queryFn: () => api.get<Record<string, GuestMetadata>>('/guest-metadata') })
@@ -100,6 +100,28 @@ export function useGuestTask(guest: Guest, task: GuestTask | null) {
     queryFn: () => api.get<GuestTaskStatus>(`/clusters/${encodeURIComponent(guest.clusterId)}/tasks/${encodeURIComponent(task!.node)}/${encodeURIComponent(task!.upid)}`),
     enabled: !!task,
     refetchInterval: query => query.state.data?.status === 'stopped' ? false : 1500,
+    retry: false,
+  })
+}
+
+export function useLoadTaskHistory(clusterId: string, node: string, vmid?: number) {
+  return useMutation({
+    mutationFn: (start: number) => {
+      const query = new URLSearchParams({ node, start: String(start) })
+      if (vmid !== undefined) query.set('vmid', String(vmid))
+      return api.get<NativeTaskHistory>(`/clusters/${encodeURIComponent(clusterId)}/task-history?${query}`)
+    },
+    retry: false,
+  })
+}
+
+export function useNativeTaskStatus(clusterId: string, task: GuestTask, enabled: boolean) {
+  return useQuery({
+    queryKey: ['native-task-status', clusterId, task.node, task.upid],
+    queryFn: () => api.get<GuestTaskStatus>(`/clusters/${encodeURIComponent(clusterId)}/tasks/${encodeURIComponent(task.node)}/${encodeURIComponent(task.upid)}`),
+    enabled,
+    refetchInterval: query => enabled && !query.state.error && query.state.data?.status !== 'stopped' ? 1500 : false,
+    refetchOnWindowFocus: false,
     retry: false,
   })
 }

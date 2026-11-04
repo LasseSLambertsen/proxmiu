@@ -122,3 +122,6 @@ Lucide only, 16px in UI (20–22px in the mobile dock), stroke 1.75–2. Icons i
 
 - Resource edits are a focused form in the guest workspace: label cores per socket and memory in MiB, retain the socket count, review old and new values before save, and explain stopped/pending/unsupported states. Conflicts preserve drafts and require deliberate reload.
 - Backup inventories identify the selected storage and distinguish permission/read failures from a verified empty list. Tracked task logs use the original task node, render plain text and bound both paging and total display.
+
+- Activity separates Proxmox-retained task history from process-local provisioning. History initializes a source once and retains it, its last-known node, selection and loaded logs during offline overviews that omit nodes. It never silently switches connections. Source/filter changes deliberately reset list and selection; late responses cannot replace the new source.
+- Native task outcomes distinguish running, success, warnings, failure and unknown. Unknown Proxmox terminal markers remain unknown. Native logs may be reopened after agent restart by refreshing history and selecting the task; permissions and retention stay authoritative.

@@ -131,6 +131,22 @@ export interface GuestTaskStatus {
   exitstatus?: string
 }
 
+export interface NativeTask extends GuestTask {
+  type: string
+  vmid?: number
+  starttime: number
+  endtime?: number
+  status: string
+  state: 'running' | 'success' | 'warning' | 'error' | 'unknown'
+}
+
+export interface NativeTaskHistory {
+  tasks: NativeTask[]
+  next: number
+  hasMore: boolean
+  warnings: string[]
+}
+
 export interface AiSettings {
   configured: boolean
   provider: 'openai' | 'anthropic'
