@@ -147,6 +147,15 @@ export interface NativeTaskHistory {
   warnings: string[]
 }
 
+export interface AiCreateDraft {
+  templateId: string
+  templateName: string
+  kind: GuestType
+  cores: number
+  memoryMiB: number
+  diskGiB: number
+}
+
 export interface AiSettings {
   configured: boolean
   provider: 'openai' | 'anthropic' | 'openrouter'
@@ -189,7 +198,7 @@ export interface AiSetupProposal {
   after: GuestResourceUpdate
 }
 
-export interface AiChatReply { reply: string; proposal?: AiSetupProposal }
+export interface AiChatReply { reply: string; proposal?: AiSetupProposal; createDraft?: AiCreateDraft }
 
 export interface AiContext {
   clusters: {

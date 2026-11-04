@@ -1,7 +1,7 @@
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { ArrowLeft, Box, Info, MonitorCog, Rocket } from 'lucide-react'
-import { useEffect, useMemo, useState, type ReactNode } from 'react'
-import { Link, useNavigate, useParams } from 'react-router-dom'
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { EmptyState } from '@/components/EmptyState'
 import { PageHeader } from '@/components/PageHeader'
 import { TemplateTile } from '@/components/TemplateIcon'
@@ -10,7 +10,9 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Field, Input, Select, Textarea } from '@/components/ui/form'
 import { Switch } from '@/components/ui/switch'
-import { api, type CreateOptions, type GuestType, type Job, type Template } from '@/lib/api'
+import { api, type AiCreateDraft, type CreateOptions, type GuestType, type Job, type Template } from '@/lib/api'
+import { getAgent } from '@/lib/agent'
+import { takeLynxCreateDraft } from '@/lib/lynx-create-draft'
 import { useConnections, useTemplates } from '@/lib/queries'
 import { cn, formatBytes } from '@/lib/utils'
 
@@ -54,9 +56,20 @@ export function TemplateGrid({ templates, onPick }: { templates: Template[]; onP
 export function Create() {
   const { templateId } = useParams()
   const navigate = useNavigate()
+  const location = useLocation()
   const templates = useTemplates()
   const connections = useConnections()
   const template = templates.data?.find((t) => t.id === templateId)
+  const agent = getAgent()?.url ?? ''
+  const handoffKey = `${location.key}:${agent}:${templateId ?? ''}`
+  const processed = useRef('')
+  const [handoff, setHandoff] = useState<{ key: string; draft: AiCreateDraft | null; error?: string } | null>(null)
+  useEffect(() => {
+    if (templates.isLoading || connections.isLoading || !connections.data?.length || processed.current === handoffKey) return
+    // Consume in an effect, once per navigation, so StrictMode's render checks cannot lose the draft.
+    processed.current = handoffKey
+    setHandoff({ key: handoffKey, ...takeLynxCreateDraft(agent, template) })
+  }, [handoffKey, templates.isLoading, connections.isLoading, connections.data, template, agent])
 
   if (!connections.isLoading && !connections.data?.length) {
     return (
@@ -81,11 +94,16 @@ export function Create() {
     return (
       <>
         <PageHeader title="Create" description="Pick a template. You can adjust everything on the next step." />
-        <div className="px-8 pb-10 max-md:px-4">{templates.data && <TemplateGrid templates={templates.data} onPick={(t) => navigate(`/create/${t.id}`)} />}</div>
+        <div className="px-8 pb-10 max-md:px-4">
+          {handoff?.error && <p role="alert" className="mb-4 text-[13px] text-warning">{handoff.error}</p>}
+          {templates.error && <p role="alert" className="mb-4 text-[13px] text-destructive">Templates could not load. Check the agent connection and reload this page.</p>}
+          {templates.data && <TemplateGrid templates={templates.data} onPick={(t) => navigate(`/create/${t.id}`)} />}
+        </div>
       </>
     )
   }
-  return <CreateForm key={template.id} template={template} />
+  if (handoff?.key !== handoffKey) return <p role="status" className="px-8 py-6">Preparing the creation form…</p>
+  return <CreateForm key={handoffKey} template={template} lynxDraft={handoff.draft} draftError={handoff.error} />
 }
 
 function Section({ title, children, aside }: { title: string; children: ReactNode; aside?: ReactNode }) {
@@ -100,7 +118,7 @@ function Section({ title, children, aside }: { title: string; children: ReactNod
   )
 }
 
-function CreateForm({ template }: { template: Template }) {
+function CreateForm({ template, lynxDraft, draftError }: { template: Template; lynxDraft: AiCreateDraft | null; draftError?: string }) {
   const navigate = useNavigate()
   const connections = useConnections()
   const [clusterId, setClusterId] = useState(connections.data?.[0]?.id ?? '')
@@ -108,9 +126,11 @@ function CreateForm({ template }: { template: Template }) {
   const [kind, setKind] = useState<GuestType>(template.kind)
   const [hostname, setHostname] = useState(template.id)
   const [vmid, setVmid] = useState('')
-  const [cores, setCores] = useState(template.resources.cores)
-  const [memoryGiB, setMemoryGiB] = useState(template.resources.memory / 1024)
-  const [disk, setDisk] = useState(template.resources.disk)
+  const [cores, setCores] = useState(lynxDraft?.cores ?? template.resources.cores)
+  const [memoryGiB, setMemoryGiB] = useState((lynxDraft?.memoryMiB ?? template.resources.memory) / 1024)
+  const [disk, setDisk] = useState(lynxDraft?.diskGiB ?? template.resources.disk)
+  const [reviewedValues, setReviewedValues] = useState<unknown[] | null>(null)
+  const submitBusy = useRef(false)
   const [storage, setStorage] = useState('')
   const [bridge, setBridge] = useState('')
   const [vlan, setVlan] = useState('')
@@ -136,6 +156,10 @@ function CreateForm({ template }: { template: Template }) {
     enabled: !!clusterId,
   })
   const o = opts.data
+  const reviewValues = [clusterId, node, kind, hostname, vmid, cores, memoryGiB, disk, storage, bridge, vlan, ipMode, ipCidr, gateway, osTemplate, sourceVmid, password, sshKeys, onboot, options]
+  const reviewed = !!reviewedValues && reviewValues.every((value, index) => Object.is(value, reviewedValues[index]))
+  // The comparison gates submission synchronously; the effect forgets an invalidated acknowledgment.
+  useEffect(() => { if (reviewedValues && !reviewed) setReviewedValues(null) }, [reviewedValues, reviewed])
 
   const storages = kind === 'lxc' ? o?.storages.rootdir : o?.storages.images
   useEffect(() => {
@@ -196,7 +220,7 @@ function CreateForm({ template }: { template: Template }) {
     onSuccess: (job) => navigate(`/activity/${job.id}`),
   })
 
-  const canSubmit = !!clusterId && !!storage && !!hostname && (kind === 'lxc' || !!sourceVmid) && (ipMode === 'dhcp' || ipCidr.includes('/'))
+  const canSubmit = !!o && !opts.isFetching && !opts.error && !!clusterId && !!storage && !!hostname && (!lynxDraft || reviewed) && (kind === 'lxc' || !!sourceVmid) && (ipMode === 'dhcp' || ipCidr.includes('/'))
 
   return (
     <>
@@ -212,11 +236,19 @@ function CreateForm({ template }: { template: Template }) {
           </Link>
         }
       />
+      {draftError && <p role="alert" className="mx-8 mb-4 text-[13px] text-warning max-md:mx-4">{draftError}</p>}
+      {lynxDraft && <section aria-label="Draft from Lynx" className="mx-8 mb-6 space-y-1.5 rounded-xl bg-inset px-4 py-3 max-md:mx-4">
+        <p className="text-[13px] font-medium">A starting point from Lynx · {template.name}</p>
+        <p className="tnum text-[12px] text-muted">Suggested: {lynxDraft.cores} vCPU · {lynxDraft.memoryMiB} MiB memory · {lynxDraft.diskGiB} GiB disk. All fields remain editable.</p>
+        <p className="text-[12px] leading-relaxed text-muted">Nothing has been created. Placement, networking, access and template options use this form’s defaults, not AI choices. Review them, then acknowledge the checklist beside Create. Keep credentials in this form, outside chat.</p>
+      </section>}
       <form
         className="grid gap-6 px-8 pb-10 max-md:px-4 lg:grid-cols-[minmax(0,1fr)_300px]"
         onSubmit={(e) => {
           e.preventDefault()
-          create.mutate()
+          if (!canSubmit || submitBusy.current) return
+          submitBusy.current = true
+          create.mutate(undefined, { onSettled: () => { submitBusy.current = false } })
         }}
       >
         <div className="space-y-4">
@@ -339,7 +371,7 @@ function CreateForm({ template }: { template: Template }) {
                 <Input type="number" min={1} value={cores} onChange={(e) => setCores(Number(e.target.value))} />
               </Field>
               <Field label="Memory (GiB)">
-                <Input type="number" min={0.25} step={0.25} value={memoryGiB} onChange={(e) => setMemoryGiB(Number(e.target.value))} />
+                <Input type="number" min={0.25} step={lynxDraft ? 1 / 1024 : 0.25} value={memoryGiB} onChange={(e) => setMemoryGiB(Number(e.target.value))} />
               </Field>
               <Field label="Disk (GiB)">
                 <Input type="number" min={2} value={disk} onChange={(e) => setDisk(Number(e.target.value))} />
@@ -451,11 +483,12 @@ function CreateForm({ template }: { template: Template }) {
                 <dd className="truncate text-right font-mono">{ipMode === 'dhcp' ? `${bridge} · DHCP` : ipCidr || '—'}</dd>
                 <dt className="text-faint">Start at boot</dt>
                 <dd className="text-right">
-                  <Switch checked={onboot} onCheckedChange={setOnboot} />
+                  <Switch aria-label="Start at boot" checked={onboot} onCheckedChange={setOnboot} />
                 </dd>
               </dl>
               {create.error && <p className="text-[13px] text-destructive">{create.error.message}</p>}
               {opts.error && <p className="text-[13px] text-destructive">{opts.error.message}</p>}
+              {lynxDraft && <label className="flex cursor-pointer items-start gap-2.5 text-[12px] leading-relaxed"><input type="checkbox" aria-label="I reviewed placement, resources, networking and access" checked={reviewed} className="mt-0.5 size-4 shrink-0 accent-brand" onChange={event => setReviewedValues(event.target.checked ? reviewValues : null)} /><span>I reviewed placement, resources, networking and access. Create will provision this guest and run the selected template.</span></label>}
               <Button variant="primary" size="md" className="w-full" type="submit" loading={create.isPending} disabled={!canSubmit}>
                 <Rocket strokeWidth={1.5} />
                 Create {kind === 'lxc' ? 'container' : 'VM'}

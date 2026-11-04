@@ -1,8 +1,10 @@
 import { useQueryClient } from '@tanstack/react-query'
 import { Loader2, Send, Trash2 } from 'lucide-react'
-import { useEffect, useRef, useState } from 'react'
-import { api, type AiChatReply, type AiSettings, type AiSetupPreview, type AiSetupProposal, type AiSetupTarget, type GuestResourceSettings } from '@/lib/api'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { useLocation, useNavigate } from 'react-router-dom'
+import { api, type AiChatReply, type AiCreateDraft, type AiSettings, type AiSetupPreview, type AiSetupProposal, type AiSetupTarget, type GuestResourceSettings, type Template } from '@/lib/api'
 import { getAgent } from '@/lib/agent'
+import { clearLynxCreateDraft, stageLynxCreateDraft } from '@/lib/lynx-create-draft'
 import { guestApiPath, guestKey } from '@/lib/guest-workspace'
 import { useAiSettings, useGuests } from '@/lib/queries'
 import { Button } from './ui/button'
@@ -10,7 +12,7 @@ import { Dialog, DialogContent } from './ui/dialog'
 import { Field, Select, Textarea } from './ui/form'
 
 const providerLabels: Record<AiSettings['provider'], string> = { openai: 'OpenAI', anthropic: 'Anthropic', openrouter: 'OpenRouter' }
-type Message = { role: 'user' | 'assistant'; content: string; proposal?: AiSetupProposal; applied?: boolean }
+type Message = { role: 'user' | 'assistant'; content: string; proposal?: AiSetupProposal; applied?: boolean; createDraft?: AiCreateDraft }
 type WakeEvent = CustomEvent<{ trigger: HTMLElement; moveFocus: boolean }>
 const targetKey = (target: AiSetupTarget) => `${guestKey(target)}/${target.node}`
 const targetLabel = (target: AiSetupTarget) => `${target.name} · ${target.type === 'qemu' ? 'VM' : 'CT'} ${target.vmid} · ${target.node} · Connection ${target.clusterId}`
@@ -23,6 +25,8 @@ export function LynxChat() {
 
 function ChatSession({ settings }: { settings: AiSettings }) {
   const qc = useQueryClient()
+  const navigate = useNavigate()
+  const location = useLocation()
   const inventory = useGuests()
   const [open, setOpen] = useState(false)
   const [messages, setMessages] = useState<Message[]>([])
@@ -38,12 +42,19 @@ function ChatSession({ settings }: { settings: AiSettings }) {
   const [reviewIndex, setReviewIndex] = useState<number | null>(null)
   const [applying, setApplying] = useState(false)
   const [applyError, setApplyError] = useState<string | null>(null)
+  const [creationMode, setCreationMode] = useState(false)
+  const [replaceIndex, setReplaceIndex] = useState<number | null>(null)
+  const [openingIndex, setOpeningIndex] = useState<number | null>(null)
+  const [creationError, setCreationError] = useState<{ index: number; message: string } | null>(null)
   const trigger = useRef<HTMLElement | null>(null)
   const input = useRef<HTMLTextAreaElement>(null)
   const transcript = useRef<HTMLDivElement>(null)
   const busy = useRef(false)
   const applyBusy = useRef(false)
+  const openingBusy = useRef(false)
   const generation = useRef(0)
+  const navigationKey = useRef(location.key)
+  const stagedDestination = useRef<string | null>(null)
   const provider = providerLabels[settings.provider]
   const content = draft.trim()
   const guests = inventory.guests.filter(guest => !guest.template && (guest.type === 'qemu' || guest.type === 'lxc'))
@@ -53,7 +64,7 @@ function ChatSession({ settings }: { settings: AiSettings }) {
   const conversationLimit = messages.length >= 20 || messages.some(message => message.content.length > 4000)
   const totalLimit = messages.reduce((sum, message) => sum + message.content.length, 0) + content.length > 20000
   const tooLong = content.length > 4000
-  const canSend = !!content && !pending && !previewPending && !applying && !conversationLimit && !totalLimit && !tooLong && !(consent && expired)
+  const canSend = !!content && !pending && !previewPending && !applying && openingIndex === null && !conversationLimit && !totalLimit && !tooLong && !(consent && expired)
 
   function discardActions() {
     setMessages(previous => previous.map(message => message.applied ? message : { ...message, proposal: undefined }))
@@ -61,7 +72,23 @@ function ChatSession({ settings }: { settings: AiSettings }) {
     setApplyError(null)
   }
 
+  function cancelCreationReview() {
+    setReplaceIndex(null)
+    setCreationError(null)
+    if (!openingBusy.current) return
+    generation.current++
+    openingBusy.current = false
+    setOpeningIndex(null)
+    clearLynxCreateDraft()
+    stagedDestination.current = null
+  }
+
   function clear() {
+    clearLynxCreateDraft()
+    stagedDestination.current = null
+    openingBusy.current = false
+    setOpeningIndex(null)
+    setCreationError(null)
     generation.current++
     busy.current = false
     setPending(false)
@@ -74,6 +101,7 @@ function ChatSession({ settings }: { settings: AiSettings }) {
     setSetupError(null)
     setReviewIndex(null)
     setApplyError(null)
+    setReplaceIndex(null)
     input.current?.focus({ preventScroll: true })
   }
 
@@ -85,12 +113,20 @@ function ChatSession({ settings }: { settings: AiSettings }) {
       document.dispatchEvent(new CustomEvent('proxmiu:lynx-dismiss'))
       setOpen(true)
     }
-    const onSettings = () => clear()
+    const onSettings = () => { clear(); setCreationMode(false) }
+    const onHistoryNavigation = () => {
+      clearLynxCreateDraft()
+      stagedDestination.current = null
+      cancelCreationReview()
+    }
     document.addEventListener('proxmiu:lynx-wake', onWake)
     window.addEventListener('proxmiu:ai-settings-changed', onSettings)
+    window.addEventListener('popstate', onHistoryNavigation)
     return () => {
+      clearLynxCreateDraft()
       document.removeEventListener('proxmiu:lynx-wake', onWake)
       window.removeEventListener('proxmiu:ai-settings-changed', onSettings)
+      window.removeEventListener('popstate', onHistoryNavigation)
       generation.current++
       document.querySelectorAll('[data-lynx-wake]').forEach(button => {
         button.setAttribute('aria-expanded', 'false')
@@ -98,6 +134,16 @@ function ChatSession({ settings }: { settings: AiSettings }) {
       })
     }
   }, [])
+
+  useLayoutEffect(() => {
+    if (navigationKey.current === location.key) return
+    navigationKey.current = location.key
+    if (stagedDestination.current && location.pathname !== stagedDestination.current) {
+      clearLynxCreateDraft()
+      stagedDestination.current = null
+    }
+    cancelCreationReview()
+  }, [location.key, location.pathname])
 
   useEffect(() => {
     document.querySelectorAll('[data-lynx-wake]').forEach(button => {
@@ -159,12 +205,14 @@ function ChatSession({ settings }: { settings: AiSettings }) {
       const result = await api.post<AiChatReply>('/ai/chat', {
         messages: outbound.map(({ role, content }) => ({ role, content })),
         ...(shared ? { setup: { previewId: shared.previewId, consent: true } } : {}),
+        ...(creationMode ? { createDraft: true } : {}),
       })
       if (current !== generation.current) return
       const valid = shared && Date.parse(shared.expiresAt) > Date.now()
-      setMessages([...outbound, { role: 'assistant', content: result.reply, ...(valid && result.proposal ? { proposal: result.proposal } : {}) }])
+      setMessages([...outbound, { role: 'assistant', content: result.reply, ...(valid && result.proposal ? { proposal: result.proposal } : {}), ...(creationMode && result.createDraft ? { createDraft: result.createDraft } : {}) }])
       setDraft('')
       setReviewIndex(null)
+      setReplaceIndex(null)
     } catch (failure) {
       if (current !== generation.current) return
       setError(failure instanceof Error ? failure.message : 'The message could not be sent. Try again.')
@@ -174,6 +222,38 @@ function ChatSession({ settings }: { settings: AiSettings }) {
         setPending(false)
         input.current?.focus({ preventScroll: true })
       }
+    }
+  }
+
+  async function reviewCreation(index: number, replace = false) {
+    const creation = messages[index]?.createDraft
+    if (!creationMode || !creation || pending || applying || openingBusy.current) return
+    if (location.pathname.startsWith('/create/') && !replace) { setReplaceIndex(index); return }
+    openingBusy.current = true
+    const current = ++generation.current
+    const origin = location.key
+    const agent = getAgent()?.url ?? ''
+    setOpeningIndex(index)
+    setCreationError(null)
+    clearLynxCreateDraft()
+    try {
+      const catalog = await api.get<Template[]>('/templates')
+      if (current !== generation.current || origin !== navigationKey.current) return
+      if (agent !== (getAgent()?.url ?? '')) throw new Error('The agent changed. Ask Lynx for a fresh draft on the current agent.')
+      if (!Array.isArray(catalog)) throw new Error('Templates could not load. Check the agent connection and try again.')
+      const template = catalog.find(template => template.id === creation.templateId && template.builtin === true && template.kind === creation.kind)
+      if (!template) throw new Error('This built-in template is unavailable. Refresh Templates or ask Lynx for a different draft.')
+      stageLynxCreateDraft({ ...creation, templateName: template.name, kind: template.kind }, agent)
+      const destination = `/create/${encodeURIComponent(creation.templateId)}`
+      stagedDestination.current = destination
+      qc.setQueryData(['templates'], catalog)
+      setReplaceIndex(null)
+      setOpen(false)
+      navigate(destination)
+    } catch (failure) {
+      if (current === generation.current) setCreationError({ index, message: failure instanceof Error ? failure.message : 'The draft could not open. Ask Lynx for a fresh draft.' })
+    } finally {
+      if (current === generation.current) { openingBusy.current = false; setOpeningIndex(null) }
     }
   }
 
@@ -202,7 +282,10 @@ function ChatSession({ settings }: { settings: AiSettings }) {
     }
   }
 
-  return <Dialog open={open} onOpenChange={setOpen}>
+  return <Dialog open={open} onOpenChange={value => {
+    if (!value && openingBusy.current) cancelCreationReview()
+    setOpen(value)
+  }}>
     <DialogContent
       id="proxmiu-lynx-chat"
       title="Chat with Lynx"
@@ -213,6 +296,14 @@ function ChatSession({ settings }: { settings: AiSettings }) {
     >
       <p className="px-5 pb-3 pt-2 text-[12px] leading-relaxed text-muted">Your messages and conversation are sent to {provider}. No setup data is attached automatically. Chat stays in memory until cleared or AI settings change.</p>
       <div ref={transcript} className="min-h-0 flex-1 overflow-y-auto border-y border-border-subtle px-5 py-4">
+        <div className="mb-3 rounded-md bg-inset px-3 py-2.5">
+          <label className="flex cursor-pointer items-center gap-2.5 text-[13px] font-medium"><input type="checkbox" aria-label="Plan a new guest" checked={creationMode} disabled={applying} className="size-4 accent-brand" onChange={event => {
+            clear()
+            setSelected(null)
+            setCreationMode(event.target.checked)
+          }} />Plan a new guest</label>
+          {creationMode && <p className="mt-2 text-[12px] leading-relaxed text-muted">Tell me what it should run. I’ll draft a built-in template and resource allocation. Only your messages and public template presets reach the provider. You review placement, networking and access in Create before provisioning.</p>}
+        </div>
         <details className="mb-4 rounded-md bg-inset px-3 py-2.5" data-setup-controls>
           <summary className="cursor-pointer text-[13px] font-medium">Help with my setup</summary>
           <div className="mt-3 space-y-3">
@@ -220,6 +311,7 @@ function ChatSession({ settings }: { settings: AiSettings }) {
             <Field label="Guest to inspect"><Select aria-label="Guest to inspect" value={selected ? targetKey(selected) : ''} disabled={applying} onChange={event => {
               const guest = guests.find(item => targetKey({ ...item, type: item.type as 'qemu' | 'lxc', name: item.name || `Guest ${item.vmid}` }) === event.target.value)
               clear()
+              setCreationMode(false)
               setSelected(guest ? { clusterId: guest.clusterId, node: guest.node, type: guest.type as 'qemu' | 'lxc', vmid: guest.vmid, name: guest.name || `Guest ${guest.vmid}` } : null)
             }}>
               <option value="">Select a guest…</option>
@@ -248,11 +340,21 @@ function ChatSession({ settings }: { settings: AiSettings }) {
         <div role="log" aria-label="Conversation with Lynx" aria-live="polite" aria-relevant="additions text" className="space-y-4">
           {messages.length === 0 && !pending && <div className="flex gap-3 py-3">
             <img src={`${import.meta.env.BASE_URL}logo.png`} alt="" className="size-10 shrink-0 rounded-lg" />
-            <div className="min-w-0"><p className="font-medium">Lynx, at your service.</p><p className="mt-1 text-[13px] leading-relaxed text-muted">A keen eye for your homelab. Ask me about Proxmiu or Proxmox, or share a setup preview and we’ll find the next sensible move.</p><p className="mt-2 text-[12px] leading-relaxed text-muted">I can inspect what you choose to share and propose supported resource changes. You review and confirm every write. Keep credentials and other secrets out of chat.</p></div>
+            <div className="min-w-0"><p className="font-medium">Lynx, at your service.</p><p className="mt-1 text-[13px] leading-relaxed text-muted">A keen eye for your homelab. Ask about Proxmiu or Proxmox, plan a new guest, or share a setup preview and we’ll find the next sensible move.</p><p className="mt-2 text-[12px] leading-relaxed text-muted">I can draft a template or propose supported resource changes from what you share. You review and confirm every write. Keep credentials and other secrets out of chat.</p></div>
           </div>}
           {messages.map((message, index) => <div key={index} data-chat-message={message.role} className={message.role === 'user' ? 'ml-6 rounded-xl bg-inset px-3 py-2.5' : 'mr-2 py-1'}>
             <p className="mb-1 text-[12px] font-medium text-muted">{message.role === 'user' ? 'You' : 'Lynx'}</p>
             <p className="whitespace-pre-wrap break-words text-[13px] leading-relaxed [overflow-wrap:anywhere]">{message.content}</p>
+            {message.createDraft && <section aria-label="New guest draft" className="mt-3 space-y-3 rounded-md bg-inset p-3 text-[12px]">
+              <p className="font-medium">{message.createDraft.templateName} · {message.createDraft.kind === 'lxc' ? 'Container' : 'Virtual machine'} draft</p>
+              <p className="tnum">{message.createDraft.cores} vCPU · {message.createDraft.memoryMiB} MiB memory · {message.createDraft.diskGiB} GiB disk</p>
+              <p className="leading-relaxed text-muted">Nothing has been created. Review this starting point in Create, choose placement, networking and access, then submit the form yourself.</p>
+              {creationError?.index === index && <p role="alert" className="text-destructive">{creationError.message} Your current form is kept.</p>}
+              {replaceIndex === index ? <>
+                <p className="font-medium">Replace the open creation form? Its unsaved fields will be cleared.</p>
+                <div className="flex flex-wrap gap-2"><Button size="sm" loading={openingIndex === index} disabled={pending || openingIndex !== null} onClick={() => void reviewCreation(index, true)}>Replace form and review</Button><Button size="sm" variant="ghost" disabled={openingIndex !== null} onClick={() => setReplaceIndex(null)}>Keep current form</Button></div>
+              </> : <Button size="sm" loading={openingIndex === index} disabled={pending || !creationMode || openingIndex !== null} onClick={() => void reviewCreation(index)}>Review in Create</Button>}
+            </section>}
             {message.proposal && <section aria-label="Proposed resource changes" className="mt-3 space-y-3 rounded-md bg-inset p-3 text-[12px]">
               <p className="break-words font-medium">{message.applied ? 'Changes saved' : 'Proposed allocation'} · {targetLabel(message.proposal.target)}</p>
               <ProposalValues proposal={message.proposal} />
@@ -273,6 +375,7 @@ function ChatSession({ settings }: { settings: AiSettings }) {
         </div>
       </div>
       <form className="space-y-2.5 bg-inset px-5 py-3" onSubmit={event => { event.preventDefault(); void send() }}>
+        {creationMode && <p className="text-[11px] text-muted">Planning a new guest from your messages and public templates. Review in Create before provisioning.</p>}
         {consent && preview && !expired && <p className="break-words text-[11px] text-muted">Sharing the approved resource snapshot for {preview.target.name} with this message.</p>}
         {error && <div role="alert" className="space-y-2 text-[12px] text-destructive"><p>{error}</p><Button type="button" size="sm" disabled={!canSend} onClick={() => void send()}>Retry message</Button></div>}
         {conversationLimit && <p className="text-[12px] text-warning">This conversation reached its message limit. Clear it to start a new conversation.</p>}
