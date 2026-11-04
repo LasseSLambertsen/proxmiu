@@ -1,0 +1,15 @@
+# Lynx creation drafts
+
+Continue the authorized feature iteration: make natural-language setup requests lead to a reviewed new guest. The previous selected-guest allocation plan is complete. This next slice turns a request such as “Plan a Docker host with 4 cores and 8 GiB RAM” into a built-in template/resource draft and hands it to Create.
+
+## Approach
+
+Direct AI provisioning would duplicate placement, network and credential handling and expand the trusted action surface. Advice alone would leave all copying to the user. The chosen implementation is an explicit creation-planning mode in chat and a handoff to the existing creation form. This is an implementation choice within the user's standing authorization to iterate on more functions and publish reviewed PRs.
+
+Only `{templateId,cores,memoryMiB,diskGiB}` may be drafted. Cores are integer 1..128, memory integer 256..1048576 MiB, disk integer 2..65536 GiB. Template IDs must belong to the server's immutable built-in catalog. Model-selected names, kind, source/connection/node, IDs, networking, credentials, scripts, source URLs and template options are rejected. The model sees a public catalog allowlist (ID/name/description/kind/default resources), never custom templates or live infrastructure. All existing providers and plaintext responses remain supported.
+
+The user explicitly enables “Plan a new guest.” Creation mode and selected-guest snapshot sharing are mutually exclusive; changing mode clears prior conversation/evidence/actions, with late replies ignored. Normal chat and existing resource proposals remain unchanged. Creation replies use `{reply,createDraft?}` with strict validation and advice-only fallback for invalid output. Parse JSON before shortening the reply.
+
+The draft card identifies the trusted template name/kind and resource units, says nothing has been created, and opens the existing Create page only after the user chooses “Review in Create.” Carry the draft once through a memory-only store bound to the agent and exact template using the normal template route while keeping resource values and draft metadata out of URL query parameters, history state, localStorage and credentials fields. Reopening/reloading/back navigation cannot silently restore an old draft. New accepted drafts replace the old one. Recheck the current built-in catalog before handoff; read failures or unavailable templates preserve the open form. Dismissing a pending review prevents late navigation. No connection/node/storage/network/credential/template-option values come from Lynx. The normal form can still use its existing defaults, clearly labeled for review. Require an affirmative review checkbox before the final Create action for a Lynx draft, and show an actionable fallback if the template/draft is stale or unavailable. Ordinary creation flow remains usable.
+
+Keep professional, observant and quietly cunning Lynx copy, warm-glass styling and usable keyboard/390px behavior. No new dependencies or Proxmox privileges. Do not provision a real guest or call a paid provider during verification.

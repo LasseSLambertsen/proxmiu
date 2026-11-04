@@ -18,7 +18,7 @@ import { allTemplates, builtinTemplates, templateSchema } from './templates.js'
 import { communityScriptTemplate, listCommunityScripts } from './template-sources.js'
 import { tlsOptions } from './tls.js'
 import { loadNotes, saveNotes, notesSchema, loadOperations, runOperation, operationSchema, readTask } from './guest-operations.js'
-import { aiSettingsSchema, buildAiContext, reviewSchema, reviewSetup, chatSchema, chatWithLynx, chatWithSetup, AiRequestGate } from './ai.js'
+import { aiSettingsSchema, buildAiContext, reviewSchema, reviewSetup, chatSchema, chatWithLynx, chatWithSetup, chatWithCreateDraft, AiRequestGate } from './ai.js'
 import { loadSetupSnapshot, setupQuerySchema, SetupPreviewCache, verifySetupGuest } from './ai-setup.js'
 import { loadResourceSettings, saveResourceSettings, resourceSettingsSchema } from './guest-resource-settings.js'
 import { backupQuerySchema, taskLogQuerySchema, loadGuestBackups, loadTaskLog } from './guest-maintenance.js'
@@ -493,7 +493,7 @@ app.post('/api/ai/chat', async (req) => {
   const conversation = chatSchema.parse(req.body)
   const settings = store.aiCredentials()
   const snapshot = conversation.setup ? setupPreviews.resolve(conversation.setup.previewId, settings) : undefined
-  return aiRequests.run('chat', () => snapshot ? chatWithSetup(settings, conversation, snapshot) : chatWithLynx(settings, conversation))
+  return aiRequests.run('chat', () => snapshot ? chatWithSetup(settings, conversation, snapshot) : conversation.createDraft ? chatWithCreateDraft(settings, conversation) : chatWithLynx(settings, conversation))
 })
 
 app.get('/api/settings', async () => {

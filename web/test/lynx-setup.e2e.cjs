@@ -118,10 +118,13 @@ async function main() {
     assert.equal(await card.getByRole('button', { name: 'Apply changes' }).count(), 0, 'Successful changes cannot be applied twice')
     assert.equal(await dialog.getByRole('region', { name: 'Setup preview' }).count(), 0, 'Successful write invalidates evidence')
     await dialog.getByRole('button', { name: 'Clear conversation' }).click()
+    // Hold browser time while consenting; a one-second wall-clock window races layout/CPU load.
+    await page.clock.setFixedTime(Date.now())
     expireNext = true
     await dialog.getByRole('button', { name: 'Preview setup', exact: true }).click()
     await consent.waitFor()
     await consent.check()
+    await page.clock.setFixedTime(Date.now() + 2000)
     await dialog.getByText('This preview expired. Refresh it and review sharing consent again.', { exact: true }).waitFor()
     assert.equal(await consent.count(), 0, 'Expired snapshots require renewed consent')
     await dialog.getByRole('button', { name: 'Refresh setup preview' }).click()

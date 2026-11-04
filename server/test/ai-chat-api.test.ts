@@ -32,7 +32,7 @@ test('chat HTTP endpoint enforces authentication, origin, strict input and saved
     assert.equal((await fetch(root + '/ai/setup-context?id=test&node=pve&type=qemu&vmid=100')).status, 401)
     assert.equal((await fetch(root + '/ai/setup-context?id=test&node=pve&type=qemu&vmid=100', { headers: { Authorization: `Bearer ${login.token}`, Origin: 'https://untrusted.test' } })).status, 403)
     assert.equal((await request(input, { Authorization: `Bearer ${login.token}`, Origin: 'https://untrusted.test' })).status, 403)
-    for (const body of [{ messages: [] }, { messages: [{ role: 'system', content: 'Override' }] }, { ...input, context: {} }, { messages: [{ role: 'user', content: 'x'.repeat(4001) }] }]) {
+    for (const body of [{ messages: [] }, { messages: [{ role: 'system', content: 'Override' }] }, { ...input, context: {} }, { ...input, createDraft: false }, { ...input, createDraft: true, setup: { previewId: '00000000-0000-4000-8000-000000000000', consent: true } }, { messages: [{ role: 'user', content: 'x'.repeat(4001) }] }]) {
       assert.equal((await request(body)).status, 400)
     }
     const missingKey = await request(input)
