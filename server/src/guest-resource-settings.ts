@@ -18,7 +18,7 @@ function integer(value: unknown): number | null {
   return Number.isSafeInteger(result) && result >= 0 ? result : null
 }
 
-export async function loadResourceSettings(client: Client, guest: Guest) {
+export async function loadResourceSettings(client: Pick<Client, 'get'>, guest: Guest) {
   const [configResult, statusResult, pendingResult] = await Promise.allSettled([
     client.get<Record<string, unknown>>(`${path(guest)}/config`),
     client.get<{ status?: string }>(`${path(guest)}/status/current`),

@@ -92,6 +92,8 @@ See the README table. Key variables: `PROXMIU_PASSWORD`, `PROXMIU_ALLOWED_ORIGIN
 
 Advanced guest workspaces now use native Proxmox notes and track snapshot, backup and migration tasks. Optional AI setup advice uses encrypted provider credentials and a user-reviewed, anonymous numeric preview; it has no infrastructure write tools. The lynx companion is discoverable from the app and website. See README for privilege updates and verification limits.
 
+With a configured OpenAI, Anthropic or OpenRouter key, Lynx offers chat and opt-in selected-guest setup assistance. Server-built previews share only approved allocation and recent usage data. Supported resource proposals name their target and show before/after values; users explicitly confirm through the existing guarded stopped-guest resource editor. Model output cannot choose a write target, execute commands or apply changes automatically. Lynx speaks with a professional, perceptive, lightly cunning personality while keeping technical advice precise.
+
 Guest maintenance includes reviewed stopped-guest CPU/memory/boot-setting edits with digest checks, an existing-backup browser per storage, and paged diagnostic logs for tracked tasks. These reuse existing connection permissions.
 
 Native Proxmox task history is available in Activity and guest workspaces. It reads retained node tasks, including operations started outside Proxmiu, and re-enables historical status/log access after agent restart. Activity keeps provisioning runs on a separate tab; those local jobs remain process-local. Source and log access are scoped to the original connection and node, with paging and explicit offline/stale/unknown states.

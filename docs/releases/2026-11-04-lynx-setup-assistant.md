@@ -1,0 +1,11 @@
+# Lynx setup assistance
+
+Lynx can help with a selected guest's actual setup. Choose a guest, inspect a server-built preview and consent before sharing its resource settings and available recent usage with the configured OpenAI, Anthropic or OpenRouter model. Guest names and identifiers, configuration digests, addresses, notes, logs, network/disk strings and credentials are excluded from the provider snapshot. Identity and digest remain local to the agent for accurate review and conflict checks.
+
+The snapshot expires and is bound to the AI configuration. Selecting a different guest or clearing the conversation resets its evidence and proposed changes. Previously sent data remains subject to the provider's retention policies. Ordinary chat and Settings' anonymous inventory review keep their existing sharing boundaries.
+
+Lynx may propose cores per socket, memory in MiB and start-at-boot settings. The user reviews the selected guest and before/after values, then explicitly confirms the existing resource-settings operation. Only the real API response determines success. Fresh digest, stopped-state, pending-change, supported-topology and permission checks remain authoritative. No arbitrary commands, automatic shutdown or autonomous infrastructure actions are added.
+
+Lynx's replies now use a professional, observant and quietly cunning voice, with restrained mascot flair and precise technical language.
+
+Verification: all 84 server/domain/integration tests, both TypeScript projects and the production build pass. Tests cover snapshot allowlisting, cache expiry and provider/model/key binding, strict consent, trusted proposal targets, malformed proposals and all three provider payloads. Browser fixtures verify preview/consent, before/after review, successful and stale Apply, expiry/reconsent, late replies, source/settings resets, plain text and phone layout. Ordinary chat, OpenRouter selection and the no-key companion still pass. Website desktop/390px presentation and companion checks pass. Independent spec-compliance and task-quality review found no material issues. Provider responses and Proxmox data use controlled fixtures; no paid model or real host is contacted. Existing LAN agents need an update to receive these endpoints and UI changes.

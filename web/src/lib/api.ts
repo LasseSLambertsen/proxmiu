@@ -153,6 +153,44 @@ export interface AiSettings {
   model: string
 }
 
+export interface AiSetupTarget {
+  clusterId: string
+  node: string
+  type: GuestType
+  vmid: number
+  name: string
+}
+
+export interface AiSetupPreview {
+  previewId: string
+  expiresAt: string
+  provider: AiSettings['provider']
+  model: string
+  target: AiSetupTarget
+  before: GuestResourceSettings
+  context: {
+    capturedAt: string
+    type: GuestType
+    status: string
+    allocation: { cores: number | null; sockets: number; memoryMiB: number | null; onboot: boolean }
+    editable: boolean
+    reason?: string
+    history: {
+      timeframe: 'day'; samples: number; firstSample?: number; lastSample?: number
+      cpuSamples?: number; cpuMean?: number; cpuPeak?: number
+      memorySamples?: number; memoryMeanBytes?: number; memoryPeakBytes?: number; unavailable?: string
+    }
+  }
+}
+
+export interface AiSetupProposal {
+  target: AiSetupTarget
+  before: GuestResourceSettings
+  after: GuestResourceUpdate
+}
+
+export interface AiChatReply { reply: string; proposal?: AiSetupProposal }
+
 export interface AiContext {
   clusters: {
     nodes: { cpu?: number; maxcpu?: number; mem?: number; maxmem?: number }[]

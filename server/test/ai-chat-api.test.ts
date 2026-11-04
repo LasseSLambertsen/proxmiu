@@ -29,6 +29,8 @@ test('chat HTTP endpoint enforces authentication, origin, strict input and saved
     const input = { messages: [{ role: 'user', content: 'Hello Lynx' }] }
     const request = (body: unknown, headers: Record<string, string> = { Authorization: `Bearer ${login.token}` }) => fetch(root + '/ai/chat', { method: 'POST', headers: { 'Content-Type': 'application/json', ...headers }, body: JSON.stringify(body) })
     assert.equal((await request(input, {})).status, 401)
+    assert.equal((await fetch(root + '/ai/setup-context?id=test&node=pve&type=qemu&vmid=100')).status, 401)
+    assert.equal((await fetch(root + '/ai/setup-context?id=test&node=pve&type=qemu&vmid=100', { headers: { Authorization: `Bearer ${login.token}`, Origin: 'https://untrusted.test' } })).status, 403)
     assert.equal((await request(input, { Authorization: `Bearer ${login.token}`, Origin: 'https://untrusted.test' })).status, 403)
     for (const body of [{ messages: [] }, { messages: [{ role: 'system', content: 'Override' }] }, { ...input, context: {} }, { messages: [{ role: 'user', content: 'x'.repeat(4001) }] }]) {
       assert.equal((await request(body)).status, 400)

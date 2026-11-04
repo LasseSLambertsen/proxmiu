@@ -18,7 +18,8 @@ import { allTemplates, builtinTemplates, templateSchema } from './templates.js'
 import { communityScriptTemplate, listCommunityScripts } from './template-sources.js'
 import { tlsOptions } from './tls.js'
 import { loadNotes, saveNotes, notesSchema, loadOperations, runOperation, operationSchema, readTask } from './guest-operations.js'
-import { aiSettingsSchema, buildAiContext, reviewSchema, reviewSetup, chatSchema, chatWithLynx, AiRequestGate } from './ai.js'
+import { aiSettingsSchema, buildAiContext, reviewSchema, reviewSetup, chatSchema, chatWithLynx, chatWithSetup, AiRequestGate } from './ai.js'
+import { loadSetupSnapshot, setupQuerySchema, SetupPreviewCache, verifySetupGuest } from './ai-setup.js'
 import { loadResourceSettings, saveResourceSettings, resourceSettingsSchema } from './guest-resource-settings.js'
 import { backupQuerySchema, taskLogQuerySchema, loadGuestBackups, loadTaskLog } from './guest-maintenance.js'
 import { loadTaskHistory, taskHistoryQuerySchema, TaskHistoryAccess } from './task-history.js'
@@ -211,7 +212,10 @@ app.get('/api/clusters/:id/guests/:node/:type/:vmid/resource-settings', async (r
 
 app.put('/api/clusters/:id/guests/:node/:type/:vmid/resource-settings', async (req) => {
   const p = guestInsightsParamsSchema.parse(req.params)
-  return saveResourceSettings(clientFor(p.id), p, resourceSettingsSchema.parse(req.body))
+  const input = resourceSettingsSchema.parse(req.body)
+  const client = clientFor(p.id)
+  await verifySetupGuest(client, p)
+  return saveResourceSettings(client, p, input)
 })
 
 app.get('/api/clusters/:id/guests/:node/:type/:vmid/operations', async (req) => {
@@ -454,8 +458,18 @@ app.get<{ Params: { id: string } }>('/api/jobs/:id', async (req, reply) => {
 // --- settings & ssh -------------------------------------------------------------
 
 app.get('/api/ai/settings', async () => store.aiSettings())
-app.put('/api/ai/settings', async (req) => store.saveAiSettings(aiSettingsSchema.parse(req.body)))
-app.delete('/api/ai/settings', async () => store.removeAiSettings())
+const setupPreviews = new SetupPreviewCache()
+app.put('/api/ai/settings', async (req) => {
+  const value = store.saveAiSettings(aiSettingsSchema.parse(req.body))
+  setupPreviews.clear()
+  return value
+})
+app.delete('/api/ai/settings', async () => { setupPreviews.clear(); return store.removeAiSettings() })
+app.get('/api/ai/setup-context', async (req) => {
+  const guest = setupQuerySchema.parse(req.query)
+  const settings = store.aiCredentials()
+  return setupPreviews.create(settings, await loadSetupSnapshot(clientFor(guest.id), guest))
+})
 app.get('/api/ai/context', async () => {
   const connections = store.listClusters()
   if (connections.length > 50) throw Object.assign(new Error('Review supports up to 50 connections.'), { statusCode: 400 })
@@ -478,7 +492,8 @@ app.post('/api/ai/review', async (req, reply) => {
 app.post('/api/ai/chat', async (req) => {
   const conversation = chatSchema.parse(req.body)
   const settings = store.aiCredentials()
-  return aiRequests.run('chat', () => chatWithLynx(settings, conversation))
+  const snapshot = conversation.setup ? setupPreviews.resolve(conversation.setup.previewId, settings) : undefined
+  return aiRequests.run('chat', () => snapshot ? chatWithSetup(settings, conversation, snapshot) : chatWithLynx(settings, conversation))
 })
 
 app.get('/api/settings', async () => {
