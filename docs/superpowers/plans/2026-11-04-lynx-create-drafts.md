@@ -48,7 +48,7 @@ Files: web/src/lib/lynx-create-draft.ts (new), web/test/lynx-create-draft.test.t
 
 - [x] Update docs/site with draft/review behavior and actual limits. Run full typecheck/test/build plus relevant chat/setup/pet/site fixtures. Fresh whole-branch review and address material findings.
 - [x] Commit the verified implementation (`46343b2`). Push and publication are delegated below.
-- [ ] Publishing subagent opens PRs, waits exact-head Linux/Windows CI and Netlify preview, squash merges, checks tested/merged tree equality and live production bytes. No new app hosting.
+- [x] Publishing completed: app PR #8 and site PR #5 squash merged after exact-head CI; tested and merged trees match and Netlify production bytes/provenance were verified. No new app hosting.
 
 ## Progress
 
@@ -65,3 +65,5 @@ Files: web/src/lib/lynx-create-draft.ts (new), web/test/lynx-create-draft.test.t
 
 - Tasks 1–2: complete (commits 12404ad..46343b2, 89/89 tests, both TypeScript projects, build and browser fixtures pass). Whole-branch review finding addressed with RED → GREEN navigation regressions; no parked findings.
 - Task 3: implementation, documentation and verification complete. Publishing subagent will report exact-head CI, merge SHAs and production provenance; no application hosting is introduced.
+
+- Publication complete: app merge 4b086e66ec672d2dbfcac2661cbb8855a5d46d15; site merge a9c7bf4f791a0649e6a563a6444c04a192c98e1a. Ubuntu/Windows CI run 41854190051 passed; production deploy 6aeb4ac52aaef1b2788c45d3 is verified from the exact site merge.

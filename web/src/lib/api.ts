@@ -325,13 +325,25 @@ export interface Job {
   kind?: 'provision' | 'update'
   templateId: string
   clusterId: string
-  status: 'running' | 'success' | 'error'
+  status: 'running' | 'success' | 'error' | 'interrupted'
   createdAt: string
   finishedAt?: string
-  steps: { id: string; label: string; status: 'pending' | 'running' | 'done' | 'error' | 'skipped' }[]
+  interruptedAt?: string
+  recoveryGuidance?: string
+  target?: { vmid?: number; node: string; type: GuestType; hostname: string }
+  logTruncated?: boolean
+  steps: { id: string; label: string; status: 'pending' | 'running' | 'done' | 'error' | 'skipped' | 'interrupted' }[]
   log?: string[]
   error?: string
   result?: { vmid: number; node: string; type: GuestType; hostname: string; ip?: string; user: string; notes: string }
+}
+
+export interface JobHistoryStatus {
+  available: boolean
+  writable: boolean
+  warning?: string
+  lastSavedAt?: string
+  retention: { maxJobs: number; maxLogLines: number; maxJobBytes: number }
 }
 
 export interface DiscoveredHost {
