@@ -47,7 +47,7 @@ Files: web/src/lib/lynx-create-draft.ts (new), web/test/lynx-create-draft.test.t
 ### Task 3: finish and publish
 
 - [x] Update docs/site with draft/review behavior and actual limits. Run full typecheck/test/build plus relevant chat/setup/pet/site fixtures. Fresh whole-branch review and address material findings.
-- [ ] Commit and push the verified branch.
+- [x] Commit the verified implementation (`46343b2`). Push and publication are delegated below.
 - [ ] Publishing subagent opens PRs, waits exact-head Linux/Windows CI and Netlify preview, squash merges, checks tested/merged tree equality and live production bytes. No new app hosting.
 
 ## Progress
@@ -62,3 +62,6 @@ Files: web/src/lib/lynx-create-draft.ts (new), web/test/lynx-create-draft.test.t
 - Final: fixed browser-navigation race — held-catalog Back regression RED → GREEN; queued draft abandonment during connection loading RED → GREEN; suite 89/89, typecheck and production build pass. Origin location binding, native history cancellation and staged-destination cleanup prevent stale navigation or later manual-form reuse. No deferred findings or rulings.
 
 - Final browser regression checks: ordinary chat and no-key companion pass on the final code. The setup fixture initially raced its one-second expiry during parallel execution; it passed alone, then passed with explicit browser-clock control around consent/expiry. Production preview TTL is unchanged. No unresolved test failures.
+
+- Tasks 1–2: complete (commits 12404ad..46343b2, 89/89 tests, both TypeScript projects, build and browser fixtures pass). Whole-branch review finding addressed with RED → GREEN navigation regressions; no parked findings.
+- Task 3: implementation, documentation and verification complete. Publishing subagent will report exact-head CI, merge SHAs and production provenance; no application hosting is introduced.
