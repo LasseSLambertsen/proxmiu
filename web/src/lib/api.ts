@@ -149,7 +149,7 @@ export interface NativeTaskHistory {
 
 export interface AiSettings {
   configured: boolean
-  provider: 'openai' | 'anthropic'
+  provider: 'openai' | 'anthropic' | 'openrouter'
   model: string
 }
 

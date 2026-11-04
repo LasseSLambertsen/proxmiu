@@ -5,8 +5,10 @@ import { NavLink, Outlet, useNavigate } from 'react-router-dom'
 import { getAgent } from '@/lib/agent'
 import { api, type Job } from '@/lib/api'
 import { useTheme } from '@/lib/theme'
+import { useAiSettings } from '@/lib/queries'
 import { cn } from '@/lib/utils'
 import { CommandPalette } from './CommandPalette'
+import { LynxChat } from './LynxChat'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from './ui/dropdown-menu'
 
 const nav = [
@@ -34,6 +36,8 @@ const isMac = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigat
 
 export function Layout({ authRequired, onLogout, onDisconnect }: { authRequired: boolean; onLogout: () => void; onDisconnect?: () => void }) {
   const { dark, toggle } = useTheme()
+  const { data: aiSettings } = useAiSettings()
+  const lynxLabel = aiSettings?.configured ? 'Chat with Lynx' : 'Meet your lynx'
   const [palette, setPalette] = useState(false)
   const { data: jobs } = useQuery({ queryKey: ['jobs'], queryFn: () => api.get<Job[]>('/jobs'), refetchInterval: 4000 })
   const running = jobs?.filter((j) => j.status === 'running').length ?? 0
@@ -96,9 +100,9 @@ export function Layout({ authRequired, onLogout, onDisconnect }: { authRequired:
             ))}
           </nav>
           <div className="space-y-px border-t border-border-subtle p-3 max-lg:p-2">
-            <button type="button" data-lynx-wake aria-controls="proxmiu-lynx" aria-expanded={false} aria-label="Meet your lynx" title="Meet your lynx" className={cn(footerBtn, 'mb-2 h-10 focus-visible:outline-2 focus-visible:outline-brand max-lg:justify-center max-lg:px-0')}>
+            <button type="button" data-lynx-wake aria-controls="proxmiu-lynx" aria-expanded={false} aria-label={lynxLabel} title={lynxLabel} className={cn(footerBtn, 'mb-2 h-10 focus-visible:outline-2 focus-visible:outline-brand max-lg:justify-center max-lg:px-0')}>
               <img src={LOGO} alt="" className="size-6 shrink-0 rounded-md" />
-              <span className="max-lg:hidden">Meet your lynx</span>
+              <span className="max-lg:hidden">{lynxLabel}</span>
             </button>
             <div className="mb-1.5 flex items-center gap-2 rounded-md px-2.5 py-1.5 text-[12px] text-faint max-lg:hidden" title={agentUrl || 'Agent serving this page'}>
               <span className="size-1.5 shrink-0 rounded-full bg-success shadow-[0_0_0_3px_var(--success-soft)]" />
@@ -124,23 +128,24 @@ export function Layout({ authRequired, onLogout, onDisconnect }: { authRequired:
         </div>
       </aside>
       <main className="relative min-w-0 flex-1 overflow-y-auto max-sm:pb-[calc(112px+env(safe-area-inset-bottom))]">
-        <MobileTopBar onSearch={() => setPalette(true)} />
+        <MobileTopBar onSearch={() => setPalette(true)} lynxLabel={lynxLabel} />
         <div className="pointer-events-none absolute inset-x-0 top-0 h-72 bg-[radial-gradient(ellipse_70%_100%_at_50%_0%,var(--glow),transparent)]" />
         <div className="relative">
           <Outlet />
         </div>
       </main>
       <MobileTabBar running={running} dark={dark} toggleTheme={toggle} authRequired={authRequired} onLogout={onLogout} onDisconnect={onDisconnect} />
+      <LynxChat />
       <CommandPalette open={palette} onOpenChange={setPalette} dark={dark} toggleTheme={toggle} />
     </div>
   )
 }
 
-function MobileTopBar({ onSearch }: { onSearch: () => void }) {
+function MobileTopBar({ onSearch, lynxLabel }: { onSearch: () => void; lynxLabel: string }) {
   return (
     <div className="sticky top-0 z-30 hidden h-[calc(52px+env(safe-area-inset-top))] items-end border-b border-border-subtle bg-background/80 px-4 pb-2.5 backdrop-blur-xl max-sm:flex">
       <Logo size={26} />
-      <button type="button" data-lynx-wake aria-controls="proxmiu-lynx" aria-expanded={false} aria-label="Meet your lynx" title="Meet your lynx" className="ml-auto flex size-11 items-center justify-center rounded-full focus-visible:outline-2 focus-visible:outline-brand active:bg-hover">
+      <button type="button" data-lynx-wake aria-controls="proxmiu-lynx" aria-expanded={false} aria-label={lynxLabel} title={lynxLabel} className="ml-auto flex size-11 items-center justify-center rounded-full focus-visible:outline-2 focus-visible:outline-brand active:bg-hover">
         <img src={LOGO} alt="" className="size-7 rounded-lg" />
       </button>
       <button onClick={onSearch} className="flex size-11 items-center justify-center rounded-full text-muted active:bg-hover" aria-label="Search">

@@ -125,3 +125,5 @@ Lucide only, 16px in UI (20–22px in the mobile dock), stroke 1.75–2. Icons i
 
 - Activity separates Proxmox-retained task history from process-local provisioning. History initializes a source once and retains it, its last-known node, selection and loaded logs during offline overviews that omit nodes. It never silently switches connections. Source/filter changes deliberately reset list and selection; late responses cannot replace the new source.
 - Native task outcomes distinguish running, success, warnings, failure and unknown. Unknown Proxmox terminal markers remain unknown. Native logs may be reopened after agent restart by refreshing history and selecting the task; permissions and retention stay authoritative.
+
+- With a configured AI key the lynx wake controls open a branded conversational dialog; without one they retain the companion. Chat exposes the provider/model and intentional message-sharing boundary, uses plain text, preserves failed drafts, and clears on provider change, key removal or agent switch. The dialog fits390px and restores keyboard focus.

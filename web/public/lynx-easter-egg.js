@@ -55,6 +55,9 @@
   `
 
   function wake(trigger, moveFocus = false) {
+    const event = new CustomEvent('proxmiu:lynx-wake', { detail: { trigger, moveFocus }, cancelable: true })
+    document.dispatchEvent(event)
+    if (event.defaultPrevented) return
     const existing = document.getElementById('proxmiu-lynx')
     if (existing) {
       existing.querySelector('.lynx-pet').click()
@@ -86,6 +89,7 @@
       panel.remove()
       document.querySelectorAll('[data-lynx-wake]').forEach(button => button.setAttribute('aria-expanded', 'false'))
       document.removeEventListener('keydown', onKey)
+      document.removeEventListener('proxmiu:lynx-dismiss', dismiss)
       if (restoreFocus && trigger.isConnected) trigger.focus({ preventScroll: true })
     }
     const onKey = (event) => { if (event.key === 'Escape') dismiss() }
@@ -97,6 +101,7 @@
       purrTimer = setTimeout(() => panel.classList.remove('is-petted'), 800)
     })
     document.addEventListener('keydown', onKey)
+    document.addEventListener('proxmiu:lynx-dismiss', dismiss)
   }
 
   document.addEventListener('click', (event) => {

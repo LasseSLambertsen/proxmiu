@@ -18,7 +18,7 @@ import { allTemplates, builtinTemplates, templateSchema } from './templates.js'
 import { communityScriptTemplate, listCommunityScripts } from './template-sources.js'
 import { tlsOptions } from './tls.js'
 import { loadNotes, saveNotes, notesSchema, loadOperations, runOperation, operationSchema, readTask } from './guest-operations.js'
-import { aiSettingsSchema, buildAiContext, reviewSchema, reviewSetup } from './ai.js'
+import { aiSettingsSchema, buildAiContext, reviewSchema, reviewSetup, chatSchema, chatWithLynx, AiRequestGate } from './ai.js'
 import { loadResourceSettings, saveResourceSettings, resourceSettingsSchema } from './guest-resource-settings.js'
 import { backupQuerySchema, taskLogQuerySchema, loadGuestBackups, loadTaskLog } from './guest-maintenance.js'
 import { loadTaskHistory, taskHistoryQuerySchema, TaskHistoryAccess } from './task-history.js'
@@ -467,17 +467,18 @@ app.get('/api/ai/context', async () => {
   return buildAiContext(resources)
 })
 
-let reviewing = false
-let lastReviewAt = 0
+const aiRequests = new AiRequestGate()
 app.post('/api/ai/review', async (req, reply) => {
   const { context } = reviewSchema.parse(req.body)
   const settings = store.aiCredentials()
   if (!context.clusters.some(c => c.nodes.length || c.guests.length)) return reply.status(400).send({ error: 'No resource readings are available. Reconnect a Proxmox host before requesting advice.' })
-  if (reviewing || Date.now() - lastReviewAt < 10_000) return reply.status(429).send({ error: 'A review was just requested. Wait a moment before trying again.' })
-  reviewing = true
-  lastReviewAt = Date.now()
-  try { return await reviewSetup(settings, context) }
-  finally { reviewing = false }
+  return aiRequests.run('review', () => reviewSetup(settings, context))
+})
+
+app.post('/api/ai/chat', async (req) => {
+  const conversation = chatSchema.parse(req.body)
+  const settings = store.aiCredentials()
+  return aiRequests.run('chat', () => chatWithLynx(settings, conversation))
 })
 
 app.get('/api/settings', async () => {
