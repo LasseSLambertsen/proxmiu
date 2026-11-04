@@ -74,7 +74,7 @@ The **agent** is a small Node service that runs on your network (Docker, or any 
 - **Existing backups** – browse this guest’s archives on a selected backup storage, with creation dates, sizes, formats and clear permission warnings.
 - **Native task history** – browse Proxmox-retained tasks in Activity or a guest workspace, choose a connection/node, filter by guest ID and inspect actual results. Operations started outside Proxmiu are included when permitted by Proxmox. History can reopen older task logs after an agent restart.
 - **Task logs** – inspect native task output, page through additional lines, and retain loaded output after failed refreshes. Access stays tied to the original connection and node.
-- **Optional AI setup review** – add an OpenAI or Anthropic API token in Settings. The agent encrypts it at rest. Preview the anonymous numeric resource snapshot and explicitly send it for advice. Names, addresses, notes, credentials, logs and configuration are excluded; advice never changes your infrastructure automatically. Provider usage is billed by your provider.
+- **Optional AI setup review** – add an OpenAI, Anthropic or OpenRouter API token in Settings. The agent encrypts it at rest. Preview the anonymous numeric resource snapshot and explicitly send it for advice. Names, addresses, notes, credentials, logs and configuration are excluded; advice never changes your infrastructure automatically. Provider usage is billed by your provider.
 - **Lynx companion** – a visible companion button brings the mascot into the app; five quick logo clicks still work. Dismiss it with Escape or the close button. Reduced motion is respected.
 - **Discovery** – scans the subnets the agent is on for Proxmox (port 8006) and connects with an API token or password.
 - **Overview** – nodes, VMs and containers across all connections with live CPU, memory, IP addresses and uptime.
@@ -340,3 +340,7 @@ To reproduce current release screenshots after building, run `CHROMIUM_PATH=/usr
 `CHROMIUM_PATH=/usr/bin/chromium node web/test/maintenance.e2e.cjs` verifies stopped-resource editing and conflict recovery, draft preservation through migration, backup inventory states, and escaped/paged task logs with a 2,000-line display limit. Resource edits use the existing `VM.Config.CPU`, `VM.Config.Memory` and `VM.Config.Options` permissions.
 
 `CHROMIUM_PATH=/usr/bin/chromium node web/test/task-history.e2e.cjs` checks native source selection, guest filters, paging, result states, log access recovery, stale history during real-shaped outages, source races, existing provisioning deep links and phone layouts. Server integration tests exercise task log recovery across an actual agent restart. History reads use existing audit permissions and never stop or alter tasks.
+
+### Chat with Lynx
+
+Save an OpenAI, Anthropic or OpenRouter API key in Settings, then open the lynx companion to chat about Proxmox and Proxmiu. Messages are sent to your configured provider and model when you press Send; inventory, notes and logs are not attached automatically. Conversation stays in the open app’s memory and can be cleared. Existing inventory reviews in Settings retain their separate preview and consent flow. Without a configured key, the lynx keeps its pet interaction. Provider charges apply to chat requests.

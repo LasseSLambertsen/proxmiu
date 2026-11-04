@@ -8,7 +8,8 @@ import { Field, Input, Select } from '@/components/ui/form'
 import { api, type AiContext, type AiSettings } from '@/lib/api'
 import { useAiSettings } from '@/lib/queries'
 
-const defaultModels: Record<AiSettings['provider'], string> = { openai: 'gpt-4o-mini', anthropic: 'claude-sonnet-4-5' }
+const defaultModels: Record<AiSettings['provider'], string> = { openai: 'gpt-4o-mini', anthropic: 'claude-sonnet-4-5', openrouter: 'openai/gpt-4o-mini' }
+const providerLabels: Record<AiSettings['provider'], string> = { openai: 'OpenAI', anthropic: 'Anthropic', openrouter: 'OpenRouter' }
 
 export function AiAdvisor() {
   const qc = useQueryClient()
@@ -61,7 +62,7 @@ export function AiAdvisor() {
   const tokenRequired = !settings.data?.configured || settings.data.provider !== provider
   const configured = !!settings.data?.configured
   const busy = save.isPending || remove.isPending || review.isPending
-  const providerLabel = settings.data?.provider === 'anthropic' ? 'Anthropic' : 'OpenAI'
+  const providerLabel = providerLabels[settings.data?.provider ?? provider]
 
   return <Card>
     <CardHeader className="items-start py-4">
@@ -73,7 +74,7 @@ export function AiAdvisor() {
       {settings.error && <p role="alert" className="text-[12px] text-destructive">AI settings could not load: {settings.error.message} <button className="underline underline-offset-4" onClick={() => settings.refetch()}>Try again</button></p>}
       <form className="space-y-4" onSubmit={event => { event.preventDefault(); save.mutate() }}>
         <div className="grid gap-4 sm:grid-cols-2">
-          <Field label="Provider"><Select aria-label="Provider" value={provider} disabled={!settings.data || busy} onChange={event => { const value = event.target.value as AiSettings['provider']; setProvider(value); setModel(defaultModels[value]); setToken(''); setEdited(true); setConsent(false) }}><option value="openai">OpenAI</option><option value="anthropic">Anthropic</option></Select></Field>
+          <Field label="Provider"><Select aria-label="Provider" value={provider} disabled={!settings.data || busy} onChange={event => { const value = event.target.value as AiSettings['provider']; setProvider(value); setModel(defaultModels[value]); setToken(''); setEdited(true); setConsent(false) }}><option value="openai">OpenAI</option><option value="anthropic">Anthropic</option><option value="openrouter">OpenRouter</option></Select></Field>
           <Field label="Model" help="Use a model available to your provider account."><Input aria-label="Model" value={model} maxLength={100} required disabled={!settings.data || busy} onChange={event => { setModel(event.target.value); setEdited(true); setConsent(false) }} /></Field>
         </div>
         <Field label="API token" help={tokenRequired ? 'A token is required for this provider. It is never sent back to your browser after saving.' : 'Leave empty to keep the saved token, or enter a replacement.'}>
