@@ -12,7 +12,7 @@ const kinds: { id: MetricKind; name: string; icon: typeof Cpu }[] = [
   { id: 'disk', name: 'Disk I/O', icon: HardDrive },
 ]
 
-export function ResourceHistory({ metrics, loading, error }: { metrics: GuestInsights['metrics']; loading: boolean; error?: string }) {
+export function ResourceHistory({ metrics, loading, error, sourceLabel = 'Proxmox RRD · average' }: { metrics: GuestInsights['metrics']; loading: boolean; error?: string; sourceLabel?: string }) {
   const [kind, setKind] = useState<MetricKind>('cpu')
   const [active, setActive] = useState<number | null>(null)
   const points = useMemo(() => metrics.map(sample => ({ time: sample.time, value: metricValue(sample, kind) })), [metrics, kind])
@@ -39,7 +39,7 @@ export function ResourceHistory({ metrics, loading, error }: { metrics: GuestIns
 
   return (
     <Card>
-      <CardHeader><CardTitle className="flex items-center gap-2"><Activity className="size-4 text-brand" />Performance history</CardTitle><span className="text-[11px] text-faint">Proxmox RRD · average</span></CardHeader>
+      <CardHeader className="flex-wrap"><CardTitle className="flex items-center gap-2"><Activity className="size-4 text-brand" />Performance history</CardTitle><span className="text-[11px] text-faint">{sourceLabel}</span></CardHeader>
       <CardContent>
         <div className="mb-5 flex flex-wrap gap-1" role="group" aria-label="History metric">
           {kinds.map(({ id, name, icon: Icon }) => <button key={id} onClick={() => { setKind(id); setActive(null) }} aria-pressed={kind === id} className={cn('flex h-8 items-center gap-1.5 rounded-md px-2.5 text-[12px] transition-colors', kind === id ? 'bg-brand-soft text-brand' : 'text-muted hover:bg-hover')}><Icon className="size-3.5" />{name}</button>)}

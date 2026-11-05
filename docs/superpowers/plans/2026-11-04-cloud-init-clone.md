@@ -38,7 +38,7 @@
 - [x] Verify success through actual key-authenticated SSH protocol with generated script captured but never executed; verify nonzero script exit is error. Include DHCP and static paths.
 - [x] Verify failure boundaries and existing journal/LXC compatibility. Run focused suite, typecheck, full tests/build, and relevant Create browser fixture for help text/unchanged handoff.
 - [x] Write task report, generate whole-branch review package and get fresh specification/quality review; fix material findings.
-- [ ] Update honest docs/roadmap, commit/push and use publishing subagent to wait exact-head Linux/Windows CI and guarded merge. Website only if needed by changed claims.
+- [x] Update honest docs/roadmap, commit/push and use publishing subagent to wait exact-head Linux/Windows CI and guarded merge. Website only if needed by changed claims.
 
 ## Ledger
 
@@ -56,3 +56,5 @@
 - Final review fix wave: both P2 findings reproduced RED→GREEN; protocol suite now23/23. Scoped re-review approved specification and quality, both findings addressed, no new material breakage. Final typecheck,130/130 tests and full build pass. Expanded browser fixture uses bounded waits for converged source/node/options rather than inspecting an intermediate React render; only the fixture changed after that timing failure. No product-source changes followed the final build.
 
 - Final browser confirmation passed: expanded VM source/node/mode/connection/empty-catalog/direct-submit checks and existing Lynx creation/handoff/review/390px checks. One review fix wave is complete with zero remaining material findings. Publication proceeds through the already authorized PR subagent; website source is unchanged because existing generic VM claims remain accurate.
+
+- Publication complete: app PR #10 head `717c223b5a35a5698ec522586191aafc297c3f37`, squash/current main `bbcee057b039534c84b995a1166d0990e28669ed`. Exact-head Linux/Windows Node22 CI run41905474058 passed; merged tree equals tested tree `00595647efeb9c35f57151188fa06a608cb2576e`. Website/hosting/LAN agent were untouched.

@@ -15,6 +15,7 @@
     "build": "npm run build:web && npm run build:server",
     "build:server": "tsc -p server/tsconfig.json && node scripts/copy-server-assets.mjs",
     "build:web": "vite build",
+    "build:demo": "vite build --mode demo",
     "start": "node dist/server/index.js",
     "typecheck": "tsc -p server/tsconfig.json --noEmit && tsc -p web/tsconfig.json --noEmit",
     "test": "node --import tsx --test server/test/*.test.ts web/test/*.test.ts",
