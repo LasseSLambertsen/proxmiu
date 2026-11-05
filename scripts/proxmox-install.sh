@@ -23,7 +23,7 @@ RAW="${PROXMIU_RAW:-https://raw.githubusercontent.com/LasseSLambertsen/proxmiu}"
 # downloading container templates, guest agent IPs and node reboot. Names missing on this
 # Proxmox version are skipped.
 PROXMIU_PRIVS="Sys.Audit Sys.PowerMgmt
-  VM.Audit VM.PowerMgmt VM.Allocate VM.Clone VM.Monitor VM.GuestAgent.Audit VM.Snapshot VM.Snapshot.Rollback VM.Backup VM.Migrate
+  VM.Audit VM.Console VM.PowerMgmt VM.Allocate VM.Clone VM.Monitor VM.GuestAgent.Audit VM.Snapshot VM.Snapshot.Rollback VM.Backup VM.Migrate
   VM.Config.CPU VM.Config.Memory VM.Config.Disk VM.Config.Network VM.Config.Options VM.Config.Cloudinit VM.Config.HWType
   Datastore.Audit Datastore.AllocateSpace Datastore.AllocateTemplate
   SDN.Audit SDN.Use"

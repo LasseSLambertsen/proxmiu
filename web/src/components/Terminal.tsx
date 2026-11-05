@@ -17,6 +17,14 @@ export interface SshTarget {
   useAppKey?: boolean
 }
 
+export interface ConsoleTarget {
+  mode: 'console'
+  clusterId: string
+  node: string
+  guestType: 'lxc' | 'qemu'
+  vmid: number
+}
+
 export type TerminalStatus = 'connecting' | 'connected' | 'closed' | 'error'
 
 type Mods = { ctrl: boolean; alt: boolean; shift: boolean }
@@ -58,7 +66,7 @@ const applyMods = (data: string, mods: Mods) => {
   return out
 }
 
-export function Terminal({ target, onStatus }: { target: SshTarget; onStatus?: (s: TerminalStatus, message?: string) => void }) {
+export function Terminal({ target, onStatus }: { target: SshTarget | ConsoleTarget; onStatus?: (s: TerminalStatus, message?: string) => void }) {
   const ref = useRef<HTMLDivElement>(null)
   const termRef = useRef<XTerm | null>(null)
   const wsRef = useRef<WebSocket | null>(null)
@@ -84,9 +92,29 @@ export function Terminal({ target, onStatus }: { target: SshTarget; onStatus?: (
     termRef.current?.focus()
   }
 
+  const isConsole = 'mode' in target && target.mode === 'console'
+  const sendInput = (ws: WebSocket, data: string) => {
+    if (!isConsole) { ws.send(JSON.stringify({ type: 'data', data })); return }
+    const encoder = new TextEncoder()
+    const sendChunk = (chunk: string) => {
+      const payload = JSON.stringify({ type: 'data', data: chunk })
+      if (ws.bufferedAmount + encoder.encode(payload).length > 1024 * 1024) { ws.close(); return false }
+      ws.send(payload); return true
+    }
+    let chunk = '', bytes = 0
+    for (const character of data) {
+      const length = encoder.encode(character).length
+      if (bytes + length > 32768) {
+        if (!sendChunk(chunk)) return
+        chunk = ''; bytes = 0
+      }
+      chunk += character; bytes += length
+    }
+    if (chunk) sendChunk(chunk)
+  }
   const sendData = (data: string) => {
     const ws = wsRef.current
-    if (ws?.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ type: 'data', data }))
+    if (ws?.readyState === WebSocket.OPEN) sendInput(ws, data)
     termRef.current?.focus()
   }
   const sendKey = (data: string) => {
@@ -187,15 +215,23 @@ export function Terminal({ target, onStatus }: { target: SshTarget; onStatus?: (
     term.focus()
     termRef.current = term
 
-    const ws = new WebSocket(agentWsUrl('/api/ssh'))
+    const ws = new WebSocket(agentWsUrl(isConsole ? '/api/console' : '/api/ssh'))
     wsRef.current = ws
     const send = (msg: object) => ws.readyState === WebSocket.OPEN && ws.send(JSON.stringify(msg))
     let failed = false
+    let active = true
+    let opened = false
 
-    term.writeln(`\x1b[38;2;113;113;122mConnecting to ${target.username}@${target.host}…\x1b[0m`)
+    term.writeln(`\x1b[38;2;113;113;122mConnecting to ${isConsole ? `${target.guestType} ${target.vmid} on ${target.node}` : `${'username' in target ? target.username : ''}@${'host' in target ? target.host : ''}`}…\x1b[0m`)
     onStatusRef.current?.('connecting')
-    ws.onopen = () => send({ type: 'connect', ...target, token: getAgent()?.token, cols: term.cols, rows: term.rows })
+    ws.onopen = () => {
+      if (!active) return
+      opened = true
+      const identity = isConsole ? { clusterId: target.clusterId, node: target.node, guestType: target.guestType, vmid: target.vmid } : target
+      send({ type: 'connect', ...identity, token: getAgent()?.token, cols: Math.min(500, Math.max(2, term.cols)), rows: Math.min(300, Math.max(2, term.rows)) })
+    }
     ws.onmessage = (ev) => {
+      if (!active) return
       const msg = JSON.parse(ev.data)
       if (msg.type === 'data') term.write(msg.data)
       else if (msg.type === 'status') onStatusRef.current?.(msg.status)
@@ -205,9 +241,8 @@ export function Terminal({ target, onStatus }: { target: SshTarget; onStatus?: (
         onStatusRef.current?.('error', msg.message)
       }
     }
-    let opened = false
-    ws.addEventListener('open', () => (opened = true))
     ws.onclose = () => {
+      if (!active) return
       if (!opened) {
         term.writeln('\r\n\x1b[38;2;248;113;113mCould not open a connection to the agent.\x1b[0m')
         if (isMixedContent(agentWsUrl('').replace(/^ws/, 'http'))) {
@@ -264,13 +299,13 @@ export function Terminal({ target, onStatus }: { target: SshTarget; onStatus?: (
     const data = term.onData((d) => {
       const active = modsRef.current
       const hasMods = active.ctrl || active.alt || active.shift
-      send({ type: 'data', data: hasMods ? applyMods(d, active) : d })
+      if (ws.readyState === WebSocket.OPEN) sendInput(ws, hasMods ? applyMods(d, active) : d)
       if (hasMods) clearMods()
     })
     const selection = term.onSelectionChange(() => {
       selectionRef.current = term.getSelection()
     })
-    const resize = term.onResize(({ cols, rows }) => send({ type: 'resize', cols, rows }))
+    const resize = term.onResize(({ cols, rows }) => send({ type: 'resize', cols: Math.min(500, Math.max(2, cols)), rows: Math.min(300, Math.max(2, rows)) }))
     const observer = new ResizeObserver(() => {
       try {
         fit.fit()
@@ -281,6 +316,11 @@ export function Terminal({ target, onStatus }: { target: SshTarget; onStatus?: (
     observer.observe(ref.current!)
 
     return () => {
+      active = false
+      ws.onopen = null
+      ws.onmessage = null
+      ws.onclose = null
+      ws.onerror = null
       observer.disconnect()
       data.dispose()
       selection.dispose()
@@ -292,7 +332,7 @@ export function Terminal({ target, onStatus }: { target: SshTarget; onStatus?: (
     }
     // Reconnect only when the target identity changes.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [target.host, target.port, target.username, target.password, target.privateKey, target.useAppKey])
+  }, [JSON.stringify(target)])
 
   return (
     <div className="relative flex h-full min-h-0 flex-col bg-[#0b0b0d]">

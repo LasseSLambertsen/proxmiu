@@ -137,3 +137,7 @@ Lucide only, 16px in UI (20–22px in the mobile dock), stroke 1.75–2. Icons i
 ## Agent-free sample tour
 
 The separate `/demo/` tour extends the existing warm-glass app world using the same pure cards, badges, fields, resource-history chart and fonts. Desktop/tablet rails and the phone dock keep the app’s proportions. A persistent sample-data banner, fixed snapshot labels and read-only details distinguish exploration from an operational session. All controls either navigate, filter or inspect sample content; the install/exit links return to the presentation site. Theme preference uses its own namespace and the demo cannot reach agent/provider/terminal transports. No new visual identity or global token changes are introduced.
+
+## Guest native console
+
+Guest workspaces keep separate SSH terminal and Console choices. The native console can open without a guest IP, identifies its exact guest/node and asks for an explicit Connect before mounting the shared terminal. Reconnect/disconnect are deliberate, supported/stopped/offline/permission states stay clear, and a stale target closes rather than silently switching. Use existing dialog, terminal, focus and mobile key controls; no new visual system. Console credentials remain server-side and output is transient. The sample tour never gains an operational console control.
