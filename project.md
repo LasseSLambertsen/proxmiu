@@ -82,7 +82,7 @@ browser ── UI (static SPA) ──► agent (Node, on the LAN) ──► Prox
 - [x] Exercise the app VM clone path with strict local HTTPS/SSH protocol fixtures and correct source/configuration/disk task handling.
 - [ ] Validate real QEMU/cloud-init boot and storage behavior; consider a helper that builds a cloud-init template.
 - [x] Persist provisioning jobs across agent restarts, with interrupted outcomes and manual recovery.
-- [ ] Demo mode for the hosted site (client-side mock data) so visitors see the app without an agent.
+- [x] Agent-free read-only demo with fixed sample data, shared app components and isolated storage/network behavior; published by the presentation website at a pinned app revision.
 - [x] Guest detail workspace with configuration, history, Proxmox notes, snapshots, backups and migration.
 - [ ] Proxmox termproxy console.
 - [ ] Watch WebKit Local Network Access; drop the iOS HTTPS requirement when it ships.
@@ -103,3 +103,5 @@ Guest maintenance includes reviewed stopped-guest CPU/memory/boot-setting edits 
 Native Proxmox task history is available in Activity and guest workspaces. It reads retained node tasks, including operations started outside Proxmiu, and re-enables historical status/log access after agent restart. Activity keeps provisioning/update runs on a separate tab, backed by an encrypted bounded journal. Restarted work becomes interrupted without automatic continuation; last saved diagnostics and intended guest identity guide manual inspection. Source and log access remain scoped to the original connection and node, with explicit offline/stale/unknown states.
 
 VM creation refreshes the selected source template/node/cloud-init/boot-disk config before cloning. It waits for configuration and required disk-growth tasks, preserves larger disks, sets the requested vCPU count and keeps unrelated NIC options. Default source selection refreshes the displayed node and its storage/network options. Failed partial clones remain available for manual inspection, without automatic cleanup or retry.
+
+The independent demo entry builds with `npm run build:demo` to `dist/demo` for `/demo/` on the presentation site. Visitors can explore sample inventory, metrics, templates and saved history without an agent. It contains no session/agent/API/provider/terminal code, reads no normal app storage and performs no infrastructure actions. Only its namespaced theme preference persists; all data is explicitly synthetic. The production app entry/build and agent behavior remain separate.

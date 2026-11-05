@@ -26,6 +26,7 @@ jobs:
       - run: npm run typecheck
       - run: npm test
       - run: npm run build
+      - run: npm run build:demo
       - name: Check shell scripts
         if: runner.os == 'Linux'
         run: bash -n scripts/*.sh server/src/scripts/*.sh

@@ -373,3 +373,9 @@ Choose **Review in Create** to copy the suggested resources into the existing cr
 `node web/test/themes.e2e.cjs` checks light text/semantic contrast, background continuity beside the desktop/tablet sidebar, theme persistence/browser chrome, dialogs and visible Connections controls at 390px using local fixtures.
 
 `node --import tsx --test server/test/vm-clone.test.ts` exercises the production VM runner against strict local HTTPS and authenticated SSH protocol fixtures. `node web/test/vm-clone.e2e.cjs` checks source/node/options alignment and explicitly submitted VM creation after a build. Neither test creates a real VM or executes the generated setup script.
+
+## Agent-free demo
+
+`npm run build:demo` builds an independent read-only sample tour into `dist/demo`, intended for `/demo/` on the presentation website. It reuses the app’s visual components with fixed synthetic data and hash routes. It never connects to an agent, terminal or AI provider and never reads normal app credentials or views. Only `proxmiu-demo-theme` persists; filters and exploration reset on reload. This preview does not simulate successful infrastructure writes.
+
+After a demo build, `node web/test/demo.e2e.cjs` checks real navigation, filters, metric controls, saved-step logs, deep links, theme persistence and storage/network isolation. `DEMO_BASE_URL` can target the existing hosted `/demo/` in a fresh test browser context; `SCREENSHOT_DIR` enables the bounded visual captures. The website pins a reviewed app commit and records it at `/demo/build.json`.
