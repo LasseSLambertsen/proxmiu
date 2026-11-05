@@ -81,6 +81,7 @@ The **agent** is a small Node service that runs on your network (Docker, or any 
 - **Overview** – nodes, VMs and containers across all connections with live CPU, memory, IP addresses and uptime.
 - **Power actions** – start, shut down, reboot, force stop and delete guests; reboot or shut down nodes.
 - **SSH in the browser** – full terminal to any guest or node, with copy/paste, select all, and on-screen Ctrl/Alt/Shift plus navigation keys for phones.
+- **Native guest console** – Proxmox termproxy for running LXC guests and VMs with an existing serial socket, without a guest IP or SSH service. Connect explicitly from the guest workspace; guest login may be required.
 - **Templates** – one-click LXC containers (or VMs cloned from a cloud-init template), provisioned over SSH with a live log:
   - **Claude Code server**, **Codex server**, **OpenCode server**, **AI dev box** (all three), **Docker host**, **Plain server**
   - Optional: persistent tmux sessions, GitHub CLI + token, clone a repo, git identity, Tailscale
@@ -252,7 +253,7 @@ With the Tailscale app on, connect to `https://<machine>.<tailnet>.ts.net`. To i
 The Proxmox installer does this for you. To add a host by hand, create a limited user and token in a shell on that host:
 
 ```bash
-pveum role add Proxmiu --privs "Sys.Audit,Sys.PowerMgmt,VM.Audit,VM.PowerMgmt,VM.Allocate,VM.Clone,VM.Snapshot,VM.Snapshot.Rollback,VM.Backup,VM.Migrate,VM.Config.CPU,VM.Config.Memory,VM.Config.Disk,VM.Config.Network,VM.Config.Options,VM.Config.Cloudinit,VM.Config.HWType,Datastore.Audit,Datastore.AllocateSpace,Datastore.AllocateTemplate,SDN.Audit,SDN.Use,VM.GuestAgent.Audit"
+pveum role add Proxmiu --privs "Sys.Audit,Sys.PowerMgmt,VM.Audit,VM.PowerMgmt,VM.Allocate,VM.Clone,VM.Console,VM.Snapshot,VM.Snapshot.Rollback,VM.Backup,VM.Migrate,VM.Config.CPU,VM.Config.Memory,VM.Config.Disk,VM.Config.Network,VM.Config.Options,VM.Config.Cloudinit,VM.Config.HWType,Datastore.Audit,Datastore.AllocateSpace,Datastore.AllocateTemplate,SDN.Audit,SDN.Use,VM.GuestAgent.Audit"
 pveum user add proxmiu@pve
 pveum acl modify / --users proxmiu@pve --roles Proxmiu
 pveum user token add proxmiu@pve agent --privsep 0
@@ -273,6 +274,20 @@ pveum role modify Proxmiu --append 1 --privs "VM.Snapshot,VM.Snapshot.Rollback,V
 Editing notes also needs `VM.Config.Options`; backup storage needs `Datastore.Audit` and `Datastore.AllocateSpace`, already included in the setup above. With a privilege-separated token, grant the required rights to both the user and token. Permission errors stay visible in Proxmiu. These features do not manage backup schedules, storage, firewall, users or cluster membership. Snapshot rollback can discard changes after the snapshot; keep independent backups.
 
 Tasks started through the workspace are immediately available. After an agent restart, browse native task history and select the operation to reopen its status and logs before retrying it. Availability depends on Proxmox retention and token permissions. If historical task access expires, refresh history and select the task again. No real Proxmox host or live AI account has been used for verification; the test suite uses isolated fixtures and a mock Proxmox API.
+
+## Native guest console
+
+Open a running guest workspace and choose **Console**, then **Connect**. The console uses the saved Proxmox connection and works without a guest IP or SSH service. The dialog identifies its guest/node, and the existing terminal provides clipboard and phone key controls. Reconnect is deliberate; closing or disconnecting ends the transport. Console traffic is not saved to provisioning history or automatically attached to Lynx requests.
+
+LXC uses its native console. QEMU requires a configured `serial0`–`serial3` socket and a guest OS configured for a serial console/login prompt; configure those in Proxmox and the OS first. Proxmiu does not add serial devices, start guests or configure login services when opening a console. This is a text console; graphical VNC/SPICE and host shells are separate from this feature. SSH remains available through **Open terminal**.
+
+The Proxmox role needs **VM.Console** on the intended guests. New/re-run Proxmox installer setup includes it. Existing agent updates do not expand the Proxmox role automatically; on the Proxmox host, explicitly update the role if appropriate:
+
+```bash
+pveum role modify Proxmiu --append 1 --privs "VM.Console"
+```
+
+With a privilege-separated API token, grant the intended rights to both its user and token. Missing permissions, unsupported serial configuration and stale guest placement remain visible. No `Sys.Console` host-shell privilege is required. Native tickets and upstream credentials stay on the agent; sessions are transient. Hosted browser access has the same agent HTTPS/WebSocket requirements as the SSH terminal above.
 
 ## How creating a server works
 

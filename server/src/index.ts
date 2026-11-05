@@ -3,6 +3,7 @@ import fastifyStatic from '@fastify/static'
 import websocket from '@fastify/websocket'
 import Fastify, { type FastifyReply, type FastifyRequest } from 'fastify'
 import { createHash, timingSafeEqual } from 'node:crypto'
+import { EventEmitter } from 'node:events'
 import { existsSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -12,6 +13,7 @@ import { discoverProxmox, localSubnets } from './network.js'
 import { flushJobHistory, jobHistoryStatus, getJob, listJobs, provisionSchema, startProvision, startUpdate, updateSchema } from './provision.js'
 import { forgetClient, guestIp, ProxmoxClient, type ClusterResource } from './proxmox.js'
 import { handleTerminalSocket } from './ssh.js'
+import { handleConsoleSocket } from './guest-console.js'
 import { sign, store } from './store.js'
 import { selfUpdateInfo, startSelfUpdate } from './self-update.js'
 import { allTemplates, builtinTemplates, templateSchema } from './templates.js'
@@ -90,7 +92,14 @@ await app.register(cors, {
   allowedHeaders: ['Content-Type', 'Authorization'],
   maxAge: 600,
 })
-await app.register(websocket)
+// Dispatch upgrades to separate scoped WebSocket servers so the console transport can
+// enforce its smaller message limit without changing the existing SSH limit.
+const sshUpgrades = new EventEmitter()
+const consoleUpgrades = new EventEmitter()
+app.server.on('upgrade', (request, socket, head) => {
+  const target = request.url?.split('?', 1)[0] === '/api/console' ? consoleUpgrades : sshUpgrades
+  target.emit('upgrade', request, socket, head)
+})
 
 // --- auth -------------------------------------------------------------------------
 
@@ -117,7 +126,7 @@ app.addHook('onRequest', async (req, reply) => {
   // Without a password the agent only listens on loopback; insist on a loopback Host too, which blocks DNS rebinding.
   if (!PASSWORD && !isLoopback(req.hostname)) return reply.status(403).send({ error: 'Host not allowed' })
   if (!originAllowed(req)) return reply.status(403).send({ error: `Origin ${req.headers.origin} is not allowed. Add it to PROXMIU_ALLOWED_ORIGINS.` })
-  if (req.url === '/api/health' || req.url.startsWith('/api/auth/') || req.url.startsWith('/api/ssh?') || req.url === '/api/ssh') return
+  if (req.url === '/api/health' || req.url.startsWith('/api/auth/') || req.url.startsWith('/api/ssh?') || req.url === '/api/ssh' || (req.url === '/api/console' && req.headers.upgrade?.toLowerCase() === 'websocket')) return
   if (!tokenValid(bearer(req))) return reply.status(401).send({ error: 'Not logged in' })
 })
 
@@ -512,9 +521,13 @@ app.post('/api/self-update', async () => startSelfUpdate())
 
 app.get<{ Querystring: { host: string } }>('/api/ssh/user', async (req) => ({ username: store.sshUser(req.query.host) ?? null }))
 
-app.get('/api/ssh', { websocket: true }, (socket) => {
-  // Browsers cannot set headers on WebSockets, so the token travels in the first message.
-  handleTerminalSocket(socket, tokenValid)
+await app.register(async scope => {
+  await scope.register(websocket, { options: { server: sshUpgrades as unknown as typeof app.server } })
+  scope.get('/api/ssh', { websocket: true }, socket => handleTerminalSocket(socket, tokenValid))
+})
+await app.register(async scope => {
+  await scope.register(websocket, { options: { server: consoleUpgrades as unknown as typeof app.server, maxPayload: 256 * 1024 } })
+  scope.get('/api/console', { websocket: true }, socket => handleConsoleSocket(socket, tokenValid))
 })
 
 // --- static frontend ----------------------------------------------------------------

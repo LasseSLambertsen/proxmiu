@@ -48,6 +48,7 @@ browser ── UI (static SPA) ──► agent (Node, on the LAN) ──► Prox
 - Overview with stats and sparklines, a node list, and guests with live CPU, memory, IP and uptime.
 - Guest power actions and delete; node reboot and shutdown with typed confirmation.
 - In-browser SSH (xterm.js) using the app key, a password, or a pasted key; pop-out terminal tab; copy/paste, select all and sticky Ctrl/Alt/Shift keys.
+- Explicit native Proxmox text consoles for running LXC guests and existing QEMU serial sockets, without requiring guest networking or SSH; guest login may still be required.
 - Templates: Claude Code server, Codex server, OpenCode server, AI dev box, Docker host, Plain server. Optional extras: tmux persistence, GitHub CLI, repo clone, git identity, Tailscale.
 - Custom templates with typed options and a bash editor, plus install scripts fetched from a GitHub repository.
 - Community Scripts: browse [community-scripts.org](https://community-scripts.org) and turn any container script into a template, with its options and resources prefilled.
@@ -63,6 +64,7 @@ browser ── UI (static SPA) ──► agent (Node, on the LAN) ──► Prox
 - LXC provisioning end to end (base, Claude Code, AI dev box scripts)
 - App-level QEMU clone pipeline with strict local HTTPS and authenticated SSH protocol fixtures; generated setup scripts captured without execution. This does not verify a real clone, cloud-init boot or guest installation.
 - browser terminal, same-origin and cross-origin
+- Native guest-console authentication, protocol, payload limits and session lifecycle with strict local HTTPS/WSS and browser fixtures; real-host validation remains open.
 - auth, CORS and origin blocking
 - hosted UI flow in Chromium; mobile layout in an iPhone viewport
 
@@ -84,7 +86,8 @@ browser ── UI (static SPA) ──► agent (Node, on the LAN) ──► Prox
 - [x] Persist provisioning jobs across agent restarts, with interrupted outcomes and manual recovery.
 - [x] Agent-free read-only demo with fixed sample data, shared app components and isolated storage/network behavior; published by the presentation website at a pinned app revision.
 - [x] Guest detail workspace with configuration, history, Proxmox notes, snapshots, backups and migration.
-- [ ] Proxmox termproxy console.
+- [x] Guest Proxmox termproxy console for LXC and existing QEMU serial sockets, with explicit connection and transient server-side tickets.
+- [ ] Validate native guest console against a real Proxmox host/guest OS; graphical VNC/SPICE and host shells remain separate scope.
 - [ ] Watch WebKit Local Network Access; drop the iOS HTTPS requirement when it ships.
 - [ ] Optionally squash branch history (the first commit contains an earlier logo).
 
@@ -105,3 +108,5 @@ Native Proxmox task history is available in Activity and guest workspaces. It re
 VM creation refreshes the selected source template/node/cloud-init/boot-disk config before cloning. It waits for configuration and required disk-growth tasks, preserves larger disks, sets the requested vCPU count and keeps unrelated NIC options. Default source selection refreshes the displayed node and its storage/network options. Failed partial clones remain available for manual inspection, without automatic cleanup or retry.
 
 The independent demo entry builds with `npm run build:demo` to `dist/demo` for `/demo/` on the presentation site. Visitors can explore sample inventory, metrics, templates and saved history without an agent. It contains no session/agent/API/provider/terminal code, reads no normal app storage and performs no infrastructure actions. Only its namespaced theme preference persists; all data is explicitly synthetic. The production app entry/build and agent behavior remain separate.
+
+Native guest console access revalidates the selected running guest and node, then bridges Proxmox termproxy from the agent using saved authentication/TLS policy. QEMU requires an existing serial socket. Console sessions never start or configure guests, grant permissions, persist tickets/output or automatically share output with Lynx. Existing roles need VM.Console explicitly; Sys.Console is not added. The existing SSH workflow and read-only deployed demo remain separate.

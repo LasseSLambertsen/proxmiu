@@ -23,6 +23,7 @@ export const getAgent = () => current
 
 export function setAgent(config: AgentConfig | null) {
   current = config
+  window.dispatchEvent(new Event('proxmiu-agent-change'))
   try {
     if (config) localStorage.setItem(KEY, JSON.stringify(config))
     else localStorage.removeItem(KEY)

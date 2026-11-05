@@ -1,11 +1,14 @@
 import { ArrowLeft, Box, Cpu, HardDrive, MemoryStick, MonitorCog, Play, Power, RefreshCw, RotateCw, Star, SquareTerminal, Timer } from 'lucide-react'
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { toast } from 'sonner'
 import { ConfirmDialog, type ConfirmRequest } from '@/components/ConfirmDialog'
 import { CopyButton } from '@/components/CopyButton'
 import { EmptyState } from '@/components/EmptyState'
 import { useGuestAction } from '@/components/GuestTable'
+import { GuestConsoleDialog } from '@/components/GuestConsoleDialog'
+import type { ConsoleTarget } from '@/components/Terminal'
+import { getAgent } from '@/lib/agent'
 import { GuestNotes } from '@/components/GuestNotes'
 import { GuestOperations } from '@/components/GuestOperations'
 import { GuestResourceSettings } from '@/components/GuestResourceSettings'
@@ -40,6 +43,16 @@ export function GuestDetail() {
   const save = useSaveGuestMetadata()
   const ips = useGuestIps(guest ? [guest.clusterId] : [])
   const action = useGuestAction()
+  const [consoleTarget, setConsoleTarget] = useState<ConsoleTarget | null>(null)
+  const consoleAgent = useRef('')
+  useEffect(() => {
+    const close = () => setConsoleTarget(null)
+    window.addEventListener('proxmiu-agent-change', close)
+    return () => window.removeEventListener('proxmiu-agent-change', close)
+  }, [])
+  useEffect(() => {
+    if (consoleTarget && (unavailable || !currentGuest || currentGuest.status !== 'running' || currentGuest.node !== consoleTarget.node || currentGuest.clusterId !== consoleTarget.clusterId || currentGuest.type !== consoleTarget.guestType || currentGuest.vmid !== consoleTarget.vmid || consoleAgent.current !== (getAgent()?.url ?? ''))) setConsoleTarget(null)
+  }, [consoleTarget, currentGuest, unavailable])
   const [ssh, setSsh] = useState<SshRequest | null>(null)
   const [confirm, setConfirm] = useState<ConfirmRequest | null>(null)
 
@@ -73,7 +86,7 @@ export function GuestDetail() {
       {unavailable && <p role="status" className="rounded-lg bg-warning-soft px-4 py-3 text-[12px] text-warning">This connection is unavailable. Showing the last known guest details; your unsaved notes are kept here. <button className="underline underline-offset-4" onClick={() => overview.refetch()}>Try reconnecting</button></p>}
       <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl bg-inset px-4 py-3">
         <div className="flex min-w-0 flex-wrap items-center gap-2 text-[13px]">{ip ? <><span className="tnum font-mono">{ip}</span><CopyButton text={ip} /></> : <span className="text-muted">{running ? 'Waiting for an IP address' : 'Address available when running'}</span>}{tags.map(tag => <Badge key={tag} tone={tag === 'proxmiu' ? 'brand' : 'neutral'}>{tag}</Badge>)}</div>
-        <div className="flex flex-wrap gap-2"><Button disabled={!running || !ip || unavailable} onClick={() => ip && setSsh({ host: ip, label: guest.name ?? String(guest.vmid), defaultUser: tags.includes('proxmiu') ? 'dev' : 'root' })}><SquareTerminal />Open terminal</Button>{running ? <><Button disabled={action.isPending || unavailable} onClick={() => ask('reboot')}><RotateCw />Reboot</Button><Button disabled={action.isPending || unavailable} variant="ghost" onClick={() => ask('shutdown')}><Power />Shut down</Button></> : <Button variant="primary" disabled={action.isPending || unavailable} onClick={() => ask('start')}><Play />Start guest</Button>}</div>
+        <div className="flex flex-wrap gap-2"><Button disabled={!running || !ip || unavailable} onClick={() => ip && setSsh({ host: ip, label: guest.name ?? String(guest.vmid), defaultUser: tags.includes('proxmiu') ? 'dev' : 'root' })}><SquareTerminal />Open terminal</Button><Button disabled={!running || unavailable} onClick={() => { if (!isGuestType(guest.type)) return; consoleAgent.current = getAgent()?.url ?? ''; setConsoleTarget({ mode: 'console', clusterId: guest.clusterId, node: guest.node, guestType: guest.type, vmid: guest.vmid }) }}><SquareTerminal />Console</Button>{running ? <><Button disabled={action.isPending || unavailable} onClick={() => ask('reboot')}><RotateCw />Reboot</Button><Button disabled={action.isPending || unavailable} variant="ghost" onClick={() => ask('shutdown')}><Power />Shut down</Button></> : <Button variant="primary" disabled={action.isPending || unavailable} onClick={() => ask('start')}><Play />Start guest</Button>}</div>
       </div>
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         {[
@@ -90,6 +103,6 @@ export function GuestDetail() {
         </div>
       </div>
     </div>
-    <SshDialog request={ssh} onClose={() => setSsh(null)} /><ConfirmDialog request={confirm} onClose={() => setConfirm(null)} />
+    <GuestConsoleDialog target={consoleTarget && !unavailable && currentGuest?.status === 'running' && currentGuest.node === consoleTarget.node && currentGuest.clusterId === consoleTarget.clusterId && currentGuest.type === consoleTarget.guestType && currentGuest.vmid === consoleTarget.vmid ? consoleTarget : null} onClose={() => setConsoleTarget(null)} /><SshDialog request={ssh} onClose={() => setSsh(null)} /><ConfirmDialog request={confirm} onClose={() => setConfirm(null)} />
   </>
 }

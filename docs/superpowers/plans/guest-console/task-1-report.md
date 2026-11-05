@@ -1,0 +1,21 @@
+# Task 1 implementation handoff
+
+## Source and interfaces
+
+- `server/src/guest-console.ts` handles the authenticated first frame at `/api/console`, validates exact guest identity against fresh inventory and online nodes, selects existing QEMU serial sockets, and bridges the bounded native binary protocol. It has first-frame/setup timers, cancellation checks, capped messages/buffers, streamed UTF-8 and fixed diagnostics.
+- `server/src/proxmox.ts` supplies a fixed guest WSS endpoint using saved authentication and TLS settings; `server/src/index.ts` retains origin and DNS checks, exempts only the exact WebSocket upgrade URL from HTTP bearer auth, and uses separate scoped WebSocket servers so the console transport enforces 256 KiB without changing the SSH limit. Native credentials stay server-side.
+- `web/src/components/GuestConsoleDialog.tsx`, `Terminal.tsx`, `pages/GuestDetail.tsx`, and `lib/agent.ts` add an explicit guest console connection with shared terminal controls, chunked input, and stale target/agent cleanup. SSH remains a separate target.
+- `scripts/proxmox-install.sh` adds only VM.Console. Root manifests promote the already installed ws 8.22.0 to a direct runtime dependency.
+- `server/test/guest-console-api.test.ts` uses a local HTTPS/WSS fixture and real agent child; `server/test/guest-console-lifecycle.test.ts` uses fake sockets and deterministic Node timers; `web/test/guest-console.e2e.cjs` uses local browser API/socket mocks.
+
+## Evidence
+
+- Existing recorded RED `/tmp/console-red.log`: 11 tests, 1 pass and 10 failures because `/api/console` did not exist. `node --import tsx --test server/test/guest-console-api.test.ts server/test/guest-console-lifecycle.test.ts` passed 17/17. The local real-agent fixture covers authorization, strict frames and identity, token/password credentials, split OK and UTF-8, Unicode input, QEMU serial selection, cancellation, payload limits, offline node, actual HTTP 403 sanitization, TLS-verified WSS rejection of a self-signed certificate, and passwordless DNS-rebinding rejection. Raw-frame tests verify header-only announced oversized payloads and cumulative fragmented payloads are rejected before buffering, while SSH retains its previous transport boundary and first-frame authentication. The deterministic socket/timer test covers 5s/15s deadlines, 30s keepalive, timer cleanup and both directions of backpressure.
+- `npm run typecheck`, `bash -n scripts/proxmox-install.sh`, `git diff --check`, and `npm run build:web` passed.
+- Review regressions followed RED→GREEN: before the transport fix the header-only raw frame timed out waiting for rejection; after it, announced and fragmented frames were rejected. Before cleanup invalidation, a delayed old close replaced the new attempt's connecting status with an error; the browser regression passed after the fix.
+- `node web/test/guest-console.e2e.cjs` verifies the no-IP LXC, explicit controls, terminal key, Unicode clipboard paste and chunk ceilings, backpressure closure, migration/offline/agent-change cleanup, QEMU error text, SSH connection shape, delayed stale socket callbacks during replacement connection and after connection, and 390px layout. The initial browser fixture was added after implementation without an observed feature RED; the later review regression has the RED→GREEN evidence above. Clipboard, socket responses and the agent-change event are simulated; no SSH connection or guest session is made.
+- No screenshots taken; `SCREENSHOT_DIR` was not supplied. The browser fixture supports one opt-in desktop/mobile light/dark screenshot batch for ready and connected states, waiting for theme transitions. No real hypervisor, guest login, commands, provider or external service was used.
+
+## Limits and follow-up for controller review
+
+Browser checks simulate the agent-change event and QEMU errors; the server fixture separately verifies QEMU serial selection and actual upstream permission denial. The fixture verifies strict WSS certificate rejection directly using the saved-client configuration; it does not prove behavior against a trusted production CA or real Proxmox versions/guests. Controller owns full suite, normal/demo builds, ShellCheck, visual batch, review, CI and publication.

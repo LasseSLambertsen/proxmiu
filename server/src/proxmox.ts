@@ -1,4 +1,5 @@
 import { Agent, fetch } from 'undici'
+import WebSocket from 'ws'
 import { decrypt, type ClusterRecord } from './store.js'
 
 export class ProxmoxError extends Error {
@@ -108,6 +109,17 @@ export class ProxmoxClient {
   post = <T = unknown>(path: string, params?: Params) => this.request<T>('POST', path, params)
   put = <T = unknown>(path: string, params?: Params) => this.request<T>('PUT', path, params)
   del = <T = unknown>(path: string, params?: Params) => this.request<T>('DELETE', path, params)
+
+  /** Opens only the validated guest's native console on this saved connection. */
+  async openGuestConsole(node: string, type: 'lxc' | 'qemu', vmid: number, port: number, ticket: string, active: () => boolean) {
+    const headers = await this.authHeaders(false)
+    if (!active()) throw new Error('Console cancelled')
+    const url = new URL(`${this.baseUrl}/nodes/${encodeURIComponent(node)}/${type}/${vmid}/vncwebsocket`)
+    url.protocol = 'wss:'
+    url.searchParams.set('port', String(port))
+    url.searchParams.set('vncticket', ticket)
+    return new WebSocket(url, 'binary', { headers, rejectUnauthorized: this.conn.verifyTls, maxPayload: 1024 * 1024 })
+  }
 
   /** Waits for a task (UPID) to finish. Throws if it did not end with OK. */
   async waitForTask(node: string, upid: string, opts: { timeoutMs?: number; onProgress?: (line: string) => void } = {}) {
