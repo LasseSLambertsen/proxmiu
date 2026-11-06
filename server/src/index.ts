@@ -14,7 +14,7 @@ import { flushJobHistory, jobHistoryStatus, getJob, listJobs, provisionSchema, s
 import { forgetClient, guestIp, ProxmoxClient, type ClusterResource } from './proxmox.js'
 import { handleTerminalSocket } from './ssh.js'
 import { handleConsoleSocket } from './guest-console.js'
-import { sign, store } from './store.js'
+import { decrypt, sign, store } from './store.js'
 import { selfUpdateInfo, startSelfUpdate } from './self-update.js'
 import { allTemplates, builtinTemplates, templateSchema } from './templates.js'
 import { communityScriptTemplate, listCommunityScripts } from './template-sources.js'
@@ -179,6 +179,58 @@ app.post('/api/clusters', async (req) => {
   const rec = store.addCluster({ ...input, name: input.name || info.clusterName || info.nodes[0]?.node || input.host })
   return publicCluster(rec)
 })
+
+const settingsSchema = z.object({
+  revision: z.string().min(1).max(128),
+  name: z.string().trim().min(1).max(120),
+  authType: z.enum(['token', 'password']),
+  username: z.string().min(1).max(256).regex(/^[^\s\p{Cc}=]+$/u),
+  verifyTls: z.boolean(),
+  secret: z.string().min(1).max(16384).optional(),
+}).strict()
+const revisionFor = (c: ReturnType<typeof store.getCluster>) => sign(`connection-settings:${JSON.stringify(c)}`)
+const settingsView = (c: ReturnType<typeof store.getCluster>) => ({ ...publicCluster(c), revision: revisionFor(c) })
+const currentSettings = (id: string, revision: string) => {
+  const c = store.getCluster(id)
+  if (revisionFor(c) !== revision) throw Object.assign(new Error('Connection settings changed. Reload saved settings and try again.'), { statusCode: 409 })
+  return c
+}
+const runningConnectionJob = (id: string) => listJobs().some(job => job.clusterId === id && job.status === 'running')
+const ensureNoRunningJob = (id: string) => {
+  if (runningConnectionJob(id)) throw Object.assign(new Error('A provisioning or update job is running for this connection. Wait for it to finish.'), { statusCode: 409 })
+}
+app.get<{ Params: { id: string } }>('/api/clusters/:id/settings', async req => settingsView(store.getCluster(req.params.id)))
+async function changeConnectionSettings(id: string, body: unknown, save: boolean) {
+  const parsed = settingsSchema.safeParse(body)
+  if (!parsed.success) throw Object.assign(new Error('Invalid connection settings.'), { statusCode: 400 })
+  const input = parsed.data
+  const current = currentSettings(id, input.revision)
+  if (input.secret === undefined && (input.authType !== current.authType || input.username !== current.username)) {
+    throw Object.assign(new Error('Enter a new credential when changing authentication or username.'), { statusCode: 400 })
+  }
+  if (save) ensureNoRunningJob(id)
+  try {
+    const client = new ProxmoxClient({ ...current, ...input, secret: input.secret ?? decrypt(current.secret) }, { restrictProbe: true })
+    const version = await client.get<unknown>('/version')
+    if (!version || typeof version !== 'object' || typeof (version as { version?: unknown }).version !== 'string' || !(version as { version: string }).version) throw new Error('Invalid version response')
+    const nodes = await client.get<unknown>('/nodes')
+    if (!Array.isArray(nodes) || !nodes.every(node => node && typeof node === 'object' && typeof node.node === 'string' && node.node.length > 0)) throw new Error('Invalid nodes response')
+  } catch {
+    throw Object.assign(new Error('Could not verify the connection. Check the credential, TLS setting and host availability.'), { statusCode: 502 })
+  }
+  currentSettings(id, input.revision)
+  if (!save) return { ok: true }
+  ensureNoRunningJob(id)
+  const { revision: _revision, ...changes } = input
+  let updated
+  try { updated = store.updateClusterSettings(id, changes) } catch {
+    throw Object.assign(new Error('Could not save connection settings. Check agent storage and try again.'), { statusCode: 500 })
+  }
+  forgetClient(id)
+  return settingsView(updated)
+}
+app.post<{ Params: { id: string } }>('/api/clusters/:id/settings/test', async req => changeConnectionSettings(req.params.id, req.body, false))
+app.put<{ Params: { id: string } }>('/api/clusters/:id/settings', async req => changeConnectionSettings(req.params.id, req.body, true))
 
 app.delete<{ Params: { id: string } }>('/api/clusters/:id', async (req) => {
   store.removeCluster(req.params.id)

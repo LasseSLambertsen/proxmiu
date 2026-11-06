@@ -1,7 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { CheckCircle2, Plus, Radar, Server, Trash2 } from 'lucide-react'
+import { CheckCircle2, Pencil, Plus, Radar, Server, Trash2 } from 'lucide-react'
 import { useState } from 'react'
 import { toast } from 'sonner'
+import { ConnectionSettingsDialog } from '@/components/ConnectionSettingsDialog'
 import { ConfirmDialog, type ConfirmRequest } from '@/components/ConfirmDialog'
 import { CopyButton } from '@/components/CopyButton'
 import { EmptyState } from '@/components/EmptyState'
@@ -30,6 +31,7 @@ export function Connections() {
   const connections = useConnections()
   const [cidr, setCidr] = useState('')
   const [adding, setAdding] = useState<{ host: string; port: number } | null>(null)
+  const [editing, setEditing] = useState<string | null>(null)
   const [confirm, setConfirm] = useState<ConfirmRequest | null>(null)
 
   const scan = useQuery({
@@ -130,6 +132,7 @@ export function Connections() {
                       · {c.username} · {c.authType === 'token' ? 'API token' : 'password'} · added {timeAgo(c.createdAt)}
                     </div>
                   </div>
+                  <Button size="icon-sm" variant="ghost" title="Edit" aria-label="Edit" onClick={() => setEditing(c.id)}><Pencil strokeWidth={1.5} /></Button>
                   <Button
                     size="icon-sm"
                     variant="ghost"
@@ -157,6 +160,7 @@ export function Connections() {
         </Card>
       </div>
       <AddConnectionDialog initial={adding} onClose={() => setAdding(null)} />
+      {editing && <ConnectionSettingsDialog key={editing} id={editing} onClose={() => setEditing(null)} />}
       <ConfirmDialog request={confirm} onClose={() => setConfirm(null)} />
     </>
   )

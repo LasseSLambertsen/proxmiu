@@ -78,6 +78,7 @@ The **agent** is a small Node service that runs on your network (Docker, or any 
 - **Optional AI setup review** – add an OpenAI, Anthropic or OpenRouter API token in Settings. The agent encrypts it at rest. Preview the anonymous numeric resource snapshot and explicitly send it for advice. Names, addresses, notes, credentials, logs and configuration are excluded; advice never changes your infrastructure automatically. Provider usage is billed by your provider.
 - **Lynx companion** – a visible companion button brings the mascot into the app; five quick logo clicks still work. Dismiss it with Escape or the close button. Reduced motion is respected.
 - **Discovery** – scans the subnets the agent is on for Proxmox (port 8006) and connects with an API token or password.
+- **Saved connection settings** – rotate a token/password, rename a connection or adjust TLS verification without deleting its identity, guest pins or history. Proposed settings are verified before saving; stale edits and failed checks preserve the saved connection.
 - **Overview** – nodes, VMs and containers across all connections with live CPU, memory, IP addresses and uptime.
 - **Power actions** – start, shut down, reboot, force stop and delete guests; reboot or shut down nodes.
 - **SSH in the browser** – full terminal to any guest or node, with copy/paste, select all, and on-screen Ctrl/Alt/Shift plus navigation keys for phones.
@@ -262,6 +263,14 @@ pveum user token add proxmiu@pve agent --privsep 0
 On Proxmox VE 8, replace `VM.GuestAgent.Audit` with `VM.Monitor`. Then go to **Connections → Scan → Connect** in Proxmiu, with token ID `proxmiu@pve!agent` and the secret printed above.
 
 For the quickest test setup, `pveum user token add root@pam proxmiu --privsep 0` also works, but that token has full root access.
+
+### Update saved credentials and TLS
+
+In **Connections**, choose **Edit** on a saved connection. Change its name, token/password or certificate verification, then choose **Test** or **Save changes**. Save always verifies the proposed settings again. The existing secret stays on the agent; leave the replacement field blank to keep it. Changing the username or authentication method requires a new secret. Credentials remain encrypted at rest.
+
+The connection keeps its ID, guest metadata and retained history. Its host and port stay fixed; add another connection to use a different destination. A failed check leaves the saved settings untouched. If another edit wins, the draft remains until you explicitly reload saved settings. Saving is blocked while this connection has a running provisioning/update job; try again after it finishes.
+
+Open terminals keep their current session; reconnect to use updated credentials. Changing saved credentials does not revoke the old token or password in Proxmox. Revoke old credentials separately when appropriate. No additional Proxmox privileges are needed for this feature. Older agents need an update before editing is supported.
 
 ### Existing installations: enable advanced guest operations
 

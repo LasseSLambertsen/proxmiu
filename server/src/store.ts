@@ -106,6 +106,14 @@ export const store = {
     save()
     return rec
   },
+  updateClusterSettings(id: string, input: { name: string; authType: 'token' | 'password'; username: string; verifyTls: boolean; secret?: string }) {
+    const previous = store.getCluster(id)
+    const index = state.clusters.findIndex(c => c.id === id)
+    const updated = { ...previous, ...input, secret: input.secret === undefined ? previous.secret : encrypt(input.secret) }
+    state.clusters[index] = updated
+    try { save() } catch (error) { state.clusters[index] = previous; throw error }
+    return updated
+  },
   removeCluster(id: string) {
     state.clusters = state.clusters.filter((c) => c.id !== id)
     for (const key of Object.keys(state.guestMetadata)) {

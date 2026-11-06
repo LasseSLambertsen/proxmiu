@@ -12,8 +12,9 @@ export function DialogContent({
   children,
   title,
   description,
+  closeDisabled = false,
   ...props
-}: DialogPrimitive.DialogContentProps & { title: React.ReactNode; description?: React.ReactNode }) {
+}: DialogPrimitive.DialogContentProps & { title: React.ReactNode; description?: React.ReactNode; closeDisabled?: boolean }) {
   return (
     <DialogPrimitive.Portal>
       <DialogPrimitive.Overlay className="fixed inset-0 z-50 bg-[var(--overlay)] backdrop-blur-[3px] data-[state=open]:animate-fade-in" />
@@ -33,7 +34,7 @@ export function DialogContent({
               <DialogPrimitive.Description className="sr-only">{title}</DialogPrimitive.Description>
             )}
           </div>
-          <DialogPrimitive.Close aria-label="Close dialog" className="-mr-1.5 rounded-md p-1.5 text-faint transition-colors hover:bg-hover hover:text-foreground">
+          <DialogPrimitive.Close disabled={closeDisabled} aria-label="Close dialog" className="-mr-1.5 rounded-md p-1.5 text-faint transition-colors hover:bg-hover hover:text-foreground">
             <X className="size-4" strokeWidth={2} />
           </DialogPrimitive.Close>
         </div>

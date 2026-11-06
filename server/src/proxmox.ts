@@ -25,7 +25,7 @@ export interface ConnectionInput {
 export class ProxmoxClient {
   private ticket?: { cookie: string; csrf: string; expires: number }
 
-  constructor(private conn: ConnectionInput) {}
+  constructor(private conn: ConnectionInput, private options: { restrictProbe?: boolean } = {}) {}
 
   static fromRecord(rec: ClusterRecord) {
     const cached = clientCache.get(rec.id)
@@ -53,6 +53,7 @@ export class ProxmoxClient {
   private async login() {
     const res = await fetch(`${this.baseUrl}/access/ticket`, {
       method: 'POST',
+      ...(this.options.restrictProbe ? { redirect: 'error' as const } : {}),
       dispatcher: this.conn.verifyTls ? secureAgent : insecureAgent,
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       body: new URLSearchParams({ username: this.conn.username, password: this.conn.secret }).toString(),
@@ -60,6 +61,7 @@ export class ProxmoxClient {
     })
     if (!res.ok) throw new ProxmoxError('Proxmox rejected the username or password', 401)
     const { data } = (await res.json()) as { data: { ticket: string; CSRFPreventionToken: string } }
+    if (this.options.restrictProbe && (typeof data?.ticket !== 'string' || !data.ticket || typeof data?.CSRFPreventionToken !== 'string' || !data.CSRFPreventionToken)) throw new Error('Invalid authentication response')
     // Tickets live for 2h; refresh well before that.
     this.ticket = { cookie: data.ticket, csrf: data.CSRFPreventionToken, expires: Date.now() + 90 * 60_000 }
   }
@@ -77,6 +79,7 @@ export class ProxmoxClient {
     try {
       res = await fetch(url, {
         method,
+        ...(this.options.restrictProbe ? { redirect: 'error' as const } : {}),
         dispatcher: this.conn.verifyTls ? secureAgent : insecureAgent,
         headers: {
           ...(await this.authHeaders(method !== 'GET')),
