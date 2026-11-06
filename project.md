@@ -45,6 +45,7 @@ browser ── UI (static SPA) ──► agent (Node, on the LAN) ──► Prox
 ## Features (current)
 
 - LAN discovery (port 8006 scan + Proxmox fingerprint), API token or password auth.
+- Saved connection editing for name, credentials and TLS verification, with fixed destination, verified revision-checked saves and encrypted credentials; connection identity, guest metadata and history are retained.
 - Overview with stats and sparklines, a node list, and guests with live CPU, memory, IP and uptime.
 - Guest power actions and delete; node reboot and shutdown with typed confirmation.
 - In-browser SSH (xterm.js) using the app key, a password, or a pasted key; pop-out terminal tab; copy/paste, select all and sticky Ctrl/Alt/Shift keys.
@@ -87,6 +88,7 @@ browser ── UI (static SPA) ──► agent (Node, on the LAN) ──► Prox
 - [x] Agent-free read-only demo with fixed sample data, shared app components and isolated storage/network behavior; published by the presentation website at a pinned app revision.
 - [x] Guest detail workspace with configuration, history, Proxmox notes, snapshots, backups and migration.
 - [x] Guest Proxmox termproxy console for LXC and existing QEMU serial sockets, with explicit connection and transient server-side tickets.
+- [x] Rotate saved Proxmox credentials and edit connection name/TLS without deleting the connection or its retained context.
 - [ ] Validate native guest console against a real Proxmox host/guest OS; graphical VNC/SPICE and host shells remain separate scope.
 - [ ] Watch WebKit Local Network Access; drop the iOS HTTPS requirement when it ships.
 - [ ] Optionally squash branch history (the first commit contains an earlier logo).

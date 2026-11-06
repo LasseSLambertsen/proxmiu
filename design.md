@@ -65,6 +65,7 @@ Shadows: `--shadow-card` is a soft ambient shadow plus a 1px white inner highlig
 - **Meter**. 4px bar in amber, turning warning above 75% and destructive above 90%.
 - **Sparkline**. Amber by default; CPU uses steel blue. A fading area sits behind the line.
 - **Dialog / menu / palette**. Translucent elevated glass, 22px radius, 2xl blur, soft floating shadow. The outer border is the only outline; the float shadow adds no second ring. Footer uses `inset`.
+- **Saved connection editing**. A row Edit action opens a focused dialog with a fixed destination, blank replacement secret, TLS choice, Test and primary Save changes. Errors retain the draft; stale edits require deliberate reload. Use the existing focus, loading and phone dialog behavior.
 - **TemplateTile**. 40px gradient tile tinted per icon (sparkles orange, terminal emerald, bot violet, container sky, server zinc).
 - **Terminal**. `#0b0b0d` background, Geist Mono 13px, brand cursor, Tailwind-400-family ANSI colours. The terminal toolbar adds copy, paste, select all, sticky Ctrl/Alt/Shift and special keys.
 
