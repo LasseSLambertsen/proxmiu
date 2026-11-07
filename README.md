@@ -93,6 +93,8 @@ The **agent** is a small Node service that runs on your network (Docker, or any 
 - **Command palette** – <kbd>⌘K</kbd> / <kbd>Ctrl K</kbd> to jump to any guest, page or template.
 - **Community Scripts** - browse [community-scripts.org](https://community-scripts.org) and turn any container app into a template; the installer runs inside the guest.
 
+Container creation honors the template's nesting setting without automatically enabling root-only feature flags such as `keyctl`. For unprivileged containers, this avoids requesting features the installer's limited account cannot set. Apps that require additional container features need deliberate administrator configuration in Proxmox; Proxmiu does not grant privileges or retry creation as root.
+
 ## 1. Run the agent
 
 ### On your Proxmox host (recommended)

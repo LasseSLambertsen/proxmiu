@@ -223,9 +223,6 @@ async function run(job: Job, req: ProvisionRequest, template: TemplateDef) {
 
   if (req.kind === 'lxc') {
     const ostemplate = await step(job, 'os', () => resolveOsTemplate(client, node, req, template, say))
-    const features = [template.nesting ? 'nesting=1' : undefined, template.source?.type === 'community-scripts' && !template.privileged ? 'keyctl=1' : undefined]
-      .filter(Boolean)
-      .join(',')
     await step(job, 'create', async () => {
       const ip = req.ipMode === 'static' ? `ip=${req.ipCidr}${req.gateway ? `,gw=${req.gateway}` : ''}` : 'ip=dhcp'
       const upid = await client.post<string>(`/nodes/${node}/lxc`, {
@@ -238,7 +235,8 @@ async function run(job: Job, req: ProvisionRequest, template: TemplateDef) {
         rootfs: `${req.storage}:${req.disk}`,
         net0: `name=eth0,bridge=${req.bridge},${ip}${vlanTag}`,
         unprivileged: !template.privileged,
-        features: features || undefined,
+        // For unprivileged containers, non-root callers may set nesting but no other feature flags.
+        features: template.nesting ? 'nesting=1' : undefined,
         'ssh-public-keys': keys,
         onboot: req.onboot,
         tags: `proxmiu;${template.id}`,
