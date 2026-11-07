@@ -95,6 +95,8 @@ The **agent** is a small Node service that runs on your network (Docker, or any 
 
 Container creation honors the template's nesting setting without automatically enabling root-only feature flags such as `keyctl`. For unprivileged containers, this avoids requesting features the installer's limited account cannot set. Apps that require additional container features need deliberate administrator configuration in Proxmox; Proxmiu does not grant privileges or retry creation as root.
 
+Automatic Community Scripts OS selection uses the script's declared default. Older known-default imports lose their generic fallback choices at read time; old guessed defaults are treated as unknown rather than requirements. A cached older OS cannot take priority over downloading the declared default, and failure to find or download it stops creation. Refresh missing or outdated metadata from Community Scripts before choosing an OS. The form's manual image list contains Debian/Ubuntu; other distributions are outside that picker. Explicit choices remain overrides and must be compatible with the app. Ordinary templates may still use their allowed cached fallback if the catalogue is unavailable. These changes do not upgrade, delete or replace existing guests or overwrite saved template records.
+
 ## 1. Run the agent
 
 ### On your Proxmox host (recommended)

@@ -238,7 +238,12 @@ systemctl enable --now docker
 ].map((t) => ({ ...t, privileged: false, builtin: true }) as TemplateDef)
 
 export function allTemplates(): TemplateDef[] {
-  return [...builtinTemplates, ...store.listCustomTemplates().map((t) => ({ ...t, privileged: t.privileged ?? false, builtin: false }))]
+  return [...builtinTemplates, ...store.listCustomTemplates().map((t) => {
+    // The old importer guessed these two defaults when upstream supplied no OS metadata.
+    const guessedOs = t.source?.type === 'community-scripts' && t.os.length === 2 && t.os[0] === 'debian-12' && t.os[1] === 'ubuntu-24.04'
+    const os = t.source?.type === 'community-scripts' ? guessedOs ? [] : t.os.slice(0, 1) : t.os
+    return { ...t, os, privileged: t.privileged ?? false, builtin: false }
+  })]
 }
 
 export function getTemplate(id: string) {

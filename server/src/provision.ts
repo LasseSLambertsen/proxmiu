@@ -392,9 +392,11 @@ async function runUpdate(job: Job, req: UpdateRequest, template: TemplateDef, gu
 
 async function resolveOsTemplate(client: ProxmoxClient, node: string, req: ProvisionRequest, template: TemplateDef, say: (l: string) => void) {
   if (req.osTemplate?.includes(':')) return req.osTemplate
+  // Older Community Scripts imports appended generic OS fallbacks that may not run the app.
+  const wanted = req.osTemplate ? [req.osTemplate] : template.source?.type === 'community-scripts' ? template.os.slice(0, 1) : template.os
+  if (!wanted.length) throw new Error('This template does not specify an operating system. Choose the OS required by the app explicitly.')
   const stores = await client.get<{ storage: string }[]>(`/nodes/${node}/storage`, { content: 'vztmpl', enabled: 1 })
   if (!stores.length) throw new Error(`Node ${node} has no storage that can hold container templates (content "vztmpl")`)
-  const wanted = req.osTemplate ? [req.osTemplate] : template.os
 
   const local: string[] = []
   for (const s of stores) {
@@ -402,16 +404,20 @@ async function resolveOsTemplate(client: ProxmoxClient, node: string, req: Provi
     local.push(...content.map((c) => c.volid))
   }
   const base = (volid: string) => volid.split('/').pop() ?? volid
+  let available: { template: string; section: string }[] | undefined
+  let catalogueError: unknown
   for (const prefix of wanted) {
     const hit = local.filter((v) => base(v).startsWith(prefix)).sort().pop()
     if (hit) {
+      if (catalogueError) say('OS catalogue unavailable; using a cached OS allowed by this template.')
       say(`Using existing OS template ${hit}`)
       return hit
     }
-  }
-
-  const available = await client.get<{ template: string; section: string }[]>(`/nodes/${node}/aplinfo`)
-  for (const prefix of wanted) {
+    // Prefer downloading this OS over using a cached lower-priority alternative.
+    if (!available) {
+      try { available = await client.get<{ template: string; section: string }[]>(`/nodes/${node}/aplinfo`) }
+      catch (error) { catalogueError = error; available = [] }
+    }
     const name = available.map((a) => a.template).filter((t) => t.startsWith(prefix)).sort().pop()
     if (!name) continue
     const target = req.templateStorage ?? stores[0].storage
@@ -422,5 +428,6 @@ async function resolveOsTemplate(client: ProxmoxClient, node: string, req: Provi
     })
     return `${target}:vztmpl/${name}`
   }
+  if (catalogueError) throw catalogueError
   throw new Error(`None of the OS templates ${wanted.join(', ')} are available on ${node}`)
 }

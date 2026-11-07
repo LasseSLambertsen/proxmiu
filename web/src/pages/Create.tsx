@@ -178,17 +178,21 @@ function CreateForm({ template, lynxDraft, draftError }: { template: Template; l
     }
   }, [o, kind, node, storage, storages, bridge, sourceVmid])
 
+  const communityScript = template.source?.type === 'community-scripts'
+  const osHelp = communityScript
+    ? template.os[0] ? `Community Script default: ${template.os[0]}. Choose another OS only if the app supports it.` : 'Refresh this template from Community Scripts to load its OS default. Manual choices here are Debian/Ubuntu; verify app compatibility before selecting one.'
+    : 'Debian and Ubuntu are supported by the built-in scripts.'
   const autoOs = useMemo(() => {
     if (!o) return undefined
     const base = (v: string) => v.split('/').pop() ?? v
-    for (const prefix of template.os) {
+    for (const prefix of communityScript ? template.os.slice(0, 1) : template.os) {
       const local = o.osTemplates.downloaded.find((v) => base(v).startsWith(prefix))
       if (local) return base(local)
       const remote = o.osTemplates.available.find((v) => v.startsWith(prefix))
       if (remote) return `${remote} (downloads first)`
     }
     return undefined
-  }, [o, template.os])
+  }, [o, template.os, communityScript])
 
   const create = useMutation({
     mutationFn: () => {
@@ -323,7 +327,7 @@ function CreateForm({ template, lynxDraft, draftError }: { template: Template; l
               })}
             </div>
             {kind === 'lxc' ? (
-              <Field label="Operating system" help={!osTemplate && autoOs ? `Automatic: ${autoOs}` : 'Debian and Ubuntu are supported by the built-in scripts.'}>
+              <Field label="Operating system" help={!osTemplate && autoOs ? `Automatic: ${autoOs}` : osHelp}>
                 <Select value={osTemplate} onChange={(e) => setOsTemplate(e.target.value)}>
                   <option value="">Automatic</option>
                   {!!o?.osTemplates.downloaded.length && (

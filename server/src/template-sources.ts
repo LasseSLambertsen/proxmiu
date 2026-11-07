@@ -222,9 +222,9 @@ export function buildCommunityScript(template: TemplateDef, env: Record<string, 
 
 const osTemplate = (resources: { os?: string; version?: string }) => {
   const os = resources.os?.toLowerCase()
-  if (!os || !resources.version) return ['debian-12', 'ubuntu-24.04']
+  if (!os || !resources.version) return []
   const name = os === 'alpine' ? `alpine-${resources.version}` : `${os}-${resources.version}`
-  return [name, 'debian-12', 'ubuntu-24.04']
+  return [name]
 }
 
 const optionKey = (name: string) =>
