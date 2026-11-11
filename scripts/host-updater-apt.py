@@ -559,14 +559,15 @@ def simulate(ctx, identity, inventory):
             fail('unsafe_plan')
         qualified, old, new, hinted_arch = match.groups()
         name = qualified.split(':')[0]
-        if not _VERSION.fullmatch(new) or name in holds:
+        if (len(name) > 200 or len(new) > 200 or (old is not None and len(old) > 200) or
+                not _VERSION.fullmatch(new) or name in holds):
             fail('unsafe_plan')
         records = _deb822(ctx.run(['/usr/bin/apt-cache', 'show', qualified + '=' + new]))
         candidates = {r.get('architecture') for r in records if r.get('package') == name and r.get('version') == new}
         if len(candidates) != 1:
             fail('unsafe_plan')
         arch = candidates.pop()
-        if not arch or not _ARCH.fullmatch(arch) or hinted_arch not in (arch, 'amd64' if arch == 'all' else arch):
+        if not arch or len(arch) > 40 or not _ARCH.fullmatch(arch) or hinted_arch not in (arch, 'amd64' if arch == 'all' else arch):
             fail('unsafe_plan')
         previous = current.get((name, arch))
         if old != previous or (previous and compare_versions(new, previous) <= 0) or (name, arch) in seen:

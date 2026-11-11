@@ -275,6 +275,19 @@ class EngineTests(unittest.TestCase):
         with self.assertRaises(apt.UpdaterError) as error:
             self.plan()
         self.assertEqual(error.exception.code, 'plan_too_large')
+
+    def test_unreviewable_package_fields_fail_before_public_protocol(self):
+        previous = self.ctx.run
+        def runner(argv, **kwargs):
+            if argv[0] == '/usr/bin/apt-cache':
+                name, candidate = argv[-1].split('=')
+                return f'Package: {name}\nVersion: {candidate}\nArchitecture: all\n\n'
+            return previous(argv, **kwargs)
+        self.ctx.run = runner
+        self.simulation = 'Inst extra (2.' + '0' * 201 + ' Debian:12/bookworm [all])\n'
+        with self.assertRaises(apt.UpdaterError) as error:
+            self.plan()
+        self.assertEqual(error.exception.code, 'unsafe_plan')
         self.simulation = ''.join(f'Inst extra-{i:04d} (2.' + '0' * 180 + ' Debian:12/bookworm [all])\n' for i in range(500))
         with self.assertRaises(apt.UpdaterError) as error:
             self.plan()
