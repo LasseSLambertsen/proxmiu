@@ -90,6 +90,7 @@ The **agent** is a small Node service that runs on your network (Docker, or any 
 - **Custom templates** – duplicate a built-in or write your own bash script with typed options, or point a template at a script in a GitHub repository.
 - **Guest updates** - re-run the template's install script, or use the upstream Community Scripts update path, from the guest menu.
 - **Agent self-update** - opt-in Settings card that checks the configured upstream ref for a newer commit; the update runs in a transient systemd unit and reloads the page when the agent is back.
+- **Reviewed host updates** - opt in from a node’s Updates menu, enroll a dedicated restricted helper, review every package/version and type the node name before installation. Durable host jobs recover through Settings after disconnects. See [host update setup and recovery](docs/proxmox-host-updates.md).
 - **Command palette** – <kbd>⌘K</kbd> / <kbd>Ctrl K</kbd> to jump to any guest, page or template.
 - **Community Scripts** - browse [community-scripts.org](https://community-scripts.org) and turn any container app into a template; the installer runs inside the guest.
 
@@ -342,6 +343,7 @@ The agent holds credentials that control your whole Proxmox setup.
 - **Credentials at rest:** encrypted with AES-256-GCM.
 - **Host keys:** SSH host keys of guests are not pinned, since guests are created and rebuilt often.
 - **Self-update:** off by default. When enabled, the `proxmiu` user may run only `/usr/local/bin/proxmiu-self-update`; the helper ignores the caller's environment and reads root-owned `/etc/proxmiu/update.env`. Disable it by re-running the installer with `PROXMIU_ALLOW_SELF_UPDATE=0`.
+- **Host updates:** separate, opt-in administrator enrollment with a per-node encrypted SSH key and pinned ed25519 host fingerprint. A node-bound forced command accepts only inspect/check/status/reviewed-apply JSON. The ordinary Proxmox role and guest key gain no privileges. Matching repositories, healthy package state, ten-minute plans and a locked APT action/archive guard protect exact-version installation; no removal, downgrade, major upgrade, package repair or automatic reboot is offered. One unresolved host operation blocks further admissions and forgetting its target. [Enrollment and recovery](docs/proxmox-host-updates.md) includes manual key revocation. Development checks use fixtures; real-host validation remains an operator step.
 
 See [SECURITY.md](SECURITY.md) for the full policy and private reporting link.
 

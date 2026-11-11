@@ -55,6 +55,7 @@ browser ── UI (static SPA) ──► agent (Node, on the LAN) ──► Prox
 - Community Scripts: browse [community-scripts.org](https://community-scripts.org) and turn any container script into a template, with its options and resources prefilled.
 - Guest updates: re-run the template's GitHub/inline install script, or the upstream Community Scripts update entrypoint, with the same live job log.
 - Opt-in agent self-update from Settings: a narrow root helper runs the update in a transient systemd unit, so the agent can restart and the UI reconnects.
+- Opt-in Proxmox host updates: dedicated restricted node enrollment, pinned SSH identity, complete package review and typed confirmation before exact-version same-major installation. Durable jobs and global reservations survive agent disconnect/restart; Settings links support recovery during Proxmox API outages. Verified with synthetic package/systemd/SSH/API fixtures; real-host validation remains open.
 - Provisioning: LXC creation (auto-downloads the OS template) or cloud-init VM clone; IP discovery via LXC interfaces, guest agent, or ARP; live step and log view.
 - ⌘K command palette; light and dark themes with a continuous ambient canvas and readable light surfaces; phone layout with bottom tab bar; installable (web manifest).
 - One-command install on a Proxmox host (`scripts/proxmox-install.sh`): autostarting LXC, systemd service, limited `proxmiu@pve` user/role, API token and host registration; `scripts/install.sh` for any Debian/Ubuntu box and for updates.

@@ -11,6 +11,7 @@ import { Create } from '@/pages/Create'
 import { Guests } from '@/pages/Guests'
 import { GuestDetail } from '@/pages/GuestDetail'
 import { Overview } from '@/pages/Overview'
+import { HostUpdates } from '@/pages/HostUpdates'
 import { SettingsPage } from '@/pages/Settings'
 import { Templates } from '@/pages/Templates'
 import { TerminalPage } from '@/pages/TerminalPage'
@@ -109,6 +110,7 @@ export function App() {
           <Route path="activity/:jobId" element={<Activity />} />
           <Route path="connections" element={<Connections />} />
           <Route path="settings" element={<SettingsPage />} />
+          <Route path="nodes/:clusterId/:node/updates" element={<HostUpdates />} />
         </Route>
       </Routes>
     </BrowserRouter>

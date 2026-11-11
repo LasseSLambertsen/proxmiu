@@ -261,6 +261,25 @@ class EngineTests(unittest.TestCase):
             self.assertGreater(apt.compare_versions(right, left), 0)
         self.assertEqual(apt.compare_versions('1.0', '1.0-0'), 0)
 
+    def test_new_dependencies_are_explicit_and_complete_plan_limits_refuse(self):
+        previous = self.ctx.run
+        def runner(argv, **kwargs):
+            if argv[0] == '/usr/bin/apt-cache':
+                name, candidate = argv[-1].split('=')
+                return f'Package: {name}\nVersion: {candidate}\nArchitecture: all\n\n'
+            return previous(argv, **kwargs)
+        self.ctx.run = runner
+        self.simulation = 'Inst new-dependency (2.0 Debian:12/bookworm [all])\n'
+        self.assertIsNone(self.plan()['plan']['packages'][0]['installed'])
+        self.simulation = ''.join(f'Inst extra-{i:04d} (2.0 Debian:12/bookworm [all])\n' for i in range(2001))
+        with self.assertRaises(apt.UpdaterError) as error:
+            self.plan()
+        self.assertEqual(error.exception.code, 'plan_too_large')
+        self.simulation = ''.join(f'Inst extra-{i:04d} (2.' + '0' * 180 + ' Debian:12/bookworm [all])\n' for i in range(500))
+        with self.assertRaises(apt.UpdaterError) as error:
+            self.plan()
+        self.assertEqual(error.exception.code, 'plan_too_large')
+
     @unittest.skipUnless(pathlib.Path('/usr/bin/apt-config').exists(), 'APT configuration consumer is Linux-only')
     def test_real_apt_config_defaults_and_late_overlay_consumer(self):
         initial = self.root / 'fixture-apt.conf'

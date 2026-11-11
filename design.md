@@ -142,3 +142,7 @@ The separate `/demo/` tour extends the existing warm-glass app world using the s
 ## Guest native console
 
 Guest workspaces keep separate SSH terminal and Console choices. The native console can open without a guest IP, identifies its exact guest/node and asks for an explicit Connect before mounting the shared terminal. Reconnect/disconnect are deliberate, supported/stopped/offline/permission states stay clear, and a stale target closes rather than silently switching. Use existing dialog, terminal, focus and mobile key controls; no new visual system. Console credentials remain server-side and output is transient. The sample tour never gains an operational console control.
+
+## Reviewed host updates
+
+A node’s Updates menu opens a dedicated page in the existing warm-glass shell. Enrollment explains the dedicated public key, administrator command and trusted fingerprint. Check and install are separate actions: show the entire package/version list, additions, expiry and service-restart impact before typed node confirmation. Saved targets in Settings keep recovery reachable during inventory outages. Accepted work continues after leaving; unknown status blocks another install, and failed/interrupted states lead to local inspection. Manual reboot advice stays separate. Review cards stack at 390px, long names and versions wrap, and no package data enters persistent browser storage or the public demo.

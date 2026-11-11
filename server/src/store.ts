@@ -1,8 +1,9 @@
 import { createCipheriv, createDecipheriv, createHmac, randomBytes, randomUUID } from 'node:crypto'
-import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs'
+import { closeSync, existsSync, fsyncSync, mkdirSync, openSync, readFileSync, renameSync, writeFileSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 import ssh2 from 'ssh2'
 import type { TemplateDef } from './templates.js'
+import type { UpdatersState } from './host-updates.js'
 import { guestMetadataParamsSchema, guestMetadataPatchSchema, type GuestMetadata } from './guest-insights.js'
 
 export const DATA_DIR = resolve(process.env.PROXMIU_DATA_DIR ?? 'data')
@@ -31,13 +32,17 @@ interface State {
   sshUsers: Record<string, string>
   guestMetadata: Record<string, GuestMetadata>
   ai?: { provider: 'openai' | 'anthropic' | 'openrouter'; model: string; token: string }
+  hostUpdaters?: UpdatersState
 }
 
 mkdirSync(DATA_DIR, { recursive: true, mode: 0o700 })
 
 function loadKey(): Buffer {
   if (process.env.PROXMIU_SECRET_KEY) return Buffer.from(process.env.PROXMIU_SECRET_KEY, 'base64')
-  if (!existsSync(KEY_FILE)) writeFileSync(KEY_FILE, randomBytes(32).toString('base64'), { mode: 0o600 })
+  if (!existsSync(KEY_FILE)) {
+    const fd = openSync(KEY_FILE, 'wx', 0o600)
+    try { writeFileSync(fd, randomBytes(32).toString('base64')); fsyncSync(fd) } finally { closeSync(fd) }
+  }
   return Buffer.from(readFileSync(KEY_FILE, 'utf8').trim(), 'base64')
 }
 const key = loadKey()
@@ -71,11 +76,25 @@ const state = load()
 
 function save() {
   const tmp = `${STATE_FILE}.tmp`
-  writeFileSync(tmp, JSON.stringify(state, null, 2), { mode: 0o600 })
+  const fd = openSync(tmp, 'w', 0o600)
+  try {
+    writeFileSync(fd, JSON.stringify(state, null, 2))
+    fsyncSync(fd)
+  } finally { closeSync(fd) }
   renameSync(tmp, STATE_FILE)
+  if (process.platform !== 'win32') {
+    const directory = openSync(DATA_DIR, 'r')
+    try { fsyncSync(directory) } finally { closeSync(directory) }
+  }
 }
 
 export const store = {
+  hostUpdaterState: (): UpdatersState => structuredClone(state.hostUpdaters ?? { targets: {} }),
+  saveHostUpdaterState(input: UpdatersState) {
+    const previous = state.hostUpdaters
+    state.hostUpdaters = structuredClone(input)
+    try { save() } catch (error) { state.hostUpdaters = previous; throw error }
+  },
   aiSettings() {
     return { configured: !!state.ai, provider: state.ai?.provider ?? 'openai' as const, model: state.ai?.model ?? 'gpt-4o-mini' }
   },
@@ -115,7 +134,9 @@ export const store = {
     return updated
   },
   removeCluster(id: string) {
+    if (state.hostUpdaters?.reservation?.key.startsWith(`${id}/`)) throw Object.assign(new Error('A host update is unresolved for this connection.'), { statusCode: 409 })
     state.clusters = state.clusters.filter((c) => c.id !== id)
+    if (state.hostUpdaters) for (const [key, target] of Object.entries(state.hostUpdaters.targets)) if (target.clusterId === id) delete state.hostUpdaters.targets[key]
     for (const key of Object.keys(state.guestMetadata)) {
       if (key.startsWith(`${id}/`)) delete state.guestMetadata[key]
     }
