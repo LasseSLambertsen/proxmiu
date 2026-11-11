@@ -4,6 +4,8 @@ import tempfile
 import unittest
 import os
 import json
+from types import SimpleNamespace
+from unittest.mock import patch
 
 
 def load():
@@ -114,6 +116,16 @@ class RuntimeTests(unittest.TestCase):
         self.assertEqual(self.runtime.handle({'action': 'status', 'jobId': job['id']})['state'], 'running')
         with self.assertRaises(self.mod.RpcError):
             self.runtime.handle({'action': 'check'})
+
+    def test_deactivating_service_retains_ownership_until_children_stop(self):
+        # The main worker's flock can disappear before systemd finishes stopping
+        # its APT children. Deactivating is still a live operation.
+        with patch.object(self.mod.subprocess, 'run', return_value=SimpleNamespace(stdout='deactivating\n')):
+            self.assertIs(self.mod.Runtime.systemd_active('fixture.service'), True)
+        job = self.runtime.handle({'action': 'check'})
+        self.now += 20
+        self.runtime.unit_active = lambda _: True
+        self.assertEqual(self.runtime.handle({'action': 'status', 'jobId': job['id']})['state'], 'running')
 
     def test_reboot_or_lost_unit_is_interrupted_never_success(self):
         for reboot in [False, True]:

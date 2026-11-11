@@ -326,9 +326,9 @@ class Runtime:
                                     env=ENV, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
                                     check=True, timeout=3, text=True)
             value = result.stdout.strip()
-            if value in ('active', 'activating', 'reloading'):
+            if value in ('active', 'activating', 'reloading', 'deactivating'):
                 return True
-            return False if value in ('inactive', 'failed', 'deactivating') else None
+            return False if value in ('inactive', 'failed') else None
         except (OSError, subprocess.SubprocessError):
             return None
 
