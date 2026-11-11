@@ -14,7 +14,9 @@ import { flushJobHistory, jobHistoryStatus, getJob, listJobs, provisionSchema, s
 import { forgetClient, guestIp, ProxmoxClient, type ClusterResource } from './proxmox.js'
 import { handleTerminalSocket } from './ssh.js'
 import { handleConsoleSocket } from './guest-console.js'
-import { decrypt, sign, store } from './store.js'
+import { decrypt, encrypt, sign, store } from './store.js'
+import { createHostUpdates } from './host-updates.js'
+import { invokeHostUpdater, updaterId, updaterNode } from './host-updater-ssh.js'
 import { selfUpdateInfo, startSelfUpdate } from './self-update.js'
 import { allTemplates, builtinTemplates, templateSchema } from './templates.js'
 import { communityScriptTemplate, listCommunityScripts } from './template-sources.js'
@@ -197,6 +199,7 @@ const currentSettings = (id: string, revision: string) => {
 }
 const runningConnectionJob = (id: string) => listJobs().some(job => job.clusterId === id && job.status === 'running')
 const ensureNoRunningJob = (id: string) => {
+  hostUpdates.assertConnectionMutable(id)
   if (runningConnectionJob(id)) throw Object.assign(new Error('A provisioning or update job is running for this connection. Wait for it to finish.'), { statusCode: 409 })
 }
 app.get<{ Params: { id: string } }>('/api/clusters/:id/settings', async req => settingsView(store.getCluster(req.params.id)))
@@ -233,6 +236,7 @@ app.post<{ Params: { id: string } }>('/api/clusters/:id/settings/test', async re
 app.put<{ Params: { id: string } }>('/api/clusters/:id/settings', async req => changeConnectionSettings(req.params.id, req.body, true))
 
 app.delete<{ Params: { id: string } }>('/api/clusters/:id', async (req) => {
+  hostUpdates.assertConnectionMutable(req.params.id)
   store.removeCluster(req.params.id)
   historyAccess.removeConnection(req.params.id)
   forgetClient(req.params.id)
@@ -240,6 +244,47 @@ app.delete<{ Params: { id: string } }>('/api/clusters/:id', async (req) => {
 })
 
 const clientFor = (id: string) => ProxmoxClient.fromRecord(store.getCluster(id))
+
+const hostUpdates = createHostUpdates({
+  load: store.hostUpdaterState, save: store.saveHostUpdaterState, encrypt, decrypt, invoke: invokeHostUpdater,
+  online: async (id, node) => {
+    const nodes = await clientFor(id).get<unknown>('/nodes')
+    if (!Array.isArray(nodes) || !nodes.some(n => n && n.node === node && n.status === 'online')) throw new Error('Node unavailable')
+  },
+})
+const updaterParams = (value: unknown) => z.object({ id: z.string().uuid(), node: updaterNode }).parse(value)
+app.get('/api/host-updaters', async () => hostUpdates.list())
+app.get('/api/clusters/:id/nodes/:node/updater', async req => {
+  const { id, node } = updaterParams(req.params)
+  store.getCluster(id)
+  return hostUpdates.info(id, node)
+})
+app.post('/api/clusters/:id/nodes/:node/updater/setup', async req => {
+  const { id, node } = updaterParams(req.params)
+  z.object({}).strict().parse(req.body)
+  return hostUpdates.setup(id, node)
+})
+app.put('/api/clusters/:id/nodes/:node/updater/configuration', async req => {
+  const { id, node } = updaterParams(req.params)
+  return hostUpdates.configure(id, node, req.body)
+})
+app.delete('/api/clusters/:id/nodes/:node/updater/configuration', async req => {
+  const { id, node } = updaterParams(req.params)
+  return hostUpdates.forget(id, node, req.body)
+})
+app.post('/api/clusters/:id/nodes/:node/updater/check', async req => {
+  const { id, node } = updaterParams(req.params)
+  z.object({}).strict().parse(req.body)
+  return hostUpdates.check(id, node)
+})
+app.post('/api/clusters/:id/nodes/:node/updater/apply', async req => {
+  const { id, node } = updaterParams(req.params)
+  return hostUpdates.apply(id, node, req.body)
+})
+app.get('/api/clusters/:id/nodes/:node/updater/jobs/:jobId', async req => {
+  const { jobId, ...params } = z.object({ id: z.string().uuid(), node: updaterNode, jobId: updaterId }).parse(req.params)
+  return hostUpdates.status(params.id, params.node, jobId)
+})
 
 app.get('/api/guest-metadata', async () => store.listGuestMetadata())
 
@@ -410,6 +455,7 @@ app.delete('/api/clusters/:id/guests/:node/:type/:vmid', async (req) => {
 
 app.post('/api/clusters/:id/nodes/:node/:action', async (req) => {
   const p = z.object({ id: z.string(), node: z.string().regex(/^[\w.-]+$/), action: z.enum(['reboot', 'shutdown']) }).parse(req.params)
+  hostUpdates.assertConnectionMutable(p.id)
   await clientFor(p.id).post(`/nodes/${p.node}/status`, { command: p.action })
   return { ok: true }
 })

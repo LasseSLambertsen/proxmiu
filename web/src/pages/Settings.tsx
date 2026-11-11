@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Check, CloudDownload, KeyRound, Loader2, RefreshCw, ShieldAlert, ShieldCheck } from 'lucide-react'
 import { useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { toast } from 'sonner'
 import { AiAdvisor } from '@/components/AiAdvisor'
 import { ConfirmDialog, type ConfirmRequest } from '@/components/ConfirmDialog'
@@ -10,6 +11,8 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { api, type SelfUpdate } from '@/lib/api'
 import { timeAgo } from '@/lib/utils'
+import { getAgent } from '@/lib/agent'
+import { hostUpdatesPath, type HostTarget } from '@/lib/host-updates'
 
 interface Settings {
   sshPublicKey: string
@@ -19,6 +22,7 @@ interface Settings {
 
 export function SettingsPage() {
   const qc = useQueryClient()
+  const hostUpdaters = useQuery({ queryKey: ['host-updaters', JSON.stringify(getAgent())], queryFn: () => api.get<HostTarget[]>('/host-updaters'), retry: false })
   const { data } = useQuery({ queryKey: ['settings'], queryFn: () => api.get<Settings>('/settings') })
   const [confirm, setConfirm] = useState<ConfirmRequest | null>(null)
   const [waiting, setWaiting] = useState(false)
@@ -95,6 +99,15 @@ export function SettingsPage() {
       <PageHeader title="Settings" />
       <div className="max-w-3xl space-y-4 px-8 pb-10 max-md:px-4">
         <AiAdvisor />
+        <Card>
+          <CardHeader><CardTitle>Proxmox host updates</CardTitle></CardHeader>
+          <CardContent className="space-y-3 text-[13px]">
+            <p className="text-muted">Open a node’s Updates menu on Overview to enroll restricted access. Saved targets stay reachable here when the Proxmox API is unavailable.</p>
+            {hostUpdaters.error && <p role="alert" className="text-destructive">Could not load saved updater targets. Refresh Settings when the agent is reachable.</p>}
+            {hostUpdaters.data?.length === 0 && <p className="text-muted">Enrolled and pending nodes will appear here.</p>}
+            {hostUpdaters.data?.map(target => <Link key={`${target.clusterId}/${target.node}`} to={hostUpdatesPath(target.clusterId, target.node)} className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border-subtle p-3 hover:bg-hover"><span className="min-w-0 break-all font-medium">{target.node}</span><span className="text-muted">{target.unresolved ? 'Recover active operation' : target.configured ? 'Open updates' : 'Finish enrollment'} →</span></Link>)}
+          </CardContent>
+        </Card>
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">

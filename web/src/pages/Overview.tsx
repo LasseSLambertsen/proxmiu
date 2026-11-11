@@ -1,7 +1,8 @@
 import { useMutation } from '@tanstack/react-query'
 import { ArrowRight, Cpu, MemoryStick, MoreHorizontal, Network, Plus, Power, RotateCw, Server, SquareTerminal } from 'lucide-react'
 import { useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
+import { hostUpdatesPath } from '@/lib/host-updates'
 import { toast } from 'sonner'
 import { ConfirmDialog, type ConfirmRequest } from '@/components/ConfirmDialog'
 import { EmptyState } from '@/components/EmptyState'
@@ -60,6 +61,7 @@ function Stat({
 }
 
 export function Overview() {
+  const navigate = useNavigate()
   const overview = useOverview()
   const { data, isLoading } = overview
   const templates = useTemplates()
@@ -244,6 +246,10 @@ export function Overview() {
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent>
+                      <DropdownMenuItem onSelect={() => navigate(hostUpdatesPath(n.clusterId, n.node))}>
+                        <RotateCw />
+                        Updates…
+                      </DropdownMenuItem>
                       <DropdownMenuItem onSelect={() => askNode(n, 'reboot')}>
                         <RotateCw />
                         Reboot node…
