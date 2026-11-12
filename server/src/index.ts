@@ -14,6 +14,7 @@ import { flushJobHistory, jobHistoryStatus, getJob, listJobs, provisionSchema, s
 import { forgetClient, guestIp, ProxmoxClient, type ClusterResource } from './proxmox.js'
 import { handleTerminalSocket } from './ssh.js'
 import { handleConsoleSocket } from './guest-console.js'
+import { handleGraphicalConsoleSocket } from './graphical-console.js'
 import { decrypt, encrypt, sign, store } from './store.js'
 import { createHostUpdates } from './host-updates.js'
 import { invokeHostUpdater, updaterId, updaterNode } from './host-updater-ssh.js'
@@ -99,8 +100,10 @@ await app.register(cors, {
 // enforce its smaller message limit without changing the existing SSH limit.
 const sshUpgrades = new EventEmitter()
 const consoleUpgrades = new EventEmitter()
+const graphicalUpgrades = new EventEmitter()
 app.server.on('upgrade', (request, socket, head) => {
-  const target = request.url?.split('?', 1)[0] === '/api/console' ? consoleUpgrades : sshUpgrades
+  const path = request.url?.split('?', 1)[0]
+  const target = path === '/api/graphical-console' ? graphicalUpgrades : path === '/api/console' ? consoleUpgrades : sshUpgrades
   target.emit('upgrade', request, socket, head)
 })
 
@@ -129,7 +132,7 @@ app.addHook('onRequest', async (req, reply) => {
   // Without a password the agent only listens on loopback; insist on a loopback Host too, which blocks DNS rebinding.
   if (!PASSWORD && !isLoopback(req.hostname)) return reply.status(403).send({ error: 'Host not allowed' })
   if (!originAllowed(req)) return reply.status(403).send({ error: `Origin ${req.headers.origin} is not allowed. Add it to PROXMIU_ALLOWED_ORIGINS.` })
-  if (req.url === '/api/health' || req.url.startsWith('/api/auth/') || req.url.startsWith('/api/ssh?') || req.url === '/api/ssh' || (req.url === '/api/console' && req.headers.upgrade?.toLowerCase() === 'websocket')) return
+  if (req.url === '/api/health' || req.url.startsWith('/api/auth/') || req.url.startsWith('/api/ssh?') || req.url === '/api/ssh' || ((req.url === '/api/console' || req.url === '/api/graphical-console') && req.headers.upgrade?.toLowerCase() === 'websocket')) return
   if (!tokenValid(bearer(req))) return reply.status(401).send({ error: 'Not logged in' })
 })
 
@@ -648,6 +651,11 @@ await app.register(async scope => {
 await app.register(async scope => {
   await scope.register(websocket, { options: { server: consoleUpgrades as unknown as typeof app.server, maxPayload: 256 * 1024 } })
   scope.get('/api/console', { websocket: true }, socket => handleConsoleSocket(socket, tokenValid))
+})
+
+await app.register(async scope => {
+  await scope.register(websocket, { options: { server: graphicalUpgrades as unknown as typeof app.server, maxPayload: 16 * 1024 * 1024 } })
+  scope.get('/api/graphical-console', { websocket: true }, socket => handleGraphicalConsoleSocket(socket, tokenValid))
 })
 
 // --- static frontend ----------------------------------------------------------------

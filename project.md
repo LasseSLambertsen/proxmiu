@@ -49,7 +49,7 @@ browser ── UI (static SPA) ──► agent (Node, on the LAN) ──► Prox
 - Overview with stats and sparklines, a node list, and guests with live CPU, memory, IP and uptime.
 - Guest power actions and delete; node reboot and shutdown with typed confirmation.
 - In-browser SSH (xterm.js) using the app key, a password, or a pasted key; pop-out terminal tab; copy/paste, select all and sticky Ctrl/Alt/Shift keys.
-- Explicit native Proxmox text consoles for running LXC guests and existing QEMU serial sockets, without requiring guest networking or SSH; guest login may still be required.
+- Explicit native Proxmox text consoles for running LXC guests and existing QEMU serial sockets, plus graphical QEMU displays with server-side VNC authentication, deliberate text transfer and phone keyboard controls. No guest networking or SSH is required; guest login may still be required. Graphical access does not configure display devices or start guests.
 - Templates: Claude Code server, Codex server, OpenCode server, AI dev box, Docker host, Plain server. Optional extras: tmux persistence, GitHub CLI, repo clone, git identity, Tailscale.
 - Custom templates with typed options and a bash editor, plus install scripts fetched from a GitHub repository.
 - Community Scripts: browse [community-scripts.org](https://community-scripts.org) and turn any container script into a template, with its options and resources prefilled.
@@ -99,7 +99,8 @@ Preserve the warm glass visual identity, phone usability, native notes, encrypte
 - [ ] Validate new-guest restore on designated disposable PVE 8/9 guests and backups; validate PBS separately.
 - [ ] Extend restore to wider configurations, global/deleted-source backup browsing and separately reviewed overwrite recovery.
 - [ ] Full VM/LXC hardware administration beyond CPU/memory/boot settings.
-- [ ] Graphical VM consoles; preserve existing text consoles and server-side credential privacy.
+- [x] Graphical VM displays with agent-side authentication, explicit controls and real-noVNC browser fixtures; existing text/SSH preserved.
+- [ ] Validate graphical displays/input on designated PVE8/9 guests; SPICE and host shells remain separate.
 
 - [x] README screenshots (`docs/screenshots/`).
 - [ ] Validate against a real Proxmox host; fix API differences from the mock.
@@ -110,7 +111,7 @@ Preserve the warm glass visual identity, phone usability, native notes, encrypte
 - [x] Guest detail workspace with configuration, history, Proxmox notes, snapshots, backups and migration.
 - [x] Guest Proxmox termproxy console for LXC and existing QEMU serial sockets, with explicit connection and transient server-side tickets.
 - [x] Rotate saved Proxmox credentials and edit connection name/TLS without deleting the connection or its retained context.
-- [ ] Validate native guest console against a real Proxmox host/guest OS; graphical VNC/SPICE and host shells remain separate scope.
+- [ ] Validate native text and graphical guest consoles against designated real Proxmox hosts/guest OSes; SPICE and host shells remain separate scope.
 - [ ] Watch WebKit Local Network Access; drop the iOS HTTPS requirement when it ships.
 - [ ] Optionally squash branch history (the first commit contains an earlier logo).
 
@@ -135,3 +136,5 @@ The independent demo entry builds with `npm run build:demo` to `dist/demo` for `
 Native guest console access revalidates the selected running guest and node, then bridges Proxmox termproxy from the agent using saved authentication/TLS policy. QEMU requires an existing serial socket. Console sessions never start or configure guests, grant permissions, persist tickets/output or automatically share output with Lynx. Existing roles need VM.Console explicitly; Sys.Console is not added. The existing SSH workflow and read-only deployed demo remain separate.
 
 Reviewed backup restoration verifies canonical archive identity, locally extracted configuration, unused cluster-wide target ID and active same-node destination storage before submission, then checks them again against a short-lived single-use review. Restores request new MACs, no immediate start and no ordinary boot autostart. Initial support is limited to VM VMA/PBS and ordinary unprivileged LXC TAR/PBS backups without unsupported host references, extra mount points or custom configuration. Credentials and raw extracted configuration remain on the agent. Native task history attributes qmrestore/vzrestore to the new ID and can reopen logs after restart. Synthetic TLS/API/browser verification does not establish real archive/PBS restoration or observed guest disk/runtime behavior.
+
+Graphical VM consoles use a separately bounded authenticated binary route and a small RFB3.8 authentication adapter. It consumes the generated upstream VNC password on the agent, then permits noVNC only in the authenticated browser session. The client is lazy-loaded with upstream notices, offers display/keyboard/pointer/explicit text controls, and releases old sessions on transport/identity changes without reconnecting automatically. Synthetic TLS/token/password/protocol and real-noVNC pixel/input fixtures are distinct from pending real-host validation.

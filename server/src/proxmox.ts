@@ -114,14 +114,14 @@ export class ProxmoxClient {
   del = <T = unknown>(path: string, params?: Params) => this.request<T>('DELETE', path, params)
 
   /** Opens only the validated guest's native console on this saved connection. */
-  async openGuestConsole(node: string, type: 'lxc' | 'qemu', vmid: number, port: number, ticket: string, active: () => boolean) {
+  async openGuestConsole(node: string, type: 'lxc' | 'qemu', vmid: number, port: number, ticket: string, active: () => boolean, mode: 'text' | 'graphical' = 'text') {
     const headers = await this.authHeaders(false)
     if (!active()) throw new Error('Console cancelled')
     const url = new URL(`${this.baseUrl}/nodes/${encodeURIComponent(node)}/${type}/${vmid}/vncwebsocket`)
     url.protocol = 'wss:'
     url.searchParams.set('port', String(port))
     url.searchParams.set('vncticket', ticket)
-    return new WebSocket(url, 'binary', { headers, rejectUnauthorized: this.conn.verifyTls, maxPayload: 1024 * 1024 })
+    return new WebSocket(url, 'binary', { headers, rejectUnauthorized: this.conn.verifyTls, maxPayload: mode === 'graphical' ? 16 * 1024 * 1024 : 1024 * 1024 })
   }
 
   /** Waits for a task (UPID) to finish. Throws if it did not end with OK. */
