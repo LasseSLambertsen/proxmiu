@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { ConfirmDialog, type ConfirmRequest } from '@/components/ConfirmDialog'
 import { CopyButton } from '@/components/CopyButton'
+import { HostUpdaterRecovery } from '@/components/HostUpdaterRecovery'
 import { PageBody, PageHeader } from '@/components/PageHeader'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -95,7 +96,7 @@ function HostUpdateTarget({ clusterId, node, agent }: { clusterId: string; node:
           <Field label="Confirm node name" help={<>Type <code>{node}</code> to authorize this reviewed installation.</>}><Input aria-label="Confirm node name" value={typed} onChange={event => setTyped(event.target.value)} autoComplete="off" disabled={expired || pending || unresolved || unknown} /></Field>
           <Button variant="primary" onClick={() => install.mutate()} loading={install.isPending} disabled={typed !== node || expired || pending || unresolved || unknown || !target.info?.ready}>Install reviewed updates</Button>
         </CardContent></Card>}
-        <details className="rounded-xl border border-border-subtle p-4 text-[13px]"><summary className="cursor-pointer font-medium">Enrollment and manual recovery</summary><div className="mt-3 space-y-3 text-muted"><p>The dedicated key is separate from guest access. Remove it from the host to revoke enrollment. A failed or interrupted job needs local inspection; Proxmiu never runs package repair or reboots automatically.</p><p>Detailed worker diagnostics: <code className="break-all">journalctl -u proxmiu-host-update-{job?.id ?? '&lt;job-id&gt;'}</code></p><div className="flex items-start gap-2"><code className="min-w-0 flex-1 break-all text-[12px]">{target.publicKey}</code><CopyButton text={target.publicKey} /></div></div></details>
+        <HostUpdaterRecovery target={target} unresolved={unresolved} />
       </>}
     </PageBody>
     <ConfirmDialog request={confirm} onClose={() => setConfirm(null)} />
