@@ -11,6 +11,14 @@ spec = importlib.util.spec_from_file_location('host_updater_apt', PATH)
 apt = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(apt)
 
+# Debian apt-listchanges 3.24 debian/apt.conf, expressed as apt-config dump.
+LISTCHANGES_CONFIG = '''DPkg::Pre-Install-Pkgs:: "/usr/bin/apt-listchanges --apt || test $? -lt 10";
+DPkg::Tools::Options::/usr/bin/apt-listchanges::Version "2";
+DPkg::Tools::Options::/usr/bin/apt-listchanges::InfoFD "20";
+Dir::Etc::apt-listchanges-main "listchanges.conf";
+Dir::Etc::apt-listchanges-parts "listchanges.conf.d";
+'''
+
 
 class ActionFeedTests(unittest.TestCase):
     def test_install_and_configure_with_arch_all(self):
@@ -192,6 +200,48 @@ class EngineTests(unittest.TestCase):
                 self.plan()
             self.config = old
 
+    def test_standard_listchanges_paths_keep_host_ready_and_preserve_hooks(self):
+        self.config += LISTCHANGES_CONFIG
+        self.assertTrue(apt.inspect_host(self.ctx)['ready'])
+        record = self.plan()
+        apt.apply_plan(self.ctx, record, 'b' * 32, lambda: 101, 'boot')
+        argv = next(a for a, _ in self.commands if a[0] == '/usr/bin/apt-get' and 'install' in a)
+        overlay = pathlib.Path(argv[argv.index('-c') + 1]).read_text()
+        effective = apt.parse_config(apt.overlay_config_dump(self.config, overlay))
+        self.assertEqual(effective['DPkg::Pre-Install-Pkgs::'], [
+            apt.GUARD + ' ' + 'b' * 32,
+            '/usr/sbin/dpkg-preconfigure --apt || true',
+            '/usr/bin/apt-listchanges --apt || test $? -lt 10',
+        ])
+        self.assertEqual(effective['DPkg::Tools::Options::/usr/bin/apt-listchanges::Version'], ['2'])
+        self.assertEqual(effective['DPkg::Tools::Options::/usr/bin/apt-listchanges::InfoFD'], ['20'])
+
+    def test_listchanges_paths_cannot_be_redirected(self):
+        for key in ['apt-listchanges-main', 'apt-listchanges-parts']:
+            for path in ['/tmp/other', '../other', '/etc/other']:
+                with self.subTest(key=key, path=path), self.assertRaises(apt.UpdaterError):
+                    apt.config_policy(f'Dir::Etc::{key} "{path}";\n')
+
+    def test_listchanges_configuration_drift_invalidates_review(self):
+        main = self.root / 'etc/apt/listchanges.conf'
+        part = self.root / 'etc/apt/listchanges.conf.d/50-local.conf'
+        part.parent.mkdir()
+        main.write_text('[apt]\nfrontend=none\n')
+        part.write_text('[apt]\nemail_address=root\n')
+        record = self.plan()
+        for path in [main, part]:
+            before = path.read_text()
+            path.write_text(before + '\n# changed\n')
+            with self.subTest(path=path):
+                with self.assertRaises(apt.UpdaterError) as error:
+                    apt.validate_plan(self.ctx, record, lambda: 101, 'boot')
+                self.assertEqual(error.exception.code, 'stale_plan')
+            path.write_text(before)
+        added = part.parent / '60-new.conf'
+        added.write_text('[apt]\nfrontend=text\n')
+        with self.assertRaises(apt.UpdaterError):
+            apt.validate_plan(self.ctx, record, lambda: 101, 'boot')
+
     def test_apply_overlay_guard_runs_first_and_preserves_hook_options(self):
         record = self.plan()
         apt.apply_plan(self.ctx, record, 'b' * 32, lambda: 101, 'boot')
@@ -295,6 +345,7 @@ class EngineTests(unittest.TestCase):
 
     @unittest.skipUnless(pathlib.Path('/usr/bin/apt-config').exists(), 'APT configuration consumer is Linux-only')
     def test_real_apt_config_defaults_and_late_overlay_consumer(self):
+        self.config += LISTCHANGES_CONFIG
         initial = self.root / 'fixture-apt.conf'
         initial.write_text('Dir::Etc::main "-";\nDir::Etc::parts "-";\n' + self.config)
         environment = {**apt.ENV, 'APT_CONFIG': str(initial)}

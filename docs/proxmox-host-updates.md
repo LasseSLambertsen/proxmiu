@@ -12,6 +12,8 @@ Enrollment is per connection/node, with a dedicated key distinct from the key in
 
 The installer preserves existing root keys, including Proxmox's cluster-managed authorization file. The command is bound to the enrolled node, so a shared authorization file does not turn one node's key into another node's updater. Unsupported sshd policies, including conditional Match blocks, are reported rather than rewritten. Helper installation and future helper upgrades are administrator actions and refuse active or unresolved jobs.
 
+To update an enrolled host helper, rerun the original administrator setup command with the same dedicated public key. The generated command resolves the latest project commit each time; the installer preserves the existing authorization entry. Updating the Proxmiu agent alone does not replace root-owned helpers on hosts. After refreshing the helper, use **Refresh status** and build a new package plan.
+
 ## Review and install
 
 Choose **Check updates** to refresh package information and build a complete plan. The supported initial targets are Proxmox8 on Debian Bookworm and Proxmox9 on Debian Trixie, using matching fixed repository suites. Floating or foreign suites, unsafe repository settings, broken package state, unsupported APT hooks and unreviewable plans block automation with an explanation.
