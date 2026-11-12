@@ -19,6 +19,11 @@ Dir::Etc::apt-listchanges-main "listchanges.conf";
 Dir::Etc::apt-listchanges-parts "listchanges.conf.d";
 '''
 
+PAM_ACTION = ('Inst libpam-modules-bin [1.5.2-6+deb12u1] '
+              '(1.5.2-6+deb12u2 Debian:12.15/oldstable [amd64])')
+PAM_ANNOTATIONS = (' [libpam-modules:amd64 on libpam-modules-bin:amd64]'
+                   ' [libpam-modules:amd64 ]')
+
 
 class ActionFeedTests(unittest.TestCase):
     def test_install_and_configure_with_arch_all(self):
@@ -166,6 +171,59 @@ class EngineTests(unittest.TestCase):
         self.assertIn('APT::Update::Error-Mode=any', next(a for a, _ in self.commands if 'update' in a))
         apt.validate_plan(self.ctx, record, lambda: 101, 'boot')
 
+    def test_simulation_accepts_repeated_apt_dependency_annotations(self):
+        self.installed += 'libpam-modules-bin\t1.5.2-6+deb12u1\tamd64\tii \n'
+        previous = self.ctx.run
+        def runner(argv, **kwargs):
+            if argv[0] == '/usr/bin/apt-cache':
+                return 'Package: libpam-modules-bin\nVersion: 1.5.2-6+deb12u2\nArchitecture: amd64\n\n'
+            return previous(argv, **kwargs)
+        self.ctx.run = runner
+        for annotations in ['', ' []', ' [libpam-modules:amd64 ]', PAM_ANNOTATIONS,
+                            PAM_ANNOTATIONS + ' [systemd:amd64 on libpam-modules-bin:amd64] []']:
+            with self.subTest(annotations=annotations):
+                self.simulation = PAM_ACTION + annotations + '\n'
+                self.assertEqual(self.plan()['plan']['packages'], [{
+                    'name': 'libpam-modules-bin', 'architecture': 'amd64',
+                    'installed': '1.5.2-6+deb12u1', 'candidate': '1.5.2-6+deb12u2',
+                }])
+
+    def test_simulation_rejects_malformed_annotations_and_trailing_actions(self):
+        self.installed += 'libpam-modules-bin\t1.5.2-6+deb12u1\tamd64\tii \n'
+        previous = self.ctx.run
+        def runner(argv, **kwargs):
+            if argv[0] == '/usr/bin/apt-cache':
+                return 'Package: libpam-modules-bin\nVersion: 1.5.2-6+deb12u2\nArchitecture: amd64\n\n'
+            return previous(argv, **kwargs)
+        self.ctx.run = runner
+        for suffix in [' [unterminated', ' [[nested]]', ' trailing text',
+                       ' Remv other [1.0]', '\nRemv other [1.0]']:
+            with self.subTest(suffix=suffix):
+                self.simulation = PAM_ACTION + PAM_ANNOTATIONS + suffix + '\n'
+                with self.assertRaises(apt.UpdaterError) as error:
+                    self.plan()
+                self.assertEqual(error.exception.code, 'unsafe_plan')
+
+    def test_plan_accepts_native_package_becoming_architecture_independent(self):
+        self.simulation = 'Inst pve-manager [8.2.7] (8.4.21 Proxmox Debian Repository:stable [all])\n'
+        previous = self.ctx.run
+        def runner(argv, **kwargs):
+            if argv[0] == '/usr/bin/apt-cache':
+                return 'Package: pve-manager\nVersion: 8.4.21\nArchitecture: all\n\n'
+            return previous(argv, **kwargs)
+        self.ctx.run = runner
+        self.assertEqual(self.plan()['plan']['packages'], [{
+            'name': 'pve-manager', 'architecture': 'all', 'installed': '8.2.7', 'candidate': '8.4.21',
+        }])
+        others = [(n, a, v) for (n, a), v in apt.installed(self.ctx).items() if n != 'pve-manager']
+        for existing in [[('pve-manager', 'amd64', '8.2.7'), ('pve-manager', 'i386', '8.2.7')],
+                         [('pve-manager', 'i386', '8.2.7')]]:
+            with self.subTest(existing=existing), self.assertRaises(apt.UpdaterError):
+                apt.simulate(self.ctx, {'proxmoxMajor': 8}, {
+                    'installed': others + existing,
+                    'holds': '', 'config': apt.parse_config(self.config),
+                })
+
     def test_refresh_unhealthy_holds_removals_and_major_drift_fail_closed(self):
         for field, value in [('failed_refresh', True), ('audit', 'broken package'), ('holds', 'docs\n'),
                              ('simulation', 'Remv docs [1.0]\n'), ('simulation', 'Inst pve-manager [8.2.7] (9.0 Debian [amd64])\n'),
@@ -283,6 +341,8 @@ class EngineTests(unittest.TestCase):
             headers = [quote(k, safe='/:') + '=' + quote(v, safe='/: =;|"') for k, values in apt.parse_config(config).items() for v in values if v]
             return 'VERSION 3\n' + '\n'.join(headers) + '\n\n' + 'docs 1.0 all foreign < 2.0 all foreign ' + str(archive) + '\n'
         apt.guard(self.ctx, record, feed(effective), lambda: 101, 'boot', job_id=job)
+        with self.assertRaises(apt.UpdaterError):
+            apt.guard(self.ctx, record, feed(effective).replace('docs 1.0 all', 'docs 1.0 amd64'), lambda: 101, 'boot', job_id=job)
         for bad in [effective.replace('InfoFD "0"', 'InfoFD "2"'), effective.replace(apt.GUARD + ' ' + job, apt.GUARD + ' ' + 'c' * 32),
                     effective + 'DPkg::Pre-Invoke:: "unreviewed";\n', effective + 'APT::Get::AllowUnauthenticated "true";\n']:
             with self.subTest(config=bad), self.assertRaises(apt.UpdaterError):
@@ -294,6 +354,16 @@ class EngineTests(unittest.TestCase):
         self.audit = 'unexpected pending state'
         with self.assertRaises(apt.UpdaterError):
             apt.guard(self.ctx, record, feed(effective), lambda: 101, 'boot', job_id=job)
+        self.audit = ''
+        self.installed = self.installed.replace('docs\t1.0\tall', 'docs\t1.0\tamd64')
+        transition = self.plan()
+        native_feed = feed(effective).replace('docs 1.0 all', 'docs 1.0 amd64')
+        configure = 'docs 1.0 amd64 foreign < 2.0 all foreign **CONFIGURE**\n'
+        apt.guard(self.ctx, transition, native_feed + configure, lambda: 101, 'boot', job_id=job)
+        with self.assertRaises(apt.UpdaterError):
+            apt.guard(self.ctx, transition, native_feed + configure.replace('1.0 amd64', '1.0 all'), lambda: 101, 'boot', job_id=job)
+        with self.assertRaises(apt.UpdaterError):
+            apt.guard(self.ctx, transition, feed(effective), lambda: 101, 'boot', job_id=job)
 
     def test_protected_standard_os_release_symlink_and_held_installed_packages(self):
         destination = self.root / 'usr/lib/os-release'
