@@ -116,6 +116,7 @@ async function main() {
     ips = { 'qemu/110': '192.0.2.7' }
     await page.goto(`http://127.0.0.1:${server.address().port}/guests/fixture/pve1/qemu/110`, { waitUntil: 'networkidle' })
     await page.getByRole('button', { name: 'Console', exact: true }).click()
+    await page.getByLabel('Console type', { exact: true }).selectOption('serial')
     await page.evaluate(() => { window.nextConsoleError = 'This VM needs a configured serial socket before its console can connect.' })
     await page.getByRole('button', { name: 'Connect', exact: true }).click()
     await page.getByRole('status').filter({ hasText: 'serial socket' }).waitFor()
@@ -131,6 +132,7 @@ async function main() {
     assert.equal(ssh.clusterId, undefined); assert.equal(ssh.guestType, undefined)
     await page.getByRole('button', { name: 'Close dialog' }).click()
     await page.getByRole('button', { name: 'Console', exact: true }).click()
+    await page.getByLabel('Console type', { exact: true }).selectOption('serial')
     await page.evaluate(() => { window.nextConsoleError = ''; window.holdNextOpen = true })
     await page.getByRole('button', { name: 'Connect', exact: true }).click()
     const oldIndex = await page.evaluate(() => window.consoleSockets.length - 1)
