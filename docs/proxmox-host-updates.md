@@ -12,7 +12,7 @@ Enrollment is per connection/node, with a dedicated key distinct from the key in
 
 The installer preserves existing root keys, including Proxmox's cluster-managed authorization file. The command is bound to the enrolled node, so a shared authorization file does not turn one node's key into another node's updater. Unsupported sshd policies, including conditional Match blocks, are reported rather than rewritten. Helper installation and future helper upgrades are administrator actions and refuse active or unresolved jobs.
 
-To update an enrolled host helper, rerun the original administrator setup command with the same dedicated public key. The generated command resolves the latest project commit each time; the installer preserves the existing authorization entry. Updating the Proxmiu agent alone does not replace root-owned helpers on hosts. After refreshing the helper, use **Refresh status** and build a new package plan.
+To update an enrolled host helper, open **Enrollment and manual recovery** and choose **Copy helper command**. Run the full command as root on the named Proxmox node after outstanding work is resolved. It reuses the same dedicated public key and resolves the latest project commit; the installer preserves the existing authorization entry. Updating the Proxmiu agent alone does not replace root-owned helpers on hosts. After refreshing the helper, use **Refresh status** and build a new package plan.
 
 ## Review and install
 
@@ -28,7 +28,7 @@ Accepted work runs as a host systemd job and continues if the browser or agent d
 
 The interface reports bounded phase/package events and an explicit final result. Missing unit/boot evidence or partial package completion stays interrupted/failed and requires inspection; Proxmiu does not replay or repair it automatically. The host must be reachable again before unresolved work can be safely released. Reboot guidance is advisory; the absence of a reboot marker does not prove a reboot is unnecessary.
 
-Raw package-script diagnostics are not automatically collected into the app or sent to Lynx. Use `journalctl -u proxmiu-host-update-<job-id>` for worker service events. APT stdout/stderr are discarded by the helper; inspect the host’s `/var/log/apt/term.log`, `/var/log/apt/history.log` and `/var/log/dpkg.log` for available package details. Keep sensitive repository credentials out of anything shared for support.
+Raw package-script diagnostics are not automatically collected into the app or sent to Lynx. **Enrollment and manual recovery** provides a copyable journal command for the saved job's worker service events, and separate commands for package details. APT stdout/stderr are discarded by the helper; inspect the host’s `/var/log/apt/term.log`, `/var/log/apt/history.log` and `/var/log/dpkg.log` for available package details. These logs are host-wide and may include other maintenance. Keep sensitive repository credentials out of anything shared for support.
 
 ## Remove access
 
