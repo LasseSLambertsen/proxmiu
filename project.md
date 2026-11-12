@@ -55,6 +55,7 @@ browser ── UI (static SPA) ──► agent (Node, on the LAN) ──► Prox
 - Community Scripts: browse [community-scripts.org](https://community-scripts.org) and turn any container script into a template, with its options and resources prefilled.
 - Guest updates: re-run the template's GitHub/inline install script, or the upstream Community Scripts update entrypoint, with the same live job log.
 - Opt-in agent self-update from Settings: a narrow root helper runs the update in a transient systemd unit, so the agent can restart and the UI reconnects.
+- Reviewed growth of eligible ordinary VM/LXC disks with on-demand authoritative storage reads, absolute targets, typed confirmation, native task tracking and observed capacity; real allocation/filesystem validation remains pending.
 - Opt-in Proxmox host updates: dedicated restricted node enrollment, pinned SSH identity, complete package review and typed confirmation before exact-version same-major installation. Durable jobs and global reservations survive agent disconnect/restart; Settings links support recovery during Proxmox API outages. Verified with synthetic package/systemd/SSH/API fixtures; real-host validation remains open.
 - Provisioning: LXC creation (auto-downloads the OS template) or cloud-init VM clone; IP discovery via LXC interfaces, guest agent, or ARP; live step and log view.
 - ⌘K command palette; light and dark themes with a continuous ambient canvas and readable light surfaces; phone layout with bottom tab bar; installable (web manifest).
@@ -94,6 +95,9 @@ Deliver usable increments toward full Proxmox VE administration; a completed sli
 Preserve the warm glass visual identity, phone usability, native notes, encrypted optional AI credentials and consent-based Lynx assistance throughout. Each increment gets appropriate CI/browser checks and independent review. Real infrastructure validation remains a separate release gate.
 
 ## Roadmap / open items
+
+- [x] Reviewed growth of eligible ordinary VM/LXC disks with native tasks and actual capacity observations; synthetic fixtures only.
+- [ ] Validate disk allocation, rounding and LXC filesystem/quota effects on designated disposable PVE 8/9 storage.
 
 - [x] Reviewed restore of a selected same-node backup into a new stopped guest, with typed ID confirmation and native task recovery; synthetic API/browser fixtures only.
 - [ ] Validate new-guest restore on designated disposable PVE 8/9 guests and backups; validate PBS separately.

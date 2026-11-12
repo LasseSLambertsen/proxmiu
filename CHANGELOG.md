@@ -4,6 +4,10 @@ User-visible changes are recorded here. GitHub releases use the matching dated v
 
 ## [Unreleased]
 
+### Added
+
+- Reviewed growth of eligible existing VM/LXC disks, with deliberate storage inspection, absolute capacity targets, typed confirmation, native resize tasks and freshly observed capacity. Unsupported states remain read-only; real PVE 8/9 allocation and filesystem validation remains pending.
+
 ## [0.1.0] - 2026-11-12
 
 First preview release of Proxmiu. The broader Proxmox administration roadmap is still in progress.
