@@ -123,6 +123,37 @@ export interface RestoreReview {
 }
 export interface RestoreTask extends GuestTask { vmid: number; type: 'qemu' | 'lxc' }
 
+export interface GuestDisk {
+  disk: string
+  volume: string | null
+  storage: string | null
+  sizeBytes: number | null
+  format: string | null
+  availableBytes: number | null
+  canGrow: boolean
+  reason?: string
+}
+export interface GuestDiskCapacity { name: string; ready: boolean; reason?: string; errors: string[]; disks: GuestDisk[] }
+export interface DiskGrowthReview {
+  reviewId: string
+  node: string
+  type: 'qemu' | 'lxc'
+  vmid: number
+  name: string
+  disk: string
+  volume: string
+  storage: string
+  format: string
+  currentBytes: number
+  targetGiB: number
+  targetBytes: number
+  deltaBytes: number
+  availableBytes: number | null
+  shortfall: boolean
+  expiresAt: number
+}
+export interface DiskGrowthTask extends GuestTask { vmid: number; type: 'qemu' | 'lxc' }
+
 export interface GuestOperations {
   snapshots: { name: string; description?: string; snaptime?: number }[]
   storages: string[]

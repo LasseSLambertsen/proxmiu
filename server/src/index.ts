@@ -28,6 +28,7 @@ import { loadSetupSnapshot, setupQuerySchema, SetupPreviewCache, verifySetupGues
 import { loadResourceSettings, saveResourceSettings, resourceSettingsSchema } from './guest-resource-settings.js'
 import { backupQuerySchema, taskLogQuerySchema, loadGuestBackups, loadTaskLog } from './guest-maintenance.js'
 import { loadRestoreOptions, RestoreReviews, restorePreviewSchema, restoreExecuteSchema } from './guest-restore.js'
+import { loadDiskInventory, DiskGrowthReviews, diskGrowthPreviewSchema, diskGrowthExecuteSchema } from './guest-disk-growth.js'
 import { loadTaskHistory, taskHistoryQuerySchema, TaskHistoryAccess } from './task-history.js'
 
 const VERSION = '0.2.0'
@@ -350,6 +351,30 @@ app.get('/api/clusters/:id/task-history', async (req) => {
 // Only locally started tasks or tasks returned by validated native history are eligible.
 const operationTasks = new Map<string, number>()
 const taskKey = (id: string, node: string, upid: string) => JSON.stringify([id, node, upid])
+function rememberOperationTask(id: string, task: { node: string; upid: string }) {
+  for (const [key, at] of operationTasks) if (Date.now() - at > 7 * 86400_000) operationTasks.delete(key)
+  if (operationTasks.size >= 1000) operationTasks.delete(operationTasks.keys().next().value!)
+  operationTasks.set(taskKey(id, task.node, task.upid), Date.now())
+}
+const diskGrowthReviews = new DiskGrowthReviews()
+app.get('/api/clusters/:id/guests/:node/:type/:vmid/disk-capacity', async (req) => {
+  const p = guestInsightsParamsSchema.parse(req.params)
+  return loadDiskInventory(clientFor(p.id), p)
+})
+
+app.post('/api/clusters/:id/guests/:node/:type/:vmid/disk-growth-review', async (req) => {
+  const p = guestInsightsParamsSchema.parse(req.params)
+  const revision = revisionFor(store.getCluster(p.id))
+  return diskGrowthReviews.preview(clientFor(p.id), p, revision, diskGrowthPreviewSchema.parse(req.body))
+})
+
+app.post('/api/clusters/:id/guests/:node/:type/:vmid/disk-growth', async (req) => {
+  const p = guestInsightsParamsSchema.parse(req.params)
+  const result = await diskGrowthReviews.execute(clientFor(p.id), p, () => revisionFor(store.getCluster(p.id)), diskGrowthExecuteSchema.parse(req.body))
+  rememberOperationTask(p.id, result)
+  return result
+})
+
 const restoreReviews = new RestoreReviews()
 app.get('/api/clusters/:id/guests/:node/:type/:vmid/restore-options', async (req) => {
   const p = guestInsightsParamsSchema.parse(req.params)
@@ -365,9 +390,7 @@ app.post('/api/clusters/:id/guests/:node/:type/:vmid/restore-review', async (req
 app.post('/api/clusters/:id/guests/:node/:type/:vmid/restore', async (req) => {
   const p = guestInsightsParamsSchema.parse(req.params)
   const result = await restoreReviews.execute(clientFor(p.id), p, () => revisionFor(store.getCluster(p.id)), restoreExecuteSchema.parse(req.body))
-  for (const [key, at] of operationTasks) if (Date.now() - at > 7 * 86400_000) operationTasks.delete(key)
-  if (operationTasks.size >= 1000) operationTasks.delete(operationTasks.keys().next().value!)
-  operationTasks.set(taskKey(p.id, result.node, result.upid), Date.now())
+  rememberOperationTask(p.id, result)
   return result
 })
 
@@ -375,9 +398,7 @@ app.post('/api/clusters/:id/guests/:node/:type/:vmid/operations', async (req) =>
   const p = guestInsightsParamsSchema.parse(req.params)
   const op = operationSchema.parse(req.body)
   const result = await runOperation(clientFor(p.id), p, op)
-  for (const [key, at] of operationTasks) if (Date.now() - at > 7 * 86400_000) operationTasks.delete(key)
-  if (operationTasks.size >= 1000) operationTasks.delete(operationTasks.keys().next().value!)
-  operationTasks.set(taskKey(p.id, result.node, result.upid), Date.now())
+  rememberOperationTask(p.id, result)
   return result
 })
 

@@ -49,7 +49,12 @@ function nativeIdentity(value: unknown, node: string): { type: string; id: strin
   return { type, id, ...(parsedId.success ? { vmid: parsedId.data } : {}) }
 }
 
-function normalizeTask(value: unknown, node: string): NativeTask | undefined {
+export function taskMatchesGuest(value: unknown, node: string, type: string, vmid: number): value is string {
+  const identity = nativeIdentity(value, node)
+  return identity?.type === type && identity.vmid === vmid
+}
+
+export function normalizeNativeTask(value: unknown, node: string): NativeTask | undefined {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return
   const row = value as Record<string, unknown>
   const native = nativeIdentity(row.upid, node)
@@ -97,7 +102,7 @@ export async function loadTaskHistory(client: HistoryClient, node: string, optio
   const warnings: string[] = []
   let omitted = 0
   for (const row of rows) {
-    const task = normalizeTask(row, node)
+    const task = normalizeNativeTask(row, node)
     if (!task || (query.vmid !== undefined && task.vmid !== query.vmid)) omitted++
     else tasks.push(task)
   }
@@ -117,7 +122,7 @@ export class TaskHistoryAccess {
     const now = this.clock()
     for (const [key, entry] of this.entries) if (entry.expires <= now) this.entries.delete(key)
     for (const task of tasks.slice(0, 5000)) {
-      if (!normalizeTask(task, node)) continue
+      if (!normalizeNativeTask(task, node)) continue
       const key = JSON.stringify([clusterId, node, task.upid])
       this.entries.delete(key)
       this.entries.set(key, { clusterId, expires: now + 30 * 60_000 })

@@ -1,6 +1,12 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api, type AiSettings, type ClusterOverview, type CommunityScript, type Connection, type Guest, type GuestBackups, type GuestInsights, type GuestMetadata, type GuestNotes, type GuestOperations, type GuestResourceSettings, type GuestResourceUpdate, type GuestTask, type GuestTaskLog, type GuestTaskStatus, type NativeTaskHistory, type Template } from './api'
 import { guestApiPath, guestKey, type HistoryRange } from './guest-workspace'
+import type { GuestDiskCapacity } from './api'
+
+export const diskCapacityKey = (guest: Guest) => ['guest-disk-capacity', guestKey(guest), guest.node]
+export function useGuestDiskCapacity(guest: Guest, enabled: boolean) {
+  return useQuery({ queryKey: diskCapacityKey(guest), queryFn: () => api.get<GuestDiskCapacity>(`${guestApiPath(guest)}/disk-capacity`), enabled, retry: false, refetchOnWindowFocus: false, refetchOnReconnect: false })
+}
 
 export const useGuestMetadata = () => useQuery({ queryKey: ['guest-metadata'], queryFn: () => api.get<Record<string, GuestMetadata>>('/guest-metadata') })
 
