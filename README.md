@@ -289,6 +289,20 @@ Editing notes also needs `VM.Config.Options`; backup storage needs `Datastore.Au
 
 Tasks started through the workspace are immediately available. After an agent restart, browse native task history and select the operation to reopen its status and logs before retrying it. Availability depends on Proxmox retention and token permissions. If historical task access expires, refresh history and select the task again. No real Proxmox host or live AI account has been used for verification; the test suite uses isolated fixtures and a mock Proxmox API.
 
+## Restore a backup into a new guest
+
+In a guest workspace, choose a backup storage and **Restore backup**. Choose an unused cluster-wide ID and disk storage on the same node, then **Review restore**. Confirm the archive, destination and identity warning; type the new ID before submitting. The review expires after five minutes and is single-use. The agent rechecks source/configuration, storage, ID availability and saved connection revision before sending a restore request.
+
+Restoration creates a separate guest, with new network MAC addresses, `start=0` and `onboot=0`. Static IPs, hostname, OS machine ID and application identities can remain unchanged. Inspect the restored guest’s identity, configuration and actual state before starting it. Archive byte size is not restored disk allocation size. Failed or partial restores require manual inspection; uncertain acceptance never triggers automatic replay or cleanup.
+
+This first increment supports ordinary VM VMA backups and unprivileged LXC TAR backups, including their configured Proxmox Backup Server volume equivalents. It rejects ambiguous archive identities, privileged/custom LXC configuration, additional mount points, passthrough, hook scripts, unavailable bridges and other unsupported dependencies. Existing guests cannot be overwritten. Cross-node backup transfer, legacy QEMU TAR and global/deleted-source backup browsing are not included.
+
+The existing installation role already includes the relevant privileges: `VM.Allocate` for the new ID, `Datastore.AllocateSpace` for destination storage, and source backup access through `VM.Backup` plus `Datastore.AllocateSpace` on source storage (not just `Datastore.Audit`). Networks require `SDN.Use`; source/configuration inspection also uses the existing audit permissions. Privilege-separated tokens need the intended rights on both the token and user. No broad `Datastore.Allocate` or host-shell grant is added automatically.
+
+The dialog tracks the actual restore UPID against the **new guest ID**. After leaving or restarting the agent, open **Activity → Proxmox tasks**, select the original node and new guest ID, then select the retained restore task to read its status/logs. Warnings and unknown status remain distinct from success. Native permissions and retention remain authoritative.
+
+Verification uses isolated TLS/API and browser fixtures. Real PVE 8/9 archive restoration, guest disks/identity/state and PBS behavior remain pending designated disposable infrastructure. The public sample tour remains read-only and pinned to its existing source revision.
+
 ## Native guest console
 
 Open a running guest workspace and choose **Console**, then **Connect**. The console uses the saved Proxmox connection and works without a guest IP or SSH service. The dialog identifies its guest/node, and the existing terminal provides clipboard and phone key controls. Reconnect is deliberate; closing or disconnecting ends the transport. Console traffic is not saved to provisioning history or automatically attached to Lynx requests.
