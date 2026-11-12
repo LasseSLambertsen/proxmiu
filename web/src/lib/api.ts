@@ -108,6 +108,21 @@ export interface GuestTaskLog {
   truncated: boolean
 }
 
+export interface RestoreOptions { storages: string[]; suggestedVmid: number }
+export interface RestoreReview {
+  reviewId: string
+  archive: string
+  sourceStorage: string
+  storage: string
+  vmid: number
+  node: string
+  type: 'qemu' | 'lxc'
+  ctime?: number
+  size?: number
+  expiresAt: number
+}
+export interface RestoreTask extends GuestTask { vmid: number; type: 'qemu' | 'lxc' }
+
 export interface GuestOperations {
   snapshots: { name: string; description?: string; snaptime?: number }[]
   storages: string[]

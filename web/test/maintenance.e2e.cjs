@@ -55,6 +55,7 @@ async function main() {
       else if (url.pathname.endsWith('/task-history')) data = { tasks: [], next: 0, hasMore: false, warnings: [] }
       else if (url.pathname === '/api/templates' || url.pathname === '/api/jobs') data = []
       else if (url.pathname === '/api/guest-metadata') data = {}
+      else if (url.pathname === '/api/ai/settings') data = { configured: false, provider: 'openai', model: 'fixture' }
       else if (url.pathname === '/api/clusters/fixture/ips') data = {}
       else if (/^\/api\/clusters\/fixture\/guests\/pve[12]\/qemu\/110\/insights$/.test(url.pathname)) data = { config: { cores: resource.cores, sockets: 2, memory: resource.memoryMiB, networks: [], disks: [] }, metrics: [] }
       else if (/^\/api\/clusters\/fixture\/guests\/pve[12]\/qemu\/110\/notes$/.test(url.pathname) && method === 'GET') data = { notes: '', digest: 'notes-1' }

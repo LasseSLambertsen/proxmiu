@@ -2,7 +2,7 @@
 
 ## What it is
 
-A modern web app for managing Proxmox VE on the local network. The headline features are power actions, SSH in the browser, and one-click creation of servers from templates, especially remote **Claude Code** and **Codex** boxes you can SSH into from anywhere.
+A modern web app for managing Proxmox VE on the local network. The conversation goal is to grow it into a full-featured replacement for the Proxmox VE web interface, delivered in reviewed, tested increments. Current strengths include everyday guest operations, browser terminals, templates and reviewed host updates; the administration roadmap below is still in progress.
 
 ## Who it's for
 
@@ -15,12 +15,12 @@ Homelab and small-team Proxmox users who want a faster, friendlier front end tha
 3. **SSH from the browser** to any guest or node.
 4. **Templates** that turn "I want a Claude Code server" into a ready box in a few minutes.
 5. **Use it anywhere**: self-hosted on the LAN, or hosted on Vercel/Netlify, including on iPhone.
+6. **Complete administration progressively**: guest hardware, graphical consoles and restore first, followed by storage, networking, firewall, cluster/HA, backup administration and permission-aware accounts. Preserve native Proxmox notes, encrypted optional AI credentials, reviewed infrastructure changes and the professional Lynx personality.
 
 ## Non-goals
 
-- Replacing the Proxmox UI for cluster administration (storage, HA, backup scheduling, firewall, users).
 - Running agents for the user. Proxmiu sets up the box; the user runs `claude` / `codex`.
-- Multi-tenant hosting. Each agent belongs to one person or household.
+- Operating a public multi-tenant hosting service. Individual accounts and permission-aware administration are on the roadmap for self-hosted installations.
 
 ## Architecture
 
@@ -79,7 +79,27 @@ browser ── UI (static SPA) ──► agent (Node, on the LAN) ──► Prox
 - Actual Vercel/Netlify deploys (tested with a local static server).
 - The install scripts on a real Proxmox host. They were tested end to end with stubbed `pct`/`pveam`/`pveum` and a real install of the agent, but `pct create` and `pveum` never ran for real.
 
+## Conversation goal and staged roadmap
+
+Deliver usable increments toward full Proxmox VE administration; a completed slice does not complete a stage. Use fixtures now and arrange designated disposable infrastructure for live validation later. Do not claim production readiness from fixture results alone. Infrastructure changes require explicit review and confirmation.
+
+1. **Guest administration:** full VM/LXC hardware editing, graphical VM consoles and backup restoration. Existing CPU/memory/boot edits and text consoles are partial foundations. The first restore increment covers selected backups into new stopped guests only; overwrite recovery, deleted-source/global backup browsing and wider configurations remain open.
+2. **Storage:** datastore administration, ISO/template management, disk movement and capacity planning.
+3. **Networking:** bridges, bonds, VLANs and SDN, with reviewed changes and rollback protection.
+4. **Firewall:** guest/node rules, security groups, aliases and IP sets.
+5. **Cluster:** HA, replication, maintenance and membership workflows.
+6. **Backup administration:** schedules, retention and Proxmox Backup Server integration.
+7. **Access and operations:** individual accounts, permission-aware controls, roles, audit history and notifications.
+
+Preserve the warm glass visual identity, phone usability, native notes, encrypted optional AI credentials and consent-based Lynx assistance throughout. Each increment gets appropriate CI/browser checks and independent review. Real infrastructure validation remains a separate release gate.
+
 ## Roadmap / open items
+
+- [x] Reviewed restore of a selected same-node backup into a new stopped guest, with typed ID confirmation and native task recovery; synthetic API/browser fixtures only.
+- [ ] Validate new-guest restore on designated disposable PVE 8/9 guests and backups; validate PBS separately.
+- [ ] Extend restore to wider configurations, global/deleted-source backup browsing and separately reviewed overwrite recovery.
+- [ ] Full VM/LXC hardware administration beyond CPU/memory/boot settings.
+- [ ] Graphical VM consoles; preserve existing text consoles and server-side credential privacy.
 
 - [x] README screenshots (`docs/screenshots/`).
 - [ ] Validate against a real Proxmox host; fix API differences from the mock.
@@ -113,3 +133,5 @@ VM creation refreshes the selected source template/node/cloud-init/boot-disk con
 The independent demo entry builds with `npm run build:demo` to `dist/demo` for `/demo/` on the presentation site. Visitors can explore sample inventory, metrics, templates and saved history without an agent. It contains no session/agent/API/provider/terminal code, reads no normal app storage and performs no infrastructure actions. Only its namespaced theme preference persists; all data is explicitly synthetic. The production app entry/build and agent behavior remain separate.
 
 Native guest console access revalidates the selected running guest and node, then bridges Proxmox termproxy from the agent using saved authentication/TLS policy. QEMU requires an existing serial socket. Console sessions never start or configure guests, grant permissions, persist tickets/output or automatically share output with Lynx. Existing roles need VM.Console explicitly; Sys.Console is not added. The existing SSH workflow and read-only deployed demo remain separate.
+
+Reviewed backup restoration verifies canonical archive identity, locally extracted configuration, unused cluster-wide target ID and active same-node destination storage before submission, then checks them again against a short-lived single-use review. Restores request new MACs, no immediate start and no ordinary boot autostart. Initial support is limited to VM VMA/PBS and ordinary unprivileged LXC TAR/PBS backups without unsupported host references, extra mount points or custom configuration. Credentials and raw extracted configuration remain on the agent. Native task history attributes qmrestore/vzrestore to the new ID and can reopen logs after restart. Synthetic TLS/API/browser verification does not establish real archive/PBS restoration or observed guest disk/runtime behavior.
