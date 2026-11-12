@@ -1,5 +1,7 @@
 # Proxmiu
 
+[Changelog](CHANGELOG.md) · [GitHub releases](https://github.com/LasseSLambertsen/proxmiu/releases) · [Release process](docs/releases.md)
+
 A modern web app for managing Proxmox VE on your local network: find hosts, start/stop/reboot guests, open SSH terminals in the browser, and spin up ready-to-use servers from templates, including remote **Claude Code**, **Codex** and **OpenCode** boxes.
 
 [![CI](https://github.com/LasseSLambertsen/proxmiu/actions/workflows/ci.yml/badge.svg)](https://github.com/LasseSLambertsen/proxmiu/actions/workflows/ci.yml)

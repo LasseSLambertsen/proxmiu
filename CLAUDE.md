@@ -93,5 +93,6 @@ web/src/
 
 - TypeScript strict, ESM, 2-space indent, no semicolons, single quotes.
 - Comments explain *why*, sparingly.
+- Record user-facing changes under `Unreleased` in `CHANGELOG.md`. Release notes come from the matching dated version section; see `docs/releases.md`. Keep unmerged work out of released sections.
 - UI copy: sentence case, verbs on buttons ("Create container", "Connect"), empty states say what will appear.
 - No third-party or company branding. The product is "Proxmiu" with its own logo (`web/public/logo.png`, with a simplified vector companion at `logo.svg`).
