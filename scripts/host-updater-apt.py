@@ -351,7 +351,9 @@ def config_policy(text, *, with_guard=False):
                      (('gzip', '/bin/'), ('bzip2', '/bin/'), ('xz', '/usr/bin/'), ('lz4', '/usr/bin/'), ('zstd', '/usr/bin/'))},
                   'dir::bin::lzma': '/usr/bin/xz'})
     paths.update({'dir::state::extended_states': 'extended_states', 'dir::cache::pkgcache': 'pkgcache.bin',
-                  'dir::cache::srcpkgcache': 'srcpkgcache.bin'})
+                  'dir::cache::srcpkgcache': 'srcpkgcache.bin',
+                  'dir::etc::apt-listchanges-main': 'listchanges.conf',
+                  'dir::etc::apt-listchanges-parts': 'listchanges.conf.d'})
     for key, values in config.items():
         low = key.lower()
         if (low == 'rootdir' and any(values)) or (low == 'dpkg::path' and any(v != ENV['PATH'] for v in values)):
@@ -458,9 +460,10 @@ def protected_file_hash(ctx, path):
 
 def file_inventory(ctx, codename):
     names = {'/etc/os-release', '/etc/machine-id', '/var/lib/dpkg/status', '/var/lib/dpkg/arch',
-             '/etc/apt/sources.list', '/etc/apt/preferences', '/etc/apt/trusted.gpg'}
+             '/etc/apt/sources.list', '/etc/apt/preferences', '/etc/apt/trusted.gpg', '/etc/apt/listchanges.conf'}
     roots = ['/etc/apt/sources.list.d', '/etc/apt/preferences.d', '/etc/apt/trusted.gpg.d',
-             '/etc/apt/apt.conf.d', '/var/lib/apt/lists', '/var/lib/dpkg/updates', '/etc/apt/keyrings', '/usr/share/keyrings']
+             '/etc/apt/apt.conf.d', '/etc/apt/listchanges.conf.d', '/var/lib/apt/lists',
+             '/var/lib/dpkg/updates', '/etc/apt/keyrings', '/usr/share/keyrings']
     names.add('/etc/apt/apt.conf')
     for directory in roots:
         base = ctx.path(directory)
