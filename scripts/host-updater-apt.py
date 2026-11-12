@@ -547,6 +547,19 @@ def compare_versions(left, right):
     return (le > re_) - (le < re_) or component(lu, ru) or component(lr, rr)
 
 
+def _installed_identity(current, config, name, architecture):
+    previous = current.get((name, architecture))
+    if previous is not None:
+        return previous, architecture
+    native = [value for key, values in config.items() if key.lower() == 'apt::architecture' for value in values]
+    matches = [(arch, version) for (package, arch), version in current.items() if package == name]
+    # Architecture: all packages can replace their sole native installation.
+    # Foreign or multiple installed instances need explicit administrator review.
+    if architecture == 'all' and len(native) == 1 and len(matches) == 1 and matches[0][0] == native[0]:
+        return matches[0][1], matches[0][0]
+    return None, None
+
+
 def simulate(ctx, identity, inventory):
     output = ctx.run(['/usr/bin/apt-get', *SAFE_OPTIONS, '-s', '--no-remove', 'dist-upgrade'])
     pkgs, seen = [], set()
@@ -557,7 +570,9 @@ def simulate(ctx, identity, inventory):
             fail('unsafe_plan')
         if not row.startswith('Inst '):
             continue
-        match = re.fullmatch(r'Inst ([a-z0-9][a-z0-9+.-]+(?::[a-z0-9-]+)?)(?: \[([^\]]+)\])? \(([^ ]+) .+ \[([a-z0-9-]+)\]\)(?: \[[^\]]*\])?', row)
+        # APT can append several dependency hints to one install action.
+        match = re.fullmatch(r'Inst ([a-z0-9][a-z0-9+.-]+(?::[a-z0-9-]+)?)(?: \[([^\]]+)\])? '
+                             r'\(([^ ]+) .+ \[([a-z0-9-]+)\]\)(?: \[[^\[\]\r\n]*\])*', row)
         if not match:
             fail('unsafe_plan')
         qualified, old, new, hinted_arch = match.groups()
@@ -572,7 +587,7 @@ def simulate(ctx, identity, inventory):
         arch = candidates.pop()
         if not arch or len(arch) > 40 or not _ARCH.fullmatch(arch) or hinted_arch not in (arch, 'amd64' if arch == 'all' else arch):
             fail('unsafe_plan')
-        previous = current.get((name, arch))
+        previous, _ = _installed_identity(current, inventory.get('config', {}), name, arch)
         if old != previous or (previous and compare_versions(new, previous) <= 0) or (name, arch) in seen:
             fail('unsafe_plan')
         if name in ('pve-manager', 'proxmox-ve') and not new.startswith(str(identity['proxmoxMajor']) + '.'):
@@ -666,7 +681,13 @@ def comparable_config(config):
 
 def guard(ctx, record, stream, clock=time.monotonic, boot_id=None, *, job_id=None):
     validate_plan(ctx, record, clock, boot_id)
-    actions = match_actions(record['plan']['packages'], parse_version3(stream))
+    parsed = parse_version3(stream)
+    actions = match_actions(record['plan']['packages'], parsed)
+    current = {(n, a): v for n, a, v in record['inventory']['installed']}
+    for action in parsed:
+        previous, old_arch = _installed_identity(current, record['inventory']['config'], action['name'], action['architecture'])
+        if action['installed'] != previous or action['installedArchitecture'] != old_arch:
+            _bad()
     from urllib.parse import unquote_to_bytes
     feed_config = {}
     try:
