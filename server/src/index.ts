@@ -30,6 +30,7 @@ import { backupQuerySchema, taskLogQuerySchema, loadGuestBackups, loadTaskLog } 
 import { loadRestoreOptions, RestoreReviews, restorePreviewSchema, restoreExecuteSchema } from './guest-restore.js'
 import { loadDiskInventory, DiskGrowthReviews, diskGrowthPreviewSchema, diskGrowthExecuteSchema } from './guest-disk-growth.js'
 import { loadNicLinks, NicLinkReviews, nicLinkPreviewSchema, nicLinkExecuteSchema } from './guest-nic-link.js'
+import { loadBootOrder, BootOrderReviews, bootOrderPreviewSchema, bootOrderExecuteSchema } from './guest-boot-order.js'
 import { loadTaskHistory, taskHistoryQuerySchema, TaskHistoryAccess } from './task-history.js'
 
 const VERSION = '0.2.0'
@@ -359,6 +360,22 @@ function rememberOperationTask(id: string, task: { node: string; upid: string })
 }
 const diskGrowthReviews = new DiskGrowthReviews()
 const nicLinkReviews = new NicLinkReviews()
+const bootOrderReviews = new BootOrderReviews()
+app.get('/api/clusters/:id/guests/:node/:type/:vmid/boot-order', async req => {
+  const p = guestInsightsParamsSchema.parse(req.params)
+  return loadBootOrder(clientFor(p.id), p)
+})
+
+app.post('/api/clusters/:id/guests/:node/:type/:vmid/boot-order-review', async req => {
+  const p = guestInsightsParamsSchema.parse(req.params)
+  return bootOrderReviews.preview(clientFor(p.id), p, revisionFor(store.getCluster(p.id)), bootOrderPreviewSchema.parse(req.body))
+})
+
+app.post('/api/clusters/:id/guests/:node/:type/:vmid/boot-order', async req => {
+  const p = guestInsightsParamsSchema.parse(req.params)
+  return bootOrderReviews.execute(clientFor(p.id), p, () => revisionFor(store.getCluster(p.id)), bootOrderExecuteSchema.parse(req.body))
+})
+
 app.get('/api/clusters/:id/guests/:node/:type/:vmid/nic-links', async req => {
   const p = guestInsightsParamsSchema.parse(req.params)
   return loadNicLinks(clientFor(p.id), p)

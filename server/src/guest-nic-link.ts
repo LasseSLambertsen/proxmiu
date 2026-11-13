@@ -118,6 +118,7 @@ async function inspect(client: Client, guest: Guest): Promise<Inspection> {
 }
 
 export const loadNicLinks = async (client: Client, guest: Guest): Promise<Inventory> => (await inspect(client, guest)).view
+export { parse as readNicProperty }
 function selected(inspection: Inspection, nic: string, linkDown: boolean) {
   const item = inspection.interfaces.get(nic)
   if (!inspection.view.ready || !item?.view.canEdit || !item.semantics) throw failure(inspection.view.reason ?? item?.view.reason ?? 'Choose an eligible NIC and refresh its configuration.')

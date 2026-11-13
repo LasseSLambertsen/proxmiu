@@ -2,6 +2,17 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api, type AiSettings, type ClusterOverview, type CommunityScript, type Connection, type Guest, type GuestBackups, type GuestInsights, type GuestMetadata, type GuestNotes, type GuestOperations, type GuestResourceSettings, type GuestResourceUpdate, type GuestTask, type GuestTaskLog, type GuestTaskStatus, type NativeTaskHistory, type Template } from './api'
 import { guestApiPath, guestKey, type HistoryRange } from './guest-workspace'
 import type { GuestDiskCapacity, GuestNicLinks } from './api'
+import type { GuestBootOrder } from './api'
+import { getAgent } from './agent'
+
+export const bootOrderKey = (guest: Guest) => ['guest-boot-order', guestKey(guest), guest.node]
+export function useGuestBootOrder(guest: Guest, enabled: boolean) {
+  return useQuery({ queryKey: bootOrderKey(guest), queryFn: async () => {
+    const source = getAgent(), inventory = await api.get<GuestBootOrder>(`${guestApiPath(guest)}/boot-order`)
+    if (source !== getAgent()) throw new Error('The agent changed. Inspect boot order again.')
+    return inventory
+  }, enabled: enabled && guest.type === 'qemu', retry: false, refetchOnWindowFocus: false, refetchOnReconnect: false })
+}
 
 export const nicLinksKey = (guest: Guest) => ['guest-nic-links', guestKey(guest), guest.node]
 export function useGuestNicLinks(guest: Guest, enabled: boolean) {
