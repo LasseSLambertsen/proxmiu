@@ -154,6 +154,36 @@ export interface DiskGrowthReview {
 }
 export interface DiskGrowthTask extends GuestTask { vmid: number; type: 'qemu' | 'lxc' }
 
+export interface GuestNicLink {
+  nic: string
+  mac: string | null
+  bridge: string | null
+  tag: number | null
+  model: string | null
+  ifname: string | null
+  linkDown: boolean | null
+  canEdit: boolean
+  reason?: string
+}
+export interface GuestNicLinks { name: string; ready: boolean; reason?: string; errors: string[]; interfaces: GuestNicLink[] }
+export interface NicLinkReview {
+  reviewId: string
+  name: string
+  node: string
+  type: 'qemu' | 'lxc'
+  vmid: number
+  nic: string
+  mac: string
+  bridge: string
+  tag: number | null
+  model: string | null
+  ifname: string | null
+  currentLinkDown: boolean
+  linkDown: boolean
+  expiresAt: number
+}
+export interface NicLinkResult { verified: true; name: string; node: string; type: 'qemu' | 'lxc'; vmid: number; interface: GuestNicLink; observedAt: number }
+
 export interface GuestOperations {
   snapshots: { name: string; description?: string; snaptime?: number }[]
   storages: string[]
