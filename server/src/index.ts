@@ -29,6 +29,7 @@ import { loadResourceSettings, saveResourceSettings, resourceSettingsSchema } fr
 import { backupQuerySchema, taskLogQuerySchema, loadGuestBackups, loadTaskLog } from './guest-maintenance.js'
 import { loadRestoreOptions, RestoreReviews, restorePreviewSchema, restoreExecuteSchema } from './guest-restore.js'
 import { loadDiskInventory, DiskGrowthReviews, diskGrowthPreviewSchema, diskGrowthExecuteSchema } from './guest-disk-growth.js'
+import { loadNicLinks, NicLinkReviews, nicLinkPreviewSchema, nicLinkExecuteSchema } from './guest-nic-link.js'
 import { loadTaskHistory, taskHistoryQuerySchema, TaskHistoryAccess } from './task-history.js'
 
 const VERSION = '0.2.0'
@@ -357,6 +358,22 @@ function rememberOperationTask(id: string, task: { node: string; upid: string })
   operationTasks.set(taskKey(id, task.node, task.upid), Date.now())
 }
 const diskGrowthReviews = new DiskGrowthReviews()
+const nicLinkReviews = new NicLinkReviews()
+app.get('/api/clusters/:id/guests/:node/:type/:vmid/nic-links', async req => {
+  const p = guestInsightsParamsSchema.parse(req.params)
+  return loadNicLinks(clientFor(p.id), p)
+})
+
+app.post('/api/clusters/:id/guests/:node/:type/:vmid/nic-link-review', async req => {
+  const p = guestInsightsParamsSchema.parse(req.params)
+  return nicLinkReviews.preview(clientFor(p.id), p, revisionFor(store.getCluster(p.id)), nicLinkPreviewSchema.parse(req.body))
+})
+
+app.post('/api/clusters/:id/guests/:node/:type/:vmid/nic-link', async req => {
+  const p = guestInsightsParamsSchema.parse(req.params)
+  return nicLinkReviews.execute(clientFor(p.id), p, () => revisionFor(store.getCluster(p.id)), nicLinkExecuteSchema.parse(req.body))
+})
+
 app.get('/api/clusters/:id/guests/:node/:type/:vmid/disk-capacity', async (req) => {
   const p = guestInsightsParamsSchema.parse(req.params)
   return loadDiskInventory(clientFor(p.id), p)

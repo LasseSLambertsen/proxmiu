@@ -6,6 +6,7 @@ User-visible changes are recorded here. GitHub releases use the matching dated v
 
 ### Added
 
+- Reviewed configured link-state changes for eligible existing stopped-guest VM/LXC NICs, with fixed identity, typed confirmation, preserved network options and freshly verified native configuration. Bridge/VLAN edits and live PVE 8/9 connectivity validation remain pending.
 - Reviewed growth of eligible existing VM/LXC disks, with deliberate storage inspection, absolute capacity targets, typed confirmation, native resize tasks and freshly observed capacity. Unsupported states remain read-only; real PVE 8/9 allocation and filesystem validation remains pending.
 
 ## [0.1.0] - 2026-11-12

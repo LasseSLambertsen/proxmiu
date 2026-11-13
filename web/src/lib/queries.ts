@@ -1,7 +1,12 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api, type AiSettings, type ClusterOverview, type CommunityScript, type Connection, type Guest, type GuestBackups, type GuestInsights, type GuestMetadata, type GuestNotes, type GuestOperations, type GuestResourceSettings, type GuestResourceUpdate, type GuestTask, type GuestTaskLog, type GuestTaskStatus, type NativeTaskHistory, type Template } from './api'
 import { guestApiPath, guestKey, type HistoryRange } from './guest-workspace'
-import type { GuestDiskCapacity } from './api'
+import type { GuestDiskCapacity, GuestNicLinks } from './api'
+
+export const nicLinksKey = (guest: Guest) => ['guest-nic-links', guestKey(guest), guest.node]
+export function useGuestNicLinks(guest: Guest, enabled: boolean) {
+  return useQuery({ queryKey: nicLinksKey(guest), queryFn: () => api.get<GuestNicLinks>(`${guestApiPath(guest)}/nic-links`), enabled, retry: false, refetchOnWindowFocus: false, refetchOnReconnect: false })
+}
 
 export const diskCapacityKey = (guest: Guest) => ['guest-disk-capacity', guestKey(guest), guest.node]
 export function useGuestDiskCapacity(guest: Guest, enabled: boolean) {
