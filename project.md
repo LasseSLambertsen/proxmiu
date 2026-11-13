@@ -57,6 +57,7 @@ browser ── UI (static SPA) ──► agent (Node, on the LAN) ──► Prox
 - Opt-in agent self-update from Settings: a narrow root helper runs the update in a transient systemd unit, so the agent can restart and the UI reconnects.
 - Reviewed growth of eligible ordinary VM/LXC disks with on-demand authoritative storage reads, absolute targets, typed confirmation, native task tracking and observed capacity; real allocation/filesystem validation remains pending.
 - Reviewed configured link-state changes for eligible existing stopped-guest VM/LXC NICs, with fixed identity, preserved raw options and fresh native postconditions. Native PUT is synchronous; partial/unknown outcomes require current-configuration inspection, with no automatic replay. Broader NIC/bridge/VLAN editing and live connectivity validation remain open.
+- Reviewed reordering of an existing explicit enabled boot-device set on eligible stopped QEMU VMs. Typed reviews preserve membership, devices and firmware; synchronous native results are verified with fresh current configuration. Legacy/default conversion, enabling/disabling devices and real boot validation remain open.
 - Opt-in Proxmox host updates: dedicated restricted node enrollment, pinned SSH identity, complete package review and typed confirmation before exact-version same-major installation. Durable jobs and global reservations survive agent disconnect/restart; Settings links support recovery during Proxmox API outages. Verified with synthetic package/systemd/SSH/API fixtures; real-host validation remains open.
 - Provisioning: LXC creation (auto-downloads the OS template) or cloud-init VM clone; IP discovery via LXC interfaces, guest agent, or ARP; live step and log view.
 - ⌘K command palette; light and dark themes with a continuous ambient canvas and readable light surfaces; phone layout with bottom tab bar; installable (web manifest).
@@ -97,6 +98,8 @@ Preserve the warm glass visual identity, phone usability, native notes, encrypte
 
 ## Roadmap / open items
 
+- [x] Reviewed same-set boot-device reordering for eligible stopped QEMU VMs with synchronous configuration verification; synthetic fixtures only.
+- [ ] Complete wider boot-device eligibility/legacy configuration and validate SeaBIOS/OVMF, media, PXE and startup on designated PVE 8/9 guests.
 - [x] Reviewed link-state-only edits for existing ordinary stopped-guest NICs, with typed confirmation and synchronous native observation; synthetic fixtures only.
 - [ ] Complete wider NIC/bridge/VLAN administration and validate configured link state/startup/connectivity on designated PVE 8/9 guests.
 - [x] Reviewed growth of eligible ordinary VM/LXC disks with native tasks and actual capacity observations; synthetic fixtures only.
