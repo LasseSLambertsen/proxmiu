@@ -6,7 +6,7 @@ User-visible changes are recorded here. GitHub releases use the matching dated v
 
 ### Added
 
-- Reviewed reordering of an existing explicit boot-device set on eligible stopped QEMU VMs, with fixed device identities, before/after review, typed confirmation and fresh native configuration verification. Device membership and firmware remain unchanged; real firmware/media/PXE/startup validation remains pending.
+- Reviewed selection and ordering of supported existing boot devices on eligible stopped QEMU VMs, including single-device orders, explicit newly enabled/disabled review and typed confirmation. Hardware and firmware stay fixed; configuration is freshly verified and older agents retain order-only controls. Real firmware/media/PXE/startup validation remains pending.
 - Reviewed configured link-state changes for eligible existing stopped-guest VM/LXC NICs, with fixed identity, typed confirmation, preserved network options and freshly verified native configuration. Bridge/VLAN edits and live PVE 8/9 connectivity validation remain pending.
 - Reviewed growth of eligible existing VM/LXC disks, with deliberate storage inspection, absolute capacity targets, typed confirmation, native resize tasks and freshly observed capacity. Unsupported states remain read-only; real PVE 8/9 allocation and filesystem validation remains pending.
 

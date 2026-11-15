@@ -28,8 +28,11 @@ const assert = require('node:assert/strict')
       { id: 'ide2', kind: 'cdrom', label: 'local:iso/rescue.iso', identity: 'iso-2' },
       { id: 'net0', kind: 'network', label: 'virtio · 02:ab:cd:11:22:33 · vmbr0', identity: 'net-0', warning: 'Configured disconnected; preserved.' },
     ]
+    let extra = { id: 'sata0', kind: 'disk', label: 'local-lvm:vm-110-disk-2', identity: 'inactive-disk' }
+    let modern = false, malformed = false
+    const candidates = () => [...devices, extra]
     let order = [...devices], readFailure = false, writeFailure = 0, expired = false, corruptReview = '', corruptResult = false, reads = 0, insightReads = 0
-    const inventory = () => ({ name: nativeName, ready: guest.status === 'stopped', reason: guest.status === 'stopped' ? undefined : 'Shut down this VM before reviewing boot order.', errors: [], sourceIdentity: source, order, excluded: [{ id: 'efidisk0', reason: 'Firmware storage is not a boot target.' }] })
+    const inventory = () => ({ name: nativeName, ready: guest.status === 'stopped' && (modern || order.length >= 2), reason: guest.status !== 'stopped' ? 'Shut down this VM before reviewing boot order.' : !modern && order.length < 2 ? 'Update the agent to edit a single enabled boot device.' : undefined, errors: [], sourceIdentity: source, order, ...(modern ? { eligibleDevices: malformed ? null : candidates() } : {}), excluded: [{ id: 'efidisk0', reason: 'Firmware storage is not a boot target.' }] })
     await page.route('**/api/**', async route => {
       const req = route.request(), url = new URL(req.url()), method = req.method()
       let data
@@ -51,10 +54,13 @@ const assert = require('node:assert/strict')
         if (heldRead) { const held = heldRead; heldRead = null; data = structuredClone(data); held.started(); await held.gate }
       } else if (url.pathname.endsWith('/boot-order-review') && method === 'POST') {
         const input = req.postDataJSON(); reviews.push(input)
-        data = { reviewId: 'review-' + reviews.length, name: nativeName, node: 'pve1', vmid: 110, type: 'qemu', sourceIdentity: source, currentOrder: order, proposedOrder: input.order.map(id => order.find(d => d.id === id)), expiresAt: Date.now() + (expired ? -1000 : 300000) }
+        data = { reviewId: 'review-' + reviews.length, name: nativeName, node: 'pve1', vmid: 110, type: 'qemu', sourceIdentity: source, currentOrder: order, proposedOrder: input.order.map(id => (modern ? candidates() : order).find(d => d.id === id)), ...(modern ? { eligibleDevices: candidates() } : {}), expiresAt: Date.now() + (expired ? -1000 : 300000) }
         if (corruptReview === 'source') data.sourceIdentity = 'replacement'
         if (corruptReview === 'current') data.currentOrder = data.currentOrder.map((d, i) => i ? d : { ...d, identity: 'replacement' })
         if (corruptReview === 'proposed') data.proposedOrder = [...data.proposedOrder].reverse()
+        if (corruptReview === 'eligible') data.eligibleDevices = candidates().map(d => d.id === extra.id ? { ...d, identity: 'replacement' } : d)
+        if (corruptReview === 'capability') delete data.eligibleDevices
+        if (corruptReview === 'duplicate') data.eligibleDevices = [...candidates(), extra]
         plans.set(data.reviewId, data)
       } else if (url.pathname.endsWith('/boot-order') && method === 'POST') {
         const input = req.postDataJSON(); writes.push(input)
@@ -82,13 +88,19 @@ const assert = require('node:assert/strict')
     }
     const review = async d => { await move(d); await d.getByRole('button', { name: 'Review boot order', exact: true }).click(); await d.getByLabel(`Type ${nativeName} to confirm`, { exact: true }).waitFor() }
     const close = async d => { await d.getByRole('button', { name: /^(Cancel|Close)$/, exact: true }).click() }
-    const refresh = () => card.getByRole('button', { name: 'Refresh boot order', exact: true }).click()
-    const reset = async () => { order = [...devices]; source = 'source-1'; writeFailure = 0; readFailure = false; expired = false; corruptReview = ''; corruptResult = false; await refresh() }
+    const refresh = async () => {
+      const button = card.getByRole('button', { name: 'Refresh boot order', exact: true })
+      const response = page.waitForResponse(res => res.url().endsWith('/boot-order') && res.request().method() === 'GET')
+      await button.click(); await (await response).finished()
+      await page.waitForFunction(el => !el.disabled, await button.elementHandle())
+    }
+    const reset = async () => { order = [...devices]; source = 'source-1'; writeFailure = 0; readFailure = false; expired = false; corruptReview = ''; corruptResult = false; modern = true; malformed = false; await refresh() }
     await inspect()
     await card.getByText('efidisk0', { exact: true }).waitFor()
     let d = await open()
     assert.ok(await d.getByRole('button', { name: 'Review boot order', exact: true }).isDisabled())
     assert.equal(await d.getByRole('checkbox').count(), 0)
+    await d.getByText(/Update the agent to enable or disable boot devices/).waitFor()
     await review(d)
     assert.deepEqual(reviews[0], { sourceIdentity: 'source-1', order: ['scsi1', 'scsi0', 'ide2', 'net0'] })
     assert.deepEqual(await d.getByRole('list', { name: 'Current boot order' }).locator('li').evaluateAll(rows => rows.map(r => r.dataset.device)), ['scsi0', 'scsi1', 'ide2', 'net0'])
@@ -102,6 +114,49 @@ const assert = require('node:assert/strict')
     await d.getByText('Boot order saved and verified', { exact: true }).waitFor()
     assert.deepEqual(writes, [{ reviewId: 'review-1', confirm: nativeName }])
     assert.equal(await d.getByRole('button', { name: /\b(task|log)\b/i }).count(), 0)
+    await close(d); await reset()
+    // A newer agent offers disabled configured devices; the initial sequence above proves old-agent compatibility.
+    d = await open()
+    const includeExtra = d.getByRole('checkbox', { name: 'Include sata0 in boot order', exact: true })
+    await includeExtra.focus(); await page.keyboard.press('Space')
+    assert.ok(await includeExtra.isChecked()); assert.ok(await includeExtra.evaluate(el => document.activeElement === el))
+    await d.getByRole('status').filter({ hasText: /sata0.*enabled/ }).waitFor()
+    await d.getByRole('checkbox', { name: 'Include scsi0 in boot order', exact: true }).uncheck()
+    await d.getByRole('button', { name: 'Review boot order', exact: true }).click()
+    await d.getByRole('list', { name: 'Newly enabled boot devices' }).waitFor()
+    assert.deepEqual(await d.getByRole('list', { name: 'Newly enabled boot devices' }).locator('li').evaluateAll(rows => rows.map(r => r.dataset.device)), ['sata0'])
+    assert.deepEqual(await d.getByRole('list', { name: 'Disabled boot devices' }).locator('li').evaluateAll(rows => rows.map(r => r.dataset.device)), ['scsi0'])
+    assert.match(await d.textContent(), /Hardware stays attached/); assert.match(await d.textContent(), /software-RAID/)
+    assert.deepEqual(reviews.at(-1).order, ['scsi1', 'ide2', 'net0', 'sata0'])
+    await d.getByLabel('Type boot-lab to confirm', { exact: true }).fill(nativeName)
+    await d.getByRole('button', { name: 'Save boot order', exact: true }).click()
+    await d.getByText('Boot order saved and verified', { exact: true }).waitFor()
+    await close(d); await reset()
+    d = await open()
+    for (const id of ['scsi0', 'scsi1', 'ide2', 'net0']) await d.getByRole('checkbox', { name: `Include ${id} in boot order`, exact: true }).uncheck()
+    await d.getByText('Enable at least one boot device before review.', { exact: true }).waitFor()
+    assert.ok(await d.getByRole('button', { name: 'Review boot order', exact: true }).isDisabled())
+    await d.getByRole('checkbox', { name: 'Include sata0 in boot order', exact: true }).check()
+    await d.getByRole('button', { name: 'Review boot order', exact: true }).click()
+    await d.getByLabel('Type boot-lab to confirm', { exact: true }).waitFor()
+    assert.deepEqual(reviews.at(-1).order, ['sata0'])
+    await close(d); await reset()
+    order = [devices[0]]; source = 'single-source'; await refresh(); d = await open()
+    await d.getByRole('checkbox', { name: 'Include net0 in boot order', exact: true }).check()
+    await d.getByRole('button', { name: 'Review boot order', exact: true }).click()
+    await d.getByLabel('Type boot-lab to confirm', { exact: true }).waitFor()
+    assert.deepEqual(reviews.at(-1).order, ['scsi0', 'net0'])
+    await close(d); await reset()
+    malformed = true; await refresh(); assert.ok(await card.getByRole('button', { name: 'Edit boot order', exact: true }).isDisabled()); await reset()
+    modern = false; order = [devices[0]]; await refresh(); assert.ok(await card.getByRole('button', { name: 'Edit boot order', exact: true }).isDisabled()); await reset()
+    d = await open(); const oldExtra = extra; extra = { ...extra, identity: 'replaced-inactive' }
+    await d.getByRole('button', { name: 'Refresh current boot order', exact: true }).click()
+    await d.getByText(/original boot configuration no longer matches/).waitFor()
+    assert.ok(await d.getByRole('button', { name: 'Review boot order', exact: true }).isDisabled())
+    await close(d); extra = oldExtra; await reset()
+    d = await open(); modern = false
+    await d.getByRole('button', { name: 'Refresh current boot order', exact: true }).click()
+    await d.getByText(/original boot configuration no longer matches/).waitFor()
     await close(d); await reset()
     d = await open(); await review(d); writeFailure = 409
     await d.getByLabel('Type boot-lab to confirm', { exact: true }).fill(nativeName)
@@ -131,7 +186,7 @@ const assert = require('node:assert/strict')
     assert.equal(await d.getByRole('list', { name: 'Last observed boot order' }).locator('li').count(), 4)
     assert.equal(await d.getByRole('button', { name: 'Review boot order', exact: true }).count(), 0)
     await close(d); guest.status = 'stopped'; readFailure = false; await page.reload({ waitUntil: 'networkidle' }); await inspect(); await reset()
-    for (const corruption of ['source', 'current', 'proposed']) {
+    for (const corruption of ['source', 'current', 'proposed', 'eligible', 'capability', 'duplicate']) {
       d = await open(); corruptReview = corruption
       await move(d); await d.getByRole('button', { name: 'Review boot order', exact: true }).click()
       await d.getByText(/original boot configuration no longer matches/).waitFor()
@@ -181,7 +236,18 @@ const assert = require('node:assert/strict')
     await visit(); assert.equal(await page.getByRole('region', { name: 'Boot device order', exact: true }).count(), 0); assert.equal(reads, beforeLxc)
     guest.type = 'qemu'; guest.id = 'qemu/110'; guest.status = 'stopped'; guest.name = nativeName = 'a'.repeat(63)
     devices[0].label = 'local:iso/' + 'long-volume-label'.repeat(12) + '.iso'; order = [...devices]
-    await visit(); await inspect(); d = await open(); await review(d)
+    await visit(); await inspect(); d = await open(); await move(d)
+    for (const theme of ['light', 'dark']) for (const width of [1440, 390]) {
+      await page.setViewportSize({ width, height: 844 })
+      await page.evaluate(t => document.documentElement.classList.toggle('dark', t === 'dark'), theme)
+      assert.equal(await d.evaluate(el => el.scrollWidth > el.clientWidth), false, `Draft overflow at ${width} ${theme}`)
+      const include = d.getByRole('checkbox', { name: 'Include sata0 in boot order', exact: true })
+      await include.scrollIntoViewIfNeeded()
+      const box = await include.boundingBox(); assert.ok(box.x >= 0 && box.x + box.width <= width && box.y >= 0 && box.y + box.height <= 844)
+      if (process.env.SCREENSHOT_DIR) { fs.mkdirSync(process.env.SCREENSHOT_DIR, { recursive: true }); await page.screenshot({ path: path.join(process.env.SCREENSHOT_DIR, `boot-eligibility-draft-${theme}-${width}.png`), fullPage: true }) }
+    }
+    await d.getByRole('button', { name: 'Review boot order', exact: true }).click()
+    await d.getByLabel(`Type ${nativeName} to confirm`, { exact: true }).waitFor()
     const confirmation = d.getByLabel(`Type ${nativeName} to confirm`, { exact: true })
     for (const theme of ['light', 'dark']) for (const width of [1440, 390]) {
       await page.setViewportSize({ width, height: 844 })
@@ -195,8 +261,8 @@ const assert = require('node:assert/strict')
     }
     await confirmation.fill(nativeName); await d.getByRole('button', { name: 'Save boot order', exact: true }).click()
     await d.getByText('Boot order saved and verified', { exact: true }).waitFor()
-    assert.equal(writes.length, 5)
+    assert.equal(writes.length, 6)
     assert.deepEqual(errors, []); assert.deepEqual(unexpected, [])
-    console.log('Boot order browser fixtures passed: on-demand QEMU-only inventory; same-set arrows/focus/announcement; exact old/new review; typed name/double-click; stale draft; source/device/proposal replacement; expiry/agent switch/late old-session cache guard; unknown and retained observation including running VM; independent config invalidation; result verification; running/LXC guards; long names/labels at 390px and 1440px in both themes; no task fabrication.')
+    console.log('Boot order browser fixtures passed: on-demand QEMU-only inventory; old-agent reorder fallback; explicit eligibility/singleton/empty draft guards; complete candidate and capability replacement; arrows/toggle focus/announcement; exact old/new review; typed name/double-click; stale draft; source/device/proposal replacement; expiry/agent switch/late old-session cache guard; unknown and retained observation including running VM; independent config invalidation; result verification; running/LXC guards; long names/labels at 390px and 1440px in both themes; no task fabrication.')
   } finally { await browser?.close(); await new Promise(resolve => server.close(resolve)) }
 })().catch(error => { console.error(error); process.exitCode = 1 })

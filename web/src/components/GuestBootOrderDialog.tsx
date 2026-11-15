@@ -1,21 +1,22 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { ArrowDown, ArrowUp } from 'lucide-react'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogBody, DialogContent, DialogFooter } from '@/components/ui/dialog'
 import { Field, Input } from '@/components/ui/form'
 import { getAgent } from '@/lib/agent'
 import { ApiError, api, type BootDevice, type BootOrderReview, type BootOrderResult, type Guest, type GuestBootOrder } from '@/lib/api'
+import { bootChoiceInventory, bootReviewMatches, sameBootChoices, sameBootOrder as sameOrder } from '@/lib/boot-order'
 import { guestApiPath, guestKey } from '@/lib/guest-workspace'
 import { bootOrderKey } from '@/lib/queries'
 
-const sameOrder = (a: BootDevice[] | undefined, b: BootDevice[]) => Array.isArray(a) && a.length === b.length && a.every((device, i) => !!device && device.id === b[i].id && device.identity === b[i].identity && device.kind === b[i].kind && device.label === b[i].label)
-function OrderList({ label, order }: { label: string; order: BootDevice[] }) {
-  return <ol aria-label={label} className="space-y-2">{order.map((device, i) => <li key={device.id} data-device={device.id} className="min-w-0"><p className="font-mono font-medium">{i + 1}. {device.id} · {device.kind}</p><p className="break-all text-[12px] text-muted">{device.label}</p>{device.warning && <p className="break-words text-[12px] text-warning">{device.warning}</p>}</li>)}</ol>
+function OrderList({ label, order, ranked = true }: { label: string; order: BootDevice[]; ranked?: boolean }) {
+  return <ol aria-label={label} className="space-y-2">{order.map((device, i) => <li key={device.id} data-device={device.id} className="min-w-0"><p className="font-mono font-medium">{ranked ? `${i + 1}. ` : ''}{device.id} · {device.kind}</p><p className="break-all text-[12px] text-muted">{device.label}</p>{device.warning && <p className="break-words text-[12px] text-warning">{device.warning}</p>}</li>)}</ol>
 }
 
 export function GuestBootOrderDialog({ guest, initial, unavailable, observationUnavailable, onClose }: { guest: Guest; initial: GuestBootOrder; unavailable: boolean; observationUnavailable: boolean; onClose: () => void }) {
   const qc = useQueryClient(), path = guestApiPath(guest)
+  const choices = bootChoiceInventory(initial)
   const source = useRef(getAgent()), mounted = useRef(true), admission = useRef(false)
   useEffect(() => { mounted.current = true; return () => { mounted.current = false } }, [])
   const sameAgent = () => mounted.current && source.current === getAgent()
@@ -34,10 +35,16 @@ export function GuestBootOrderDialog({ guest, initial, unavailable, observationU
   const [now, setNow] = useState(Date.now)
   const [announcement, setAnnouncement] = useState('')
   const rowRefs = useRef(new Map<string, HTMLLIElement>())
+  const toggleFocus = useRef<string | null>(null)
+  useLayoutEffect(() => {
+    const id = toggleFocus.current
+    if (id && sameAgent()) rowRefs.current.get(id)?.querySelector<HTMLInputElement>('input[type="checkbox"]')?.focus()
+    toggleFocus.current = null
+  }, [draft])
   const current = useMutation({ mutationFn: async () => { requireSource(); return api.get<GuestBootOrder>(`${path}/boot-order`) }, onSuccess: inventory => {
     if (!sameAgent()) return
     qc.setQueryData(bootOrderKey(guest), inventory)
-    if (inventory.sourceIdentity !== initial.sourceIdentity || inventory.name !== initial.name || !sameOrder(inventory.order, initial.order)) { setReplaced(true); setNeedsRefresh(true); return }
+    if (inventory.sourceIdentity !== initial.sourceIdentity || inventory.name !== initial.name || !sameOrder(inventory.order, initial.order) || !sameBootChoices(inventory, initial)) { setReplaced(true); setNeedsRefresh(true); return }
     setReady(inventory.ready); setReason(inventory.reason ?? inventory.errors.join(' ')); setNeedsRefresh(false)
   }, onError: () => { if (sameAgent()) setNeedsRefresh(true) } })
   const review = useMutation({ mutationFn: async (proposed: BootDevice[]) => {
@@ -45,7 +52,7 @@ export function GuestBootOrderDialog({ guest, initial, unavailable, observationU
     return api.post<BootOrderReview>(`${path}/boot-order-review`, { sourceIdentity: initial.sourceIdentity, order: proposed.map(d => d.id) })
   }, onSuccess: (value, proposed) => {
     if (!sameAgent()) return
-    if (value.sourceIdentity !== initial.sourceIdentity || value.name !== initial.name || value.node !== guest.node || value.type !== 'qemu' || value.vmid !== guest.vmid || !sameOrder(value.currentOrder, initial.order) || !sameOrder(value.proposedOrder, proposed) || !value.reviewId || !Number.isFinite(value.expiresAt)) { setReplaced(true); setNeedsRefresh(true); return }
+    if (!bootReviewMatches(value, initial, proposed, guest)) { setReplaced(true); setNeedsRefresh(true); return }
     setPlan(value); setConfirm(''); setConflict(null); setNow(Date.now())
   }, onError: () => { if (sameAgent()) setNeedsRefresh(true) } })
   const execute = useMutation({ mutationFn: async ({ value, confirmation }: { value: BootOrderReview; confirmation: string }) => {
@@ -75,6 +82,8 @@ export function GuestBootOrderDialog({ guest, initial, unavailable, observationU
   useEffect(() => { const timer = window.setInterval(() => setNow(Date.now()), 1000); return () => window.clearInterval(timer) }, [])
   const busy = current.isPending || review.isPending || execute.isPending
   const expired = !!plan && now >= plan.expiresAt
+  const added = plan?.proposedOrder.filter(device => !plan.currentOrder.some(before => before.id === device.id)) ?? []
+  const removed = plan?.currentOrder.filter(device => !plan.proposedOrder.some(after => after.id === device.id)) ?? []
   const move = (id: string, delta: number) => {
     if (busy || unavailable || replaced || submitted || plan) return
     const index = draft.findIndex(device => device.id === id), nextIndex = index + delta
@@ -88,16 +97,26 @@ export function GuestBootOrderDialog({ guest, initial, unavailable, observationU
       ;(preferred ?? row?.querySelector<HTMLButtonElement>('button:not(:disabled)'))?.focus()
     })
   }
+  const toggle = (device: BootDevice) => {
+    if (choices.mode !== 'eligible' || busy || unavailable || replaced || submitted || plan) return
+    const enabled = draft.some(row => row.id === device.id)
+    const next = enabled ? draft.filter(row => row.id !== device.id) : [...draft, device]
+    toggleFocus.current = device.id
+    setDraft(next); setAnnouncement(enabled ? `${device.id} disabled for boot; hardware stays attached` : `${device.id} enabled at position ${next.length}`)
+  }
+  const deviceRow = (device: BootDevice, index: number | null) => <li key={device.id} data-device={device.id} ref={(element: HTMLLIElement | null) => { if (element) rowRefs.current.set(device.id, element); else rowRefs.current.delete(device.id) }} className="min-w-0 space-y-2 rounded-md bg-inset p-3">
+    <div className="flex items-center justify-between gap-2"><label className="flex min-w-0 items-center gap-2 font-mono font-medium">{choices.mode === 'eligible' && <input type="checkbox" className="size-4 shrink-0 accent-brand" aria-label={`Include ${device.id} in boot order`} checked={index !== null} disabled={busy || unavailable || replaced} onChange={() => toggle(device)} />}<span>{index === null ? '' : `${index + 1}. `}{device.id}</span></label>{index !== null && <div className="flex shrink-0 gap-1"><Button size="sm" variant="outline" data-direction="up" aria-label={`Move ${device.id} up`} disabled={busy || unavailable || replaced || index === 0} onClick={() => move(device.id, -1)}><ArrowUp /></Button><Button size="sm" variant="outline" data-direction="down" aria-label={`Move ${device.id} down`} disabled={busy || unavailable || replaced || index === draft.length - 1} onClick={() => move(device.id, 1)}><ArrowDown /></Button></div>}</div><p className="break-all text-[12px] text-muted">{device.kind} · {device.label}</p>{device.warning && <p className="break-words text-[12px] text-warning">{device.warning}</p>}
+  </li>
   return <Dialog open onOpenChange={open => { if (!open && !busy) onClose() }}>
     <DialogContent title="Edit boot device order" description={<span className="break-all">{initial.name} · VM {guest.vmid} · {guest.node}</span>} closeDisabled={busy} onEscapeKeyDown={event => { if (busy) event.preventDefault() }} onPointerDownOutside={event => { if (busy) event.preventDefault() }}>
       <DialogBody className="space-y-4 text-[13px]">
         {!submitted && <>
-          <div className="space-y-2 rounded-md bg-warning-soft p-3 text-warning"><p className="font-medium">Review what happens on the next VM start.</p><p className="text-[12px]">A different order may enter another OS or installer, or fail to boot. Media and PXE availability, bootloaders and successful OS startup are not verified.</p><p className="text-[12px]">Keep the VM stopped until saving finishes. Another administrator can still start it. Saving does not change power, device membership or firmware.</p></div>
+          <div className="space-y-2 rounded-md bg-warning-soft p-3 text-warning"><p className="font-medium">Review what happens on the next VM start.</p><p className="text-[12px]">A different order may enter another OS or installer, or fail to boot. Media and PXE availability, bootloaders and successful OS startup are not verified.</p><p className="text-[12px]">Keep every disk needed to load your bootloader or OS enabled, including software-RAID members. Firmware may not initialize excluded disks until the OS loads.</p><p className="text-[12px]">Hardware stays attached and NIC link state is unchanged. Keep the VM stopped until saving finishes; another administrator can still start it. Saving does not change power or firmware.</p></div>
           {!plan && <>
-            <p className="text-[12px] text-muted">Move existing enabled devices up or down. Every enabled device stays in the order.</p>
-            <ol aria-label="Draft boot order" className="space-y-2">{draft.map((device, i) => <li key={device.id} data-device={device.id} ref={element => { if (element) rowRefs.current.set(device.id, element); else rowRefs.current.delete(device.id) }} className="min-w-0 space-y-2 rounded-md bg-inset p-3">
-              <div className="flex items-center justify-between gap-2"><p className="min-w-0 font-mono font-medium">{i + 1}. {device.id}</p><div className="flex shrink-0 gap-1"><Button size="sm" variant="outline" data-direction="up" aria-label={`Move ${device.id} up`} disabled={busy || unavailable || replaced || i === 0} onClick={() => move(device.id, -1)}><ArrowUp /></Button><Button size="sm" variant="outline" data-direction="down" aria-label={`Move ${device.id} down`} disabled={busy || unavailable || replaced || i === draft.length - 1} onClick={() => move(device.id, 1)}><ArrowDown /></Button></div></div><p className="break-all text-[12px] text-muted">{device.kind} · {device.label}</p>{device.warning && <p className="break-words text-[12px] text-warning">{device.warning}</p>}
-            </li>)}</ol>
+            <p className="text-[12px] text-muted">{choices.mode === 'eligible' ? 'Check devices to include them for boot, then move enabled devices up or down. Unchecking changes boot eligibility only.' : 'Move existing enabled devices up or down. Update the agent to enable or disable boot devices.'}</p>
+            <ol aria-label="Draft boot order" className="space-y-2">{draft.map((device, i) => deviceRow(device, i))}</ol>
+            {!draft.length && <p role="alert" className="text-warning">Enable at least one boot device before review.</p>}
+            {choices.mode === 'eligible' && choices.devices.some(device => !draft.some(row => row.id === device.id)) && <section className="space-y-2"><h3 className="font-semibold">Not enabled for boot</h3><ul aria-label="Other supported boot devices" className="space-y-2">{choices.devices.filter(device => !draft.some(row => row.id === device.id)).map(device => deviceRow(device, null))}</ul></section>}
             <p role="status" aria-live="polite" className="sr-only">{announcement}</p>
             <Button size="sm" variant="outline" disabled={busy || unavailable || replaced} onClick={() => { current.mutate(); review.reset() }}>Refresh current boot order</Button>
             {current.error && <p role="alert" className="text-destructive">{current.error.message}</p>}
@@ -109,6 +128,9 @@ export function GuestBootOrderDialog({ guest, initial, unavailable, observationU
           </>}
           {plan && <>
             <section aria-label="Reviewed boot change" className="space-y-4 rounded-md bg-inset p-3"><p className="break-all font-semibold">{plan.name} · VM {plan.vmid} · {plan.node}</p><div className="space-y-2"><h3 className="font-semibold">Before</h3><OrderList label="Current boot order" order={plan.currentOrder} /></div><div className="space-y-2"><h3 className="font-semibold">Proposed</h3><OrderList label="Proposed boot order" order={plan.proposedOrder} /></div></section>
+            {!!added.length && <section className="space-y-2"><h3 className="font-semibold">Newly enabled for boot</h3><OrderList label="Newly enabled boot devices" order={added} ranked={false} /></section>}
+            {!!removed.length && <section className="space-y-2"><h3 className="font-semibold">Disabled for boot</h3><OrderList label="Disabled boot devices" order={removed} ranked={false} /></section>}
+            {!added.length && !removed.length && <p className="text-[12px] text-muted">All current devices stay enabled.</p>}
             <p className="text-[12px] text-muted">Review expires at {new Date(plan.expiresAt).toLocaleTimeString()}. The agent checks the fixed device identities and stopped VM again before saving.</p>
             {expired ? <p role="alert" className="text-warning">This review expired. Edit the boot order and review again.</p> : <Field className="break-all" label={`Type ${plan.name} to confirm`}><Input aria-label={`Type ${plan.name} to confirm`} autoComplete="off" value={confirm} disabled={busy || unavailable} onChange={event => setConfirm(event.target.value)} /></Field>}
           </>}
@@ -119,7 +141,7 @@ export function GuestBootOrderDialog({ guest, initial, unavailable, observationU
         {submitted && !execute.isPending && <section aria-label="Observed boot order" className="space-y-2 rounded-md bg-inset p-3"><p className="font-semibold">Observed boot order</p>{observed.isPending && <p role="status">Reading current boot configuration…</p>}{lastObserved && <><OrderList label="Last observed boot order" order={lastObserved.inventory.order} /><p className="text-[12px] text-muted">Read at {new Date(lastObserved.at).toLocaleTimeString()}.</p>{lastObserved.inventory.reason && <p className="text-warning">{lastObserved.inventory.reason}</p>}{lastObserved.inventory.errors.map(error => <p key={error} className="text-warning">{error}</p>)}</>}{observed.error && <p role="alert" className="text-warning">{observed.error.message} The last successful observation is retained; current state is unconfirmed.</p>}<Button size="sm" variant="outline" disabled={observed.isPending || observationUnavailable} onClick={() => observed.mutate()}>Refresh observed boot order</Button></section>}
         {submitted && <p className="text-[12px] text-muted">This configuration update has no native task log. After closing or an agent restart, inspect the current order and pending changes again. Closing does not undo a submitted change.</p>}
       </DialogBody>
-      <DialogFooter className="flex-wrap"><Button variant="outline" disabled={busy} onClick={onClose}>{submitted ? 'Close' : 'Cancel'}</Button>{!submitted && !plan && <Button loading={review.isPending} disabled={busy || unavailable || needsRefresh || replaced || !ready || sameOrder(draft, initial.order)} onClick={() => review.mutate([...draft])}>Review boot order</Button>}{!submitted && plan && <><Button variant="outline" disabled={busy} onClick={() => { setPlan(null); setConfirm(''); review.reset() }}>Edit boot order</Button><Button loading={execute.isPending} disabled={busy || unavailable || expired || confirm !== plan.name} onClick={() => { if (admission.current || Date.now() >= plan.expiresAt || !sameAgent()) return; admission.current = true; setSubmitted(true); execute.mutate({ value: plan, confirmation: confirm }) }}>Save boot order</Button></>}</DialogFooter>
+      <DialogFooter className="flex-wrap"><Button variant="outline" disabled={busy} onClick={onClose}>{submitted ? 'Close' : 'Cancel'}</Button>{!submitted && !plan && <Button loading={review.isPending} disabled={busy || unavailable || needsRefresh || replaced || !ready || choices.mode === 'invalid' || !draft.length || sameOrder(draft, initial.order)} onClick={() => review.mutate([...draft])}>Review boot order</Button>}{!submitted && plan && <><Button variant="outline" disabled={busy} onClick={() => { setPlan(null); setConfirm(''); review.reset() }}>Edit boot order</Button><Button loading={execute.isPending} disabled={busy || unavailable || expired || confirm !== plan.name} onClick={() => { if (admission.current || Date.now() >= plan.expiresAt || !sameAgent()) return; admission.current = true; setSubmitted(true); execute.mutate({ value: plan, confirmation: confirm }) }}>Save boot order</Button></>}</DialogFooter>
     </DialogContent>
   </Dialog>
 }

@@ -161,7 +161,7 @@ export interface BootDevice {
   identity: string
   warning?: string
 }
-export interface GuestBootOrder { name: string; ready: boolean; reason?: string; errors: string[]; sourceIdentity: string | null; order: BootDevice[]; excluded: { id: string; reason: string }[] }
+export interface GuestBootOrder { name: string; ready: boolean; reason?: string; errors: string[]; sourceIdentity: string | null; order: BootDevice[]; eligibleDevices?: BootDevice[]; excluded: { id: string; reason: string }[] }
 export interface BootOrderReview {
   reviewId: string
   name: string
@@ -171,6 +171,7 @@ export interface BootOrderReview {
   sourceIdentity: string
   currentOrder: BootDevice[]
   proposedOrder: BootDevice[]
+  eligibleDevices?: BootDevice[]
   expiresAt: number
 }
 export interface BootOrderResult { verified: true; name: string; node: string; type: 'qemu'; vmid: number; sourceIdentity: string; order: BootDevice[]; observedAt: number }

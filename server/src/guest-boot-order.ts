@@ -14,13 +14,13 @@ const bool = (v: string | undefined) => v === undefined || /^(?:0|off|no|false)$
 function stable(v: unknown): unknown { return Array.isArray(v) ? v.map(stable) : record(v) ? Object.fromEntries(Object.entries(v).sort(([a], [b]) => a.localeCompare(b)).map(([k, value]) => [k, stable(value)])) : v }
 const hash = (v: unknown) => createHash('sha256').update(JSON.stringify(stable(v)) ?? 'null').digest('hex')
 const deviceKey = /^[a-z]+(?:0|[1-9]\d*)$/
-export const bootOrderPreviewSchema = z.object({ sourceIdentity: z.string().regex(/^[a-f0-9]{64}$/), order: z.array(z.string().max(16).regex(deviceKey)).min(2).max(89) }).strict()
+export const bootOrderPreviewSchema = z.object({ sourceIdentity: z.string().regex(/^[a-f0-9]{64}$/), order: z.array(z.string().max(16).regex(deviceKey)).min(1).max(89) }).strict()
 export const bootOrderExecuteSchema = z.object({ reviewId: z.string().uuid(), confirm: z.string().min(1).max(253).refine(s => !/[\u0000-\u001f\u007f]/.test(s)) }).strict()
 
 interface BootDevice { id: string; kind: 'disk' | 'cdrom' | 'network' | 'unsupported'; label: string; identity: string; warning?: string }
-interface Inventory { name: string; ready: boolean; reason?: string; errors: string[]; sourceIdentity: string | null; order: BootDevice[]; excluded: { id: string; reason: string }[] }
+interface Inventory { name: string; ready: boolean; reason?: string; errors: string[]; sourceIdentity: string | null; order: BootDevice[]; eligibleDevices: BootDevice[]; excluded: { id: string; reason: string }[] }
 interface Inspection { view: Inventory; digest: string; config: Record<string, unknown>; untouched: string }
-interface Review { reviewId: string; name: string; node: string; type: 'qemu'; vmid: number; sourceIdentity: string; currentOrder: BootDevice[]; proposedOrder: BootDevice[]; expiresAt: number }
+interface Review { reviewId: string; name: string; node: string; type: 'qemu'; vmid: number; sourceIdentity: string; currentOrder: BootDevice[]; proposedOrder: BootDevice[]; eligibleDevices: BootDevice[]; expiresAt: number }
 interface Result { verified: true; name: string; node: string; type: 'qemu'; vmid: number; sourceIdentity: string; order: BootDevice[]; observedAt: number }
 
 function driveKey(key: string) {
@@ -52,7 +52,11 @@ function describe(id: string, config: Record<string, unknown>): BootDevice {
   if (/^net(?:[0-9]|[12][0-9]|3[01])$/.test(id)) {
     const nic = readNicProperty(id, raw, 'qemu').view
     if (!nic.canEdit) return unsupported
-    return { id, kind: 'network', label: `${nic.model} · ${nic.mac} · ${nic.bridge}${nic.tag === null ? '' : ` · VLAN ${nic.tag}`}`, identity, ...(nic.linkDown ? { warning: 'This NIC is configured disconnected; PXE reachability is not established.' } : {}) }
+    const warnings = [
+      ...(nic.linkDown ? ['This NIC is configured disconnected; PXE reachability is not established.'] : []),
+      ...(config.bios === 'ovmf' && !config.rng0 ? ['OVMF PXE may need a VirtIO RNG device; none is configured. Check prerequisites before network boot.'] : []),
+    ]
+    return { id, kind: 'network', label: `${nic.model} · ${nic.mac} · ${nic.bridge}${nic.tag === null ? '' : ` · VLAN ${nic.tag}`}`, identity, ...(warnings.length ? { warning: warnings.join(' ') } : {}) }
   }
   if (!driveKey(id)) return unsupported
   const parsed = properties(raw)
@@ -106,21 +110,24 @@ async function inspect(client: Client, guest: Guest): Promise<Inspection> {
   const order = ids.map(id => describe(id, config))
   if (!reason && ['bootdisk', 'args', 'smp', 'cdrom', 'snapstate'].some(key => Object.hasOwn(config, key))) reason = 'Legacy bootdisk/custom arguments or native cleanup fields are outside this preservation-focused editor. Inspect them in Proxmox.'
   if (!reason && unusedAlias(config)) reason = 'A duplicate or unverifiable unused-disk reference may be cleaned by a native write. Inspect it in Proxmox first.'
-  if (!reason && (!match || ids.length < 2 || ids.length > 89 || ids.some(id => !deviceKey.test(id)) || new Set(ids).size !== ids.length)) reason = 'This first editor reorders an existing nonempty explicit enabled-device set with at least two distinct devices. Legacy/default or ambiguous boot settings stay read-only.'
+  if (!reason && (!match || ids.length < 1 || ids.length > 89 || ids.some(id => !deviceKey.test(id)) || new Set(ids).size !== ids.length)) reason = 'An existing nonempty explicit boot order is required. Legacy/default or ambiguous boot settings stay read-only.'
   if (!reason && order.some(device => device.kind === 'unsupported')) reason = 'The existing enabled set contains an unsupported or missing boot target. No entries will be silently removed.'
   const configured = Object.keys(config).filter(key => /^(?:ide|sata|scsi|virtio|net|efidisk|tpmstate|unused|usb|hostpci|serial|virtiofs)\d+$/.test(key))
-  const excluded = configured.filter(id => !ids.includes(id)).sort((a, b) => a.localeCompare(b, 'en', { numeric: true })).map(id => ({ id, reason: /^(?:efidisk|tpmstate)/.test(id) ? 'Firmware state is retained; this is not a boot-order entry.' : 'Outside the current enabled set; retained without changes.' }))
+  const eligibleDevices = configured.map(id => describe(id, config)).filter(device => device.kind !== 'unsupported').sort((a, b) => a.id.localeCompare(b.id, 'en', { numeric: true }))
+  const eligibleIds = new Set(eligibleDevices.map(device => device.id))
+  const excluded = configured.filter(id => !eligibleIds.has(id)).sort((a, b) => a.localeCompare(b, 'en', { numeric: true })).map(id => ({ id, reason: /^(?:efidisk|tpmstate)/.test(id) ? 'Firmware state is retained; this is not a boot-order entry.' : 'Unsupported configured boot target; retained without changes.' }))
   const sourceIdentity = reason ? null : hash({ guest, name, config: Object.fromEntries(Object.entries(config).filter(([key]) => relevant(key))) })
   const untouched = hash(Object.fromEntries(Object.entries(config).filter(([key]) => key !== 'boot' && key !== 'digest')))
-  return { config, digest, untouched, view: { name, ready: !reason, ...(reason ? { reason } : {}), errors, sourceIdentity, order, excluded } }
+  return { config, digest, untouched, view: { name, ready: !reason, ...(reason ? { reason } : {}), errors, sourceIdentity, order, eligibleDevices, excluded } }
 }
 
 export const loadBootOrder = async (client: Client, guest: Guest): Promise<Inventory> => (await inspect(client, guest)).view
 function select(inspection: Inspection, sourceIdentity: string, order: string[]) {
   if (!inspection.view.ready || inspection.view.sourceIdentity !== sourceIdentity) throw fail(inspection.view.reason ?? 'The original boot/device identity changed. Inspect the current order and review again.')
   const current = inspection.view.order.map(device => device.id)
-  if (new Set(order).size !== order.length || order.length !== current.length || order.some(id => !current.includes(id))) throw fail('Reorder exactly the same enabled devices; adding or removing boot eligibility is outside this editor.')
-  if (order.every((id, index) => id === current[index])) throw fail('Move a device before requesting a boot-order review.')
+  const eligible = new Set(inspection.view.eligibleDevices.map(device => device.id))
+  if (new Set(order).size !== order.length || order.some(id => !eligible.has(id))) throw fail('Select only supported devices already configured on this VM; unsupported or missing targets cannot be enabled.')
+  if (order.length === current.length && order.every((id, index) => id === current[index])) throw fail('Change a device priority or boot eligibility before requesting a review.')
 }
 export class BootOrderReviews {
   private entries = new Map<string, { guest: Guest; view: Review; fingerprint: string; revision: string; consumed: boolean; result?: Result }>()
@@ -135,7 +142,7 @@ export class BootOrderReviews {
     const now = this.clock()
     for (const [id, entry] of this.entries) if (entry.view.expiresAt <= now) this.entries.delete(id)
     if (this.entries.size >= 500) throw fail('Too many open boot reviews. Wait for older reviews to expire.', 429)
-    const view: Review = { reviewId: randomUUID(), name: inspection.view.name, node: guest.node, type: 'qemu', vmid: guest.vmid, sourceIdentity: value.sourceIdentity, currentOrder: inspection.view.order, proposedOrder: value.order.map(id => inspection.view.order.find(device => device.id === id)!), expiresAt: now + 300000 }
+    const view: Review = { reviewId: randomUUID(), name: inspection.view.name, node: guest.node, type: 'qemu', vmid: guest.vmid, sourceIdentity: value.sourceIdentity, currentOrder: inspection.view.order, proposedOrder: value.order.map(id => inspection.view.eligibleDevices.find(device => device.id === id)!), eligibleDevices: inspection.view.eligibleDevices, expiresAt: now + 300000 }
     this.entries.set(view.reviewId, { guest: { ...guest }, view, revision, fingerprint: this.fingerprint(inspection, guest, value.order), consumed: false })
     return view
   }
