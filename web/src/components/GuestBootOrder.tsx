@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import type { Guest, GuestBootOrder as BootInventory } from '@/lib/api'
 import { getAgent } from '@/lib/agent'
+import { bootChoiceInventory } from '@/lib/boot-order'
 import { guestKey } from '@/lib/guest-workspace'
 import { useGuestBootOrder } from '@/lib/queries'
 
@@ -19,11 +20,12 @@ export function GuestBootOrder({ guest, unavailable }: { guest: Guest; unavailab
   }, [])
   const targetChanged = !!selected && (guestKey(guest) !== guestKey(selected.guest) || guest.node !== selected.guest.node || selected.agent !== getAgent())
   const changed = targetChanged || guest.status !== 'stopped'
+  const choices = inventory.data ? bootChoiceInventory(inventory.data) : null
   if (guest.type !== 'qemu') return null
   return <Card role="region" aria-label="Boot device order">
     <CardHeader><CardTitle>Boot device order</CardTitle>{inspected && <Button size="sm" variant="ghost" disabled={unavailable || inventory.isFetching} onClick={() => inventory.refetch()}><RefreshCw className={inventory.isFetching ? 'animate-spin' : ''} />Refresh boot order</Button>}</CardHeader>
     <CardContent className="space-y-3 text-[12px]">
-      <p className="text-muted">Reorder the same enabled devices for the VM’s next start. Keep the VM stopped while editing. Configured order does not prove that a device or operating system will boot.</p>
+      <p className="text-muted">Choose which existing devices the firmware can try and set their priorities for the next start. Keep the VM stopped while editing. Configured order does not prove successful startup.</p>
       {!inspected && <Button variant="outline" disabled={unavailable} onClick={() => setInspected(true)}>Inspect boot order</Button>}
       {inspected && inventory.isPending && <p role="status" className="text-muted">Reading boot configuration…</p>}
       {inspected && inventory.error && <p role="alert" className="text-destructive">{inventory.error.message} Refresh boot order before reviewing a change.</p>}
@@ -32,8 +34,10 @@ export function GuestBootOrder({ guest, unavailable }: { guest: Guest; unavailab
         {inventory.data.errors.map(error => <p key={error} className="text-warning">{error}</p>)}
         {inventory.data.order.length ? <ol aria-label="Enabled boot devices" className="space-y-2">{inventory.data.order.map((device, i) => <li key={device.id} className="min-w-0 space-y-1 rounded-md bg-inset p-3"><p className="font-mono font-medium">{i + 1}. {device.id} · {device.kind}</p><p className="break-all text-muted">{device.label}</p>{device.warning && <p className="break-words text-warning">{device.warning}</p>}</li>)}</ol> : <p className="text-muted">No explicit enabled boot order was reported.</p>}
         {!!inventory.data.excluded.length && <div className="space-y-1 text-muted"><p className="font-medium">Other configured devices (not selectable)</p>{inventory.data.excluded.map(entry => <p key={entry.id} className="break-words"><span className="font-mono">{entry.id}</span> · {entry.reason}</p>)}</div>}
-        <Button variant="outline" disabled={unavailable || guest.status !== 'stopped' || inventory.isFetching || !!inventory.error || !inventory.data.ready || !inventory.data.sourceIdentity || inventory.data.order.length < 2} onClick={() => setSelected({ guest: { ...guest }, inventory: { ...inventory.data!, order: inventory.data!.order.map(d => ({ ...d })) }, agent: getAgent() })}>Edit boot order</Button>
-        <p className="text-[11px] text-muted">Last inspected {new Date(inventory.dataUpdatedAt).toLocaleTimeString()}. Adding or disabling devices and legacy boot settings remain in Proxmox.</p>
+        {choices?.mode === 'invalid' && inventory.data.ready && <p role="alert" className="text-warning">{choices.reason}</p>}
+        {choices?.mode === 'legacy' && <p className="text-muted">Update the agent to enable or disable boot devices. Existing priorities can still be reordered.</p>}
+        <Button variant="outline" disabled={unavailable || guest.status !== 'stopped' || inventory.isFetching || !!inventory.error || !inventory.data.ready || !inventory.data.sourceIdentity || !choices || choices.mode === 'invalid'} onClick={() => setSelected({ guest: { ...guest }, inventory: structuredClone(inventory.data!), agent: getAgent() })}>Edit boot order</Button>
+        <p className="text-[11px] text-muted">Last inspected {new Date(inventory.dataUpdatedAt).toLocaleTimeString()}. Hardware attachment and legacy/default boot settings remain in Proxmox.</p>
       </>}
       {unavailable && <p className="text-warning">The connection is unavailable. Refresh the guest inventory before inspecting boot order.</p>}
     </CardContent>

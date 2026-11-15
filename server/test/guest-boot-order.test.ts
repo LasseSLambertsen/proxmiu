@@ -66,10 +66,29 @@ test('inventory preserves the complete explicit enabled set and returns purpose-
   assert.equal(view.ready, true); assert.equal(view.name, 'bootbox'); assert.match(view.sourceIdentity!, /^[a-f0-9]{64}$/)
   assert.deepEqual(view.order.map(d => d.id), ids)
   assert.deepEqual(view.order.map(d => d.kind), ['disk', 'cdrom', 'network'])
-  assert.ok(view.excluded.some(d => d.id === 'scsi1')); assert.ok(view.excluded.some(d => d.id === 'efidisk0'))
+  assert.ok(Array.isArray(view.eligibleDevices), 'Supported configured choices must include disabled devices')
+  assert.deepEqual(view.eligibleDevices.map(d => d.id), ['ide2', 'net0', 'scsi0', 'scsi1'])
+  assert.ok(!view.excluded.some(d => d.id === 'scsi1')); assert.ok(view.excluded.some(d => d.id === 'efidisk0'))
   assert.doesNotMatch(JSON.stringify(view), /private-|192\.0\.2|cipassword|cache=|iothread|digest|startup=/)
   assert.ok(f.reads.some(r => r.path.endsWith('/config') && r.params?.current === 1))
   assert.deepEqual(f.reads.find(r => r.path === '/access/permissions')?.params, { path: '/nodes/pve1' })
+  assert.equal(f.puts.length, 0)
+})
+
+test('disabled disk, ISO and NIC choices expose safe summaries rather than raw properties or guest addressing', async () => {
+  const f = fixture()
+  f.state.config.scsi1 = 'local-lvm:vm-100-disk-1,serial=private-disabled-serial,backup=0'
+  f.state.config.sata1 = 'local:iso/installer.iso,media=cdrom'
+  f.state.config.net1 = 'virtio=02:ab:cd:44:55:66,bridge=vmbr1,tag=30,firewall=1'
+  f.state.config.ipconfig1 = 'ip=192.0.2.20/24,gw=192.0.2.1'
+  f.state.config.nameserver = '192.0.2.53'
+  f.state.config.usb0 = 'host=1234:5678'
+  const view = await loadBootOrder(f.client, f.guest)
+  assert.ok(Array.isArray(view.eligibleDevices))
+  assert.deepEqual(view.eligibleDevices.map(d => [d.id, d.kind]), [['ide2', 'cdrom'], ['net0', 'network'], ['net1', 'network'], ['sata1', 'cdrom'], ['scsi0', 'disk'], ['scsi1', 'disk']])
+  assert.equal(view.eligibleDevices.find(d => d.id === 'net1')?.label, 'virtio · 02:ab:cd:44:55:66 · vmbr1 · VLAN 30')
+  assert.doesNotMatch(JSON.stringify(view), /private-|192\.0\.2|serial=|firewall=|backup=|cipassword|description/)
+  assert.ok(view.excluded.some(d => d.id === 'usb0'))
   assert.equal(f.puts.length, 0)
 })
 
@@ -97,15 +116,60 @@ test('all RAID members remain enabled and JSON object-key reordering is not a co
   assert.ok(String(f.state.config.scsi0).includes('private-serial'))
 })
 
-test('schema rejects no-op, membership changes, duplicates, empty targets and unrelated fields without PUT', async () => {
+test('schema rejects no-op, unknown devices, duplicates, empty targets and unrelated fields without PUT', async () => {
   const f = fixture(), reviews = new BootOrderReviews(), view = await loadBootOrder(f.client, f.guest)
-  for (const order of [ids, [], ['ide2', 'net0'], ['net0', 'scsi0', 'scsi0'], ['scsi1', 'ide2', 'net0'], [...target, 'scsi1']]) await assert.rejects(reviews.preview(f.client, f.guest, 'rev', { sourceIdentity: view.sourceIdentity, order }))
+  for (const order of [ids, [], ['net1', 'scsi0'], ['net0', 'scsi0', 'scsi0'], ['efidisk0', 'scsi0'], ['unused0'], ['scsi31']]) await assert.rejects(reviews.preview(f.client, f.guest, 'rev', { sourceIdentity: view.sourceIdentity, order }))
   for (const body of [{ order: target }, { sourceIdentity: 'bad', order: target }, { sourceIdentity: view.sourceIdentity, order: target, bootdisk: 'scsi0' }]) await assert.rejects(reviews.preview(f.client, f.guest, 'rev', body))
   assert.equal(f.puts.length, 0)
 })
 
+test('changing boot eligibility adds only configured supported devices and retains all hardware properties', async () => {
+  for (const order of [['scsi1', 'net0', 'scsi0', 'ide2'], ['ide2', 'net0'], ['scsi1', 'ide2'], ['scsi0']]) {
+    const f = fixture(), before = structuredClone(f.state.config)
+    const { reviews, plan, inventory } = await preview(f, new BootOrderReviews(), order)
+    assert.deepEqual(plan.proposedOrder.map(d => d.id), order)
+    assert.deepEqual(plan.eligibleDevices, inventory.eligibleDevices)
+    assert.ok(plan.proposedOrder.every(d => inventory.eligibleDevices.some(candidate => candidate.id === d.id && candidate.identity === d.identity)))
+    const result = await reviews.execute(f.client, f.guest, 'rev', { reviewId: plan.reviewId, confirm: 'bootbox' })
+    assert.equal(result.verified, true); assert.deepEqual(result.order.map(d => d.id), order)
+    assert.equal(f.puts.length, 1); assert.deepEqual(Object.keys(f.puts[0].params!).sort(), ['boot', 'digest'])
+    assert.deepEqual(f.state.config, { ...before, boot: 'order=' + order.join(';'), digest: 'b'.repeat(40) })
+  }
+})
+
+test('one enabled source device can enable other candidates or select a different single target', async () => {
+  for (const order of [['scsi0', 'scsi1'], ['net0'], ['ide2', 'scsi0']]) {
+    const f = fixture(); f.state.config.boot = 'order=scsi0'
+    const view = await loadBootOrder(f.client, f.guest)
+    assert.equal(view.ready, true); assert.deepEqual(view.order.map(d => d.id), ['scsi0'])
+    const { reviews, plan } = await preview(f, new BootOrderReviews(), order)
+    assert.equal((await reviews.execute(f.client, f.guest, 'rev', { reviewId: plan.reviewId, confirm: 'bootbox' })).verified, true)
+    assert.equal(f.puts[0].params!.boot, 'order=' + order.join(';'))
+  }
+})
+
+test('replacement of an initially disabled candidate invalidates preview and execute even if enabled rows and digest stay fixed', async () => {
+  const first = fixture(), old = await loadBootOrder(first.client, first.guest)
+  first.state.config.scsi1 = String(first.state.config.scsi1) + ',serial=private-replacement'
+  await assert.rejects(new BootOrderReviews().preview(first.client, first.guest, 'rev', { sourceIdentity: old.sourceIdentity, order: ['scsi1', 'scsi0'] }), (e: any) => e.statusCode === 409)
+  assert.equal(first.puts.length, 0)
+  const second = fixture(), { reviews, plan } = await preview(second)
+  second.state.config.scsi1 = String(second.state.config.scsi1) + ',serial=private-replacement'
+  await assert.rejects(reviews.execute(second.client, second.guest, 'rev', { reviewId: plan.reviewId, confirm: 'bootbox' }), (e: any) => e.statusCode === 409)
+  assert.equal(second.puts.length, 0)
+})
+
+test('unsupported current boot targets cannot be silently dropped while changing eligibility', async () => {
+  const f = fixture(); f.state.config.boot = 'order=scsi0;usb0'; f.state.config.usb0 = 'host=1234:5678'
+  const view = await loadBootOrder(f.client, f.guest)
+  assert.equal(view.ready, false); assert.deepEqual(view.order.map(d => d.id), ['scsi0', 'usb0'])
+  assert.ok(!view.eligibleDevices.some(d => d.id === 'usb0'))
+  await assert.rejects(new BootOrderReviews().preview(f.client, f.guest, 'rev', { sourceIdentity: view.sourceIdentity, order: ['scsi0'] }))
+  assert.equal(f.puts.length, 0)
+})
+
 test('missing/empty/legacy/mixed/unknown/duplicate/raw malformed source orders remain read-only', async () => {
-  for (const boot of [undefined, '', 'cdn', 'legacy=cdn', 'legacy=cdn,order=scsi0;ide2', 'order=scsi0;ide2,menu=1', 'order=scsi0;ide2,order=net0', 'order=scsi0;;ide2', 'order=scsi0;ide2;', 'order=scsi0;scsi0', 'order=scsi0', 'order=scsi0,ide2', 'order=scsi0; ide2', 'order="scsi0;ide2"', 'order=scsi0\\;ide2', 'order=scsi0;ide2\n']) {
+  for (const boot of [undefined, '', 'cdn', 'legacy=cdn', 'legacy=cdn,order=scsi0;ide2', 'order=scsi0;ide2,menu=1', 'order=scsi0;ide2,order=net0', 'order=scsi0;;ide2', 'order=scsi0;ide2;', 'order=scsi0;scsi0', 'order=scsi0,ide2', 'order=scsi0; ide2', 'order="scsi0;ide2"', 'order=scsi0\\;ide2', 'order=scsi0;ide2\n']) {
     const f = fixture(); if (boot === undefined) delete f.state.config.boot; else f.state.config.boot = boot
     const view = await loadBootOrder(f.client, f.guest)
     assert.equal(view.ready, false, String(boot)); assert.equal(f.puts.length, 0)
@@ -189,6 +253,23 @@ test('disconnected NIC remains eligible as configured without claiming PXE succe
   const f = fixture(); f.state.config.net0 += ',link_down=1'
   const view = await loadBootOrder(f.client, f.guest)
   assert.equal(view.ready, true); assert.match(view.order.find(d => d.id === 'net0')?.warning ?? '', /disconnect|link/i)
+  assert.equal(f.puts.length, 0)
+})
+
+test('OVMF network choices carry a conditional RNG caution without losing disconnected-state warnings', async () => {
+  const f = fixture(); f.state.config.net0 += ',link_down=1'
+  f.state.config.net1 = 'virtio=02:ab:cd:44:55:66,bridge=vmbr0'
+  const withoutRng = await loadBootOrder(f.client, f.guest)
+  const disconnected = withoutRng.eligibleDevices.find(d => d.id === 'net0')!
+  assert.match(disconnected.warning!, /disconnected/)
+  assert.match(disconnected.warning!, /VirtIO RNG/)
+  assert.match(withoutRng.eligibleDevices.find(d => d.id === 'net1')?.warning ?? '', /PXE/)
+  f.state.config.rng0 = 'source=/dev/urandom'
+  const withRng = await loadBootOrder(f.client, f.guest)
+  assert.match(withRng.eligibleDevices.find(d => d.id === 'net0')?.warning ?? '', /disconnected/)
+  assert.doesNotMatch(withRng.eligibleDevices.find(d => d.id === 'net0')?.warning ?? '', /VirtIO RNG/)
+  delete f.state.config.rng0; f.state.config.bios = 'seabios'
+  assert.doesNotMatch((await loadBootOrder(f.client, f.guest)).eligibleDevices.find(d => d.id === 'net0')?.warning ?? '', /VirtIO RNG/)
   assert.equal(f.puts.length, 0)
 })
 

@@ -12,7 +12,7 @@ import selfsigned from 'selfsigned'
 test('authenticated boot order uses exact native PUT/null, blocks legacy cleanup and recovers partial outcomes without restart replay', { timeout: 40000 }, async () => {
   const cert = await selfsigned.generate([{ name: 'commonName', value: 'localhost' }], { keySize: 2048, days: 1 })
   const original = ['scsi0', 'ide2', 'net0'], target = ['net0', 'scsi0', 'ide2']
-  const config: Record<string, unknown> = { name: 'bootbox', digest: 'a'.repeat(40), boot: 'order=' + original.join(';'), scsi0: 'local-lvm:vm-100-disk-0,serial=private-device-serial,cache=none', ide2: 'local:iso/debian.iso,media=cdrom', net0: 'virtio=02:ab:cd:11:22:33,bridge=vmbr0,firewall=YES', bios: 'ovmf', machine: 'pc-q35-9.0', onboot: 1, description: 'private-native-notes', cipassword: '**********' }
+  const config: Record<string, unknown> = { name: 'bootbox', digest: 'a'.repeat(40), boot: 'order=' + original.join(';'), scsi0: 'local-lvm:vm-100-disk-0,serial=private-device-serial,cache=none', scsi1: 'local-lvm:vm-100-disk-1,serial=private-disabled-serial', ide2: 'local:iso/debian.iso,media=cdrom', net0: 'virtio=02:ab:cd:11:22:33,bridge=vmbr0,firewall=YES', bios: 'ovmf', machine: 'pc-q35-9.0', onboot: 1, description: 'private-native-notes', cipassword: '**********' }
   const writes: { path: string; fields: Record<string, string>; raw: string }[] = [], reads: { path: string; params: Record<string, string> }[] = []
   let mode = 'ok', cleanupDeleted = false
   const upstream = https.createServer({ key: cert.private, cert: cert.cert }, async (req, res) => {
@@ -102,7 +102,22 @@ test('authenticated boot order uses exact native PUT/null, blocks legacy cleanup
     assert.equal((await request(base + '/boot-order-review', 'POST', { sourceIdentity: result.sourceIdentity, order: original })).status, 409)
     assert.equal(cleanupDeleted, false); assert.equal(writes.length, 1); delete config.bootdisk
     const current = await (await request(base + '/boot-order')).json()
-    const reverse = await (await request(base + '/boot-order-review', 'POST', { sourceIdentity: current.sourceIdentity, order: original })).json()
+    assert.deepEqual(current.eligibleDevices.map((d: any) => d.id), ['ide2', 'net0', 'scsi0', 'scsi1'])
+    const changedReviewResponse = await request(base + '/boot-order-review', 'POST', { sourceIdentity: current.sourceIdentity, order: ['scsi1'] })
+    assert.equal(changedReviewResponse.status, 200)
+    const changedReview = await changedReviewResponse.json()
+    assert.deepEqual(changedReview.proposedOrder.map((d: any) => d.id), ['scsi1'])
+    assert.deepEqual(changedReview.eligibleDevices, current.eligibleDevices)
+    const changedResponse = await request(base + '/boot-order', 'POST', { reviewId: changedReview.reviewId, confirm: 'bootbox' })
+    assert.equal(changedResponse.status, 200)
+    const changed = await changedResponse.json()
+    assert.equal(changed.verified, true); assert.deepEqual(changed.order.map((d: any) => d.id), ['scsi1'])
+    assert.deepEqual(writes[1].fields, { boot: 'order=scsi1', digest: '1'.padStart(40, '0') })
+    assert.ok(writes[1].raw.includes('boot=order%3Dscsi1'))
+    assert.equal(config.net0, 'virtio=02:ab:cd:11:22:33,bridge=vmbr0,firewall=YES')
+    assert.equal(config.scsi0, 'local-lvm:vm-100-disk-0,serial=private-device-serial,cache=none')
+    assert.equal(config.scsi1, 'local-lvm:vm-100-disk-1,serial=private-disabled-serial')
+    const reverse = await (await request(base + '/boot-order-review', 'POST', { sourceIdentity: changed.sourceIdentity, order: original })).json()
     mode = 'partial-error'
     const unknownInput = { reviewId: reverse.reviewId, confirm: 'bootbox' }
     const unknown = await request(base + '/boot-order', 'POST', unknownInput)
@@ -114,9 +129,9 @@ test('authenticated boot order uses exact native PUT/null, blocks legacy cleanup
     await stop(); await boot()
     for (const body of [execute, unknownInput, { reviewId: pending.reviewId, confirm: 'bootbox' }]) assert.equal((await request(base + '/boot-order', 'POST', body)).status, 409)
     assert.deepEqual((await (await request(base + '/boot-order')).json()).order.map((d: any) => d.id), original)
-    assert.equal(writes.length, 2); assert.equal(cleanupDeleted, false)
+    assert.equal(writes.length, 3); assert.equal(cleanupDeleted, false)
     assert.ok(reads.some(r => r.path.endsWith('/config') && r.params.current === '1'))
     assert.deepEqual(reads.find(r => r.path === '/access/permissions')?.params, { path: '/nodes/pve1' })
-    assert.doesNotMatch(logs, /private-api-secret|private-native-notes|private-device-serial|private-native-detail/)
+    assert.doesNotMatch(logs, /private-api-secret|private-native-notes|private-device-serial|private-disabled-serial|private-native-detail/)
   } finally { await stop(); await new Promise<void>(resolve => upstream.close(() => resolve())); rmSync(dir, { recursive: true, force: true }) }
 })
